@@ -11,14 +11,14 @@
     "cookie-parser": "^1.4.6",
     "express": "^4.18.2",
     "express-session": "^1.17.3",
-    "passport": "^0.4.0",
+    "passport": "^0.6.0",
     "passport-twitter": "^1.0.4",
     "twit": "^2.2.11",
     "socket.io": "^4.5.3",
     "hbs": "^4.2.0"
   },
   "engines": {
-    "node": "8.x"
+    "node": "10.x"
   },
   "keywords": [
     "node",
