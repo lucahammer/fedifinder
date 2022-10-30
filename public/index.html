@@ -1,0 +1,63 @@
+<!-- This is a static file -->
+<!-- served from your routes in server.js -->
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Find Fediverse accounts of your Twitter followings</title>
+    <meta
+      name="description"
+      content="Extract the fediverse handles and urls of your Twitter followings."
+    />
+    <link
+      id="favicon"
+      rel="icon"
+      href="https://glitch.com/favicon-app.ico"
+      type="image/x-icon"
+    />
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <header>
+      <h2>Fedifinder</h2>
+      <p>
+        Extract the fediverse handles of your Twitter followings and import them
+        on Mastodon to follow them all at once.
+      </p>
+    </header>
+
+    <main>
+      <form method="GET" action="/auth/twitter">
+        <h3>Find fediverse handles of your followings</h3>
+        <button style="height: 50px" type="submit">
+          Login with Twitter to extract handles
+        </button>
+        <p>
+          <small
+            >Fedifinder looks for @user@host.tld, user@host.tld and
+            host.tld/@user in the screen name, description, location and url
+            field. <br />Because of Twitter API rate limiting, only the most
+            recent 3000 followings are looked at. If you get a "Rate limit
+            exceeded" warning, wait about 15 minutes and try again.</small
+          >
+        </p>
+      </form>
+    </main>
+
+    <p>
+      Made by <a href="https://vis.social/@luca">@Luca@vis.social</a>. Source
+      code in the fish menu.
+    </p>
+
+    <script
+      src="https://button.glitch.me/button.js"
+      data-style="glitch"
+    ></script>
+    <div
+      class="glitchButton"
+      style="position: fixed; top: 20px; right: 20px"
+    ></div>
+  </body>
+</html>
