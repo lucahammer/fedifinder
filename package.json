@@ -1,0 +1,32 @@
+{
+  "name": "fedifinder",
+  "version": "1.0.0",
+  "description": "Extracts fediverse handles and URLS from accounts someone follows on Twitter.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "connect-ensure-login": "^0.1.1",
+    "cookie-parser": "^1.4.6",
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "passport": "^0.4.0",
+    "passport-twitter": "^1.0.4",
+    "twit": "^2.2.11",
+    "socket.io": "^4.5.3",
+    "hbs": "^4.2.0"
+  },
+  "engines": {
+    "node": "8.x"
+  },
+  "keywords": [
+    "node",
+    "express",
+    "twitter",
+    "oauth",
+    "passport",
+    "twit"
+  ],
+  "license": "MIT"
+}

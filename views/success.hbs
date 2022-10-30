@@ -1,0 +1,93 @@
+<html>
+  <head>
+    <title>Fedifinder</title>
+    <meta
+      name="description"
+      content="Fediverse accounts of your Twitter followings"
+    />
+    <link
+      id="favicon"
+      rel="icon"
+      href="https://glitch.com/favicon-app.ico"
+      type="image/x-icon"
+    />
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="/client.js"></script>
+  </head>
+  <body>
+    <header>
+      <h2>Fediverse handles of your followings</h2>
+    </header>
+
+    <main>
+      <p>
+        Mail addresses are included as well because some people forget to add
+        the first @ of their handle: name@host.tld instead of @name@host.tld
+      </p>
+      <p>
+        <ol id="urlList">
+
+          {{#each handles}}
+            <li>{{this}}</li>
+          {{/each}}
+
+        </ol>
+      </p>
+
+      <p>
+        <a
+          style="background: #AFE3C0;
+    display: block;
+    cursor: pointer;
+    text-align: center;
+    height: 50px;
+    font-size: 20px;
+    padding: 9px;
+    font-weight: bold;"
+          download="following_accounts.csv"
+          id="downloadlink"
+          onClick="generateCSV()"
+          style="display: none"
+        ><svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="17"
+            viewBox="0 0 80 80"
+          ><path
+              d="M88.42,49.504L72.68,12.043C71.432,9.545,68.131,7.5,65.344,7.5H55.1L57,27.822h13.5L45,48.969
+      L19.5,27.822H33L34.899,7.5H24.658c-2.789,0-6.09,2.045-7.336,4.543L1.582,49.504c-1.248,2.5-1.893,6.801-1.434,9.557l3.4,18.428
+      c0.46,2.755,3.116,5.011,5.903,5.011h71.098c2.789,0,5.443-2.256,5.902-5.012l3.402-18.428
+      C90.311,56.305,89.666,52.004,88.42,49.504z M81.605,62.63l-1.295,7.514c-0.387,2.885-2.984,5.243-5.771,5.243H15.463
+      c-2.787,0-5.385-2.358-5.773-5.243L8.395,62.63c-0.387-2.885,1.578-5.243,4.365-5.243h64.48
+      C80.029,57.387,81.992,59.745,81.605,62.63z"
+            ></path></svg>
+          Download fedifinder_following_accounts.csv</a>
+        <small>You can import the CSV in the settings of your Mastodon account.
+          Make sure to use "merge" to not overwrite your current followings.</small>
+
+      </p>
+
+      <p>
+        <a href="/logoff">Log out</a>
+        and/or
+        <a href="https://twitter.com/settings/connected_apps">revoke app
+          permissions on Twitter</a>.
+      </p>
+    </main>
+
+    <script>
+      let accounts = [{{#each handles}}
+        "{{this}}",
+      {{/each}}]
+    </script>
+
+    <script
+      src="https://button.glitch.me/button.js"
+      data-style="glitch"
+    ></script>
+    <div class="glitchButton" style="position:fixed;top:20px;right:20px;"></div>
+
+  </body>
+</html>
