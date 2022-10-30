@@ -78,7 +78,7 @@ function findHandles(text) {
   let words = text.split(/,|\s|\(|\)/);
 
   // remove common false positives
-  let unwanted_domains = /gmail\.com|medium\.com|tiktok\.com/
+  let unwanted_domains = /gmail\.com|medium\.com|tiktok\.com|youtube\.com/
   words = words.filter(word => !unwanted_domains.test(word))
   
   // @username@server.tld
@@ -87,16 +87,16 @@ function findHandles(text) {
   );
 
   // some people don't include the initial @
-  handles = handles.concat(
+  /*handles = handles.concat(
     words
       .filter((word) => /^[a-zA-Z0-9]+@.+\.[a-zA-Z]+$/.test(word))
       .map((maillike) => "@" + maillike)
-  );
+  );*/
 
   // server.tld/@username
   handles = handles.concat(
     words
-      .filter((word) => /^.+\.[a-zA-Z]+\/@[a-zA-Z0-9]+$/.test(word))
+      .filter((word) => /^.+\.[a-zA-Z]+.*\/@[a-zA-Z0-9]+$/.test(word))
       .map((url) => handleFromUrl(url))
   );
 
