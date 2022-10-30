@@ -4,7 +4,7 @@ dependencies:
   express: 4.18.2
   express-session: 1.17.3
   hbs: 4.2.0
-  passport: 0.4.1
+  passport: 0.6.0
   passport-twitter: 1.0.4
   socket.io: 4.5.3
   twit: 2.2.11
@@ -705,15 +705,16 @@ packages:
       node: '>= 0.4.0'
     resolution:
       integrity: sha1-AaeZ4fdgvy3knyul+6MigvGJMtc=
-  /passport/0.4.1:
+  /passport/0.6.0:
     dependencies:
       passport-strategy: 1.0.0
       pause: 0.0.1
+      utils-merge: 1.0.1
     dev: false
     engines:
       node: '>= 0.4.0'
     resolution:
-      integrity: sha512-IxXgZZs8d7uFSt3eqNjM9NQ3g3uQCW5avD8mRNoXV99Yig50vjuaez6dQK2qC0kVWPRTujxY0dWgGfT09adjYg==
+      integrity: sha512-0fe+p3ZnrWRW74fe8+SvCyf4a3Pb2/h7gFkQ8yTJpAO50gDzlfjZUZTO1k5Eg9kUct22OxHLqDZoKUWRHOh9ug==
   /path-to-regexp/0.1.7:
     dev: false
     resolution:
@@ -1054,7 +1055,7 @@ specifiers:
   express: ^4.18.2
   express-session: ^1.17.3
   hbs: ^4.2.0
-  passport: ^0.4.0
+  passport: ^0.6.0
   passport-twitter: ^1.0.4
   socket.io: ^4.5.3
   twit: ^2.2.11
