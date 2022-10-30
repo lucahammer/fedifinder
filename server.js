@@ -83,20 +83,20 @@ function findHandles(text) {
   
   // @username@server.tld
   let handles = words.filter((word) =>
-    /^@[a-zA-Z0-9]+@.+\.[a-zA-Z]+$/.test(word)
+    /^@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word)
   );
 
   // some people don't include the initial @
   /*handles = handles.concat(
     words
-      .filter((word) => /^[a-zA-Z0-9]+@.+\.[a-zA-Z]+$/.test(word))
+      .filter((word) => /^[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word))
       .map((maillike) => "@" + maillike)
   );*/
 
   // server.tld/@username
   handles = handles.concat(
     words
-      .filter((word) => /^.+\.[a-zA-Z]+.*\/@[a-zA-Z0-9]+$/.test(word))
+      .filter((word) => /^.+\.[a-zA-Z]+.*\/@[a-zA-Z0-9_]+$/.test(word))
       .map((url) => handleFromUrl(url))
   );
 
