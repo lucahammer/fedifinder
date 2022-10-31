@@ -1,11 +1,13 @@
-var express = require("express");
-var app = express();
+const express = require("express");
+let app = express();
 var server = require("http").createServer(app);
 const passport = require("passport");
 const Strategy = require("passport-twitter").Strategy;
 const Twit = require("twit");
 const hbs = require("hbs");
-var url = require("url");
+const url = require("url");
+const Sequelize = require("sequelize");
+const https = require("https");
 
 app.use(express.static("public"));
 
@@ -69,8 +71,20 @@ function handleFromUrl(urlstring) {
   } else {
     // not a proper URL
     // host.tld/@name host.tld/web/@name
-    return "@" + urlstring.split("@").slice(-1).replace(/\/+$/, '') + "@" + urlstring.split("/")[0];
+    return (
+      "@" +
+      urlstring.split("@").slice(-1)[0].replace(/\/+$/, "") +
+      "@" +
+      urlstring.split("/")[0]
+    );
   }
+}
+
+function extract_domains(handles) {
+  let domains = handles.map((handle) => handle.split("@").slice(-1)[0]);
+  domains = [...new Set(domains)];
+
+  return domains;
 }
 
 function findHandles(text) {
@@ -88,11 +102,11 @@ function findHandles(text) {
   );
 
   // some people don't include the initial @
-  /*handles = handles.concat(
+  handles = handles.concat(
     words
       .filter((word) => /^[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word))
       .map((maillike) => "@" + maillike)
-  );*/
+  );
 
   // server.tld/@username
   handles = handles.concat(
@@ -125,6 +139,24 @@ function user_to_text(user) {
   return text;
 }
 
+function sort_handles(handles, domains) {
+  let sorted_handles = {};
+  let not_fedi = [];
+
+  handles.forEach((handle) => {
+    let curr_domain = handle.split("@").slice(-1)[0];
+    if (domains.find(({ domain }) => domain === curr_domain).well_known) {
+      if (curr_domain in sorted_handles)
+        sorted_handles[curr_domain].push(handle);
+      else sorted_handles[curr_domain] = [handle];
+    } else not_fedi.push(handle);
+  });
+
+  //console.log(not_fedi);
+  //console.log(sorted_handles)
+  return sorted_handles;
+}
+
 app.get(
   "/login/twitter/return",
   passport.authenticate("twitter", { failureRedirect: "/" }),
@@ -141,6 +173,7 @@ app.get(
     });
 
     var page = 0;
+    let checked_accounts = 0;
     var maxPage = 15;
     var handles = [];
     T.get(
@@ -148,8 +181,10 @@ app.get(
       { screen_name: req.user.username, count: 200, skip_status: true },
       function getData(err, data, response) {
         if (err) {
+          //response.redirect("/error.html");
           return res.send(err);
         }
+        checked_accounts += data["users"].length;
         handles = handles.concat(
           data["users"].map((user) => findHandles(user_to_text(user)))
         );
@@ -174,13 +209,31 @@ app.get(
           handles = [...new Set(handles)];
           handles.sort();
 
-          res.header(
-            "Cache-Control",
-            "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
-          );
-          res.render("success.hbs", {
-            handles: handles.filter((v, i, a) => a.indexOf(v) === i), // return only unique handles
-            profile: findHandles(user_to_text(req.user._json)),
+          let found_handles = handles.length;
+
+          let domains = extract_domains(handles);
+          let results = [];
+          domains.forEach((domain) => results.push(check_domain(domain)));
+          Promise.all(results).then((domains_well_known) => {
+            let sorted_handles = sort_handles(handles, domains_well_known);
+
+            let good_handles = 0;
+            for (let instance in sorted_handles) {
+              good_handles += sorted_handles[instance].length;
+            }
+
+            res.header(
+              "Cache-Control",
+              "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
+            );
+
+            res.render("success.hbs", {
+              good_handles: good_handles,
+              found_handles: found_handles,
+              checked_accounts: checked_accounts,
+              handles: sorted_handles,
+              profile: findHandles(user_to_text(req.user._json)),
+            });
           });
         }
       }
@@ -204,3 +257,151 @@ app.get(
 var server = app.listen(process.env.PORT, function () {
   console.log("Your app is listening on port " + server.address().port);
 });
+
+// WARNING: THIS IS BAD. DON'T TURN OFF TLS
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
+// default instances
+let instances = [
+  ["mastodon.social", true],
+  ["gmail.com", false],
+  ["vis.social", true],
+];
+let Instance;
+
+// setup a new database
+// using database credentials set in .env
+let sequelize = new Sequelize(
+  "database",
+  process.env.DB_USER,
+  process.env.DB_PASS,
+  {
+    host: "0.0.0.0",
+    dialect: "sqlite",
+    pool: {
+      max: 5,
+      min: 0,
+      idle: 10000,
+    },
+    // Security note: the database is saved to the file `database.sqlite` on the local filesystem. It's deliberately placed in the `.data` directory
+    // which doesn't get copied if someone remixes the project.
+    storage: ".data/database.sqlite",
+    logging: false,
+  }
+);
+
+// authenticate with the database
+sequelize
+  .authenticate()
+  .then(function (err) {
+    console.log("Connection has been established successfully.");
+    // define a new table 'instances'
+    Instance = sequelize.define("instances", {
+      instance: {
+        type: Sequelize.STRING,
+      },
+      well_known: {
+        type: Sequelize.BOOLEAN,
+      },
+    });
+
+    //setup();
+  })
+  .catch(function (err) {
+    console.log("Unable to connect to the database: ", err);
+  });
+
+function setup() {
+  Instance.sync({ force: true }).then(function () {
+    // Add the default instances to the database
+    for (var i = 0; i < instances.length; i++) {
+      Instance.create({
+        instance: instances[i][0],
+        well_known: instances[i][1],
+      });
+    }
+  });
+
+  Instance.findOne({ where: { instance: "vis.social" } }).then(function (
+    instances
+  ) {
+    console.log(instances.well_known);
+  });
+}
+
+function db_to_log() {
+  Instance.findAll().then(function (instances) {
+    instances.forEach(function (instance) {
+      console.log(instance.instance + ": " + instance.well_known);
+    });
+  });
+}
+
+// visit this URL to reset the DB
+app.get(process.env.DB_CLEAR, function (request, response) {
+  setup();
+  response.redirect("/");
+});
+
+app.get("/test", function (req, res) {
+  asyncCall();
+});
+
+function add_to_db(domain, well_known) {
+  Instance.create({
+    instance: domain,
+    well_known: well_known,
+  });
+}
+
+async function asyncCall() {
+  console.log("calling");
+  db_to_log();
+  const info = await check_well_known("lucahammer.com");
+  console.log(info);
+  db_to_log();
+}
+
+async function check_domain(domain) {
+  const info = await check_well_known(domain);
+  return { domain: domain, well_known: info };
+}
+
+function check_well_known(domain) {
+  return new Promise((resolve) => {
+    Instance.findOne({ where: { instance: domain } })
+      .then(async (data) => {
+        if (data === null) {
+          const well_known_live = await get_well_known_live(domain);
+          add_to_db(domain, well_known_live);
+          resolve(well_known_live);
+        } else resolve(data.well_known);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  });
+}
+
+function get_well_known_live(host_domain) {
+  return new Promise((resolve) => {
+    let options = {
+      method: "HEAD",
+      host: host_domain,
+      path: "/.well-known/host-meta",
+    };
+
+    https
+      .get(options, (res) => {
+        if (res.statusCode == 200) {
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      })
+      .on("error", (e) => {
+        resolve(false);
+        //console.error(e);
+      });
+  });
+}
