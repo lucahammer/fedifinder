@@ -97,7 +97,7 @@ function findHandles(text) {
   // server.tld/@username
   handles = handles.concat(
     words
-      .filter((word) => /^.+\.[a-zA-Z]+.*\/@[a-zA-Z0-9_]+$/.test(word))
+      .filter((word) => /^.+\.[a-zA-Z]+.*\/@[a-zA-Z0-9_]+\/*$/.test(word))
       .map((url) => handleFromUrl(url))
   );
 
