@@ -104,6 +104,27 @@ function findHandles(text) {
   return handles;
 }
 
+function user_to_text(user) {
+  // where handles could be: name, description, location, entities url urls expanded_url, entities description urls expanded_url
+  let text =
+    user["name"] + " " + user["description"] + " " + user["location"] + " ";
+  if ("url" in user["entities"]) {
+    text =
+      text +
+      user["entities"]["url"]["urls"].map(
+        (url) => " " + url["expanded_url"] + " "
+      );
+  }
+  if ("description" in user["entities"]) {
+    text =
+      text +
+      user["entities"]["description"]["urls"].map(
+        (url) => " " + url["expanded_url"] + " "
+      );
+  }
+  return text;
+}
+
 app.get(
   "/login/twitter/return",
   passport.authenticate("twitter", { failureRedirect: "/" }),
@@ -130,32 +151,7 @@ app.get(
           return res.send(err);
         }
         handles = handles.concat(
-          data["users"].map((user) => {
-            // where handles could be: screen_name, description, location, entities url urls expanded_url, entities description urls expanded_url
-            let text =
-              user["name"] +
-              " " +
-              user["description"] +
-              " " +
-              user["location"] +
-              " ";
-            if ("url" in user["entities"]) {
-              text =
-                text +
-                user["entities"]["url"]["urls"].map(
-                  (url) => " " + url["expanded_url"] + " "
-                );
-            }
-            if ("description" in user["entities"]) {
-              text =
-                text +
-                user["entities"]["description"]["urls"].map(
-                  (url) => " " + url["expanded_url"] + " "
-                );
-            }
-
-            return findHandles(text);
-          })
+          data["users"].map((user) => findHandles(user_to_text(user)))
         );
         page++;
 
