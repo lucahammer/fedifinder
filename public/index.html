@@ -18,6 +18,13 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      if (location.protocol != "https:") {
+        location.href =
+          "https:" +
+          window.location.href.substring(window.location.protocol.length);
+      }
+    </script>
   </head>
   <body>
     <header>
@@ -31,11 +38,6 @@
     <main>
       <form method="GET" action="/auth/twitter">
         <h3>Find fediverse handles of your followings</h3>
-        <p>
-          Make sure that you are logged into the correct
-          <a href="https://twitter.com/">Twitter</a> account before authorizing
-          the app.
-        </p>
         <button style="height: 50px" type="submit">
           Authorize to extract handles
         </button>
