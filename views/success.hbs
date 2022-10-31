@@ -43,17 +43,31 @@
 
     <main>
       <p>
-        Mail addresses are included as well because some people forget to add
-        the first @ of their handle: name@host.tld instead of @name@host.tld
+        While the handles are sorted by their instance, they can all follow and
+        interact with each other. You can download all handles at once at the
+        bottom of the list.
+        {{checked_accounts}}
+        followings were checked,
+        {{found_handles}}
+        possible handles found and
+        {{good_handles}}
+        handles reachable.
       </p>
       <p>
-        <ol id="urlList">
+        <ul id="urlList">
 
           {{#each handles}}
-            <li>{{this}}</li>
+            <li><a target="_blank" href="https://{{@key}}">{{@key}}</a>
+              <ol>
+                {{#each this}}
+                  <li>{{this}}</li>
+                {{/each}}
+              </ol>
+            </li>
+
           {{/each}}
 
-        </ol>
+        </ul>
       </p>
 
       <p>
@@ -93,7 +107,9 @@
         <a href="/logoff">Log out</a>
         and/or
         <a href="https://twitter.com/settings/connected_apps">revoke app
-          permissions on Twitter</a>. Boost the <a href="https://vis.social/@Luca/109253908218072543">announcement</a> of the tool or give feedback there.
+          permissions on Twitter</a>. Boost the
+        <a href="https://vis.social/@Luca/109253908218072543">announcement</a>
+        of the tool or give feedback there.
       </p>
     </main>
 
