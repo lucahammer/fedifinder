@@ -104,6 +104,27 @@ function findHandles(text, name) {
   return handles;
 }
 
+function user_to_text(user) {
+  // where handles could be: name, description, location, entities url urls expanded_url, entities description urls expanded_url
+  let text =
+    user["name"] + " " + user["description"] + " " + user["location"] + " ";
+  if ("url" in user["entities"]) {
+    text =
+      text +
+      user["entities"]["url"]["urls"].map(
+        (url) => " " + url["expanded_url"] + " "
+      );
+  }
+  if ("description" in user["entities"]) {
+    text =
+      text +
+      user["entities"]["description"]["urls"].map(
+        (url) => " " + url["expanded_url"] + " "
+      );
+  }
+  return text;
+}
+
 app.get(
   "/login/twitter/return",
   passport.authenticate("twitter", { failureRedirect: "/" }),
@@ -130,32 +151,8 @@ app.get(
           return res.send(err);
         }
         handles = handles.concat(
-          data["users"].map((user) => {
-            // where handles could be: screen_name, description, location, entities url urls expanded_url, entities description urls expanded_url
-            let text =
-              user["name"] +
-              " " +
-              user["description"] +
-              " " +
-              user["location"] +
-              " ";
-            if ("url" in user["entities"]) {
-              text =
-                text +
-                user["entities"]["url"]["urls"].map(
-                  (url) => " " + url["expanded_url"] + " "
-                );
-            }
-            if ("description" in user["entities"]) {
-              text =
-                text +
-                user["entities"]["description"]["urls"].map(
-                  (url) => " " + url["expanded_url"] + " "
-                );
-            }
+          data["users"].map((user) => findHandles(user_to_text(user), user["screen_name"]))
 
-            return findHandles(text, user["screen_name"]);
-          })
         );
         page++;
 
@@ -182,7 +179,10 @@ app.get(
             "Cache-Control",
             "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
           );
-          res.render("success.hbs", { handles });
+          res.render("success.hbs", {
+            handles: handles,
+            profile: findHandles(user_to_text(req.user._json)),
+          });
         }
       }
     );
