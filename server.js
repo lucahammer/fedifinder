@@ -73,30 +73,31 @@ function handleFromUrl(urlstring) {
   }
 }
 
-function findHandles(text) {  
+function findHandles(text) {
   // different sperators people use
   let words = text.split(/,|\s|\(|\)/);
 
   // remove common false positives
-  let unwanted_domains = /gmail\.com|medium\.com|tiktok\.com|youtube\.com/
-  words = words.filter(word => !unwanted_domains.test(word))
-  
+  let unwanted_domains =
+    /gmail\.com|medium\.com|tiktok\.com|youtube\.com|pronouns\.page/;
+  words = words.filter((word) => !unwanted_domains.test(word));
+
   // @username@server.tld
   let handles = words.filter((word) =>
-    /^@[a-zA-Z0-9]+@.+\.[a-zA-Z]+$/.test(word)
+    /^@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word)
   );
 
   // some people don't include the initial @
   /*handles = handles.concat(
     words
-      .filter((word) => /^[a-zA-Z0-9]+@.+\.[a-zA-Z]+$/.test(word))
+      .filter((word) => /^[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word))
       .map((maillike) => "@" + maillike)
   );*/
 
   // server.tld/@username
   handles = handles.concat(
     words
-      .filter((word) => /^.+\.[a-zA-Z]+.*\/@[a-zA-Z0-9]+$/.test(word))
+      .filter((word) => /^.+\.[a-zA-Z]+.*\/@[a-zA-Z0-9_]+$/.test(word))
       .map((url) => handleFromUrl(url))
   );
 
@@ -175,7 +176,7 @@ app.get(
           );
           handles = [].concat(...handles);
           handles = [...new Set(handles)];
-          handles.sort()
+          handles.sort();
 
           res.header(
             "Cache-Control",
