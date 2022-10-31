@@ -73,7 +73,7 @@ function handleFromUrl(urlstring) {
   }
 }
 
-function findHandles(text) {
+function findHandles(text, name) {
   // different sperators people use
   let words = text.split(/,|\s|\(|\)/);
 
@@ -98,7 +98,7 @@ function findHandles(text) {
   handles = handles.concat(
     words
       .filter((word) => /^.+\.[a-zA-Z]+.*\/@[a-zA-Z0-9_]+$/.test(word))
-      .map((url) => handleFromUrl(url))
+      .map((url) => handleFromUrl(url)).map(url => ({name: name, url: url}))
   );
 
   return handles;
@@ -154,7 +154,7 @@ app.get(
                 );
             }
 
-            return findHandles(text);
+            return findHandles(text, user["screen_name"]);
           })
         );
         page++;
