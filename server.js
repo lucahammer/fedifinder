@@ -65,11 +65,18 @@ app.get("/auth/twitter", passport.authenticate("twitter"));
 function handleFromUrl(urlstring) {
   if (urlstring.includes("http")) {
     let handleUrl = url.parse(urlstring, true);
-    return urlstring.replace(/\/+$/, '').split("/").slice(-1) + "@" + handleUrl.host;
+    return (
+      urlstring.replace(/\/+$/, "").split("/").slice(-1) + "@" + handleUrl.host
+    );
   } else {
     // not a proper URL
     // host.tld/@name host.tld/web/@name
-    return "@" + urlstring.split("@").slice(-1).replace(/\/+$/, '') + "@" + urlstring.split("/")[0];
+    return (
+      "@" +
+      urlstring.split("@").slice(-1)[0].replace(/\/+$/, "") +
+      "@" +
+      urlstring.split("/")[0]
+    );
   }
 }
 
