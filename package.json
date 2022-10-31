@@ -1,6 +1,6 @@
 {
   "name": "fedifinder",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Extracts fediverse handles and URLS from accounts someone follows on Twitter.",
   "main": "server.js",
   "scripts": {
@@ -15,7 +15,9 @@
     "passport-twitter": "^1.0.4",
     "twit": "^2.2.11",
     "socket.io": "^4.5.3",
-    "hbs": "^4.2.0"
+    "hbs": "^4.2.0",
+    "sequelize": "^6.25.2",
+    "sqlite3": "^5.1.2"
   },
   "engines": {
     "node": "10.x"

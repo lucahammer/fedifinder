@@ -21,27 +21,21 @@
   </head>
   <body>
     <header>
-      <h2>Fedifinder</h2>
+      <h2>Error</h2>
       <p>
-        Extract the fediverse handles of your Twitter followings and import them
-        on Mastodon to follow them all at once.
+        Please wait 15 minutes before trying again.
       </p>
     </header>
 
     <main>
       <form method="GET" action="/auth/twitter">
         <h3>Find fediverse handles of your followings</h3>
-        <p>
-          Make sure that you are logged into the correct
-          <a href="https://twitter.com/">Twitter</a> account before authorizing
-          the app.
-        </p>
         <button style="height: 50px" type="submit">
-          Authorize to extract handles
+          Login with Twitter to extract handles
         </button>
         <p>
           <small
-            >Fedifinder looks for @user@host.tld, user@host.tld and
+            >Fedifinder looks for @user@host.tld, <del>user@host.tld</del> and
             host.tld/@user in the name, description, location and url field.
             <br />Because of Twitter API rate limiting, only the most recent
             3000 followings are looked at. If you get a "Rate limit exceeded"
