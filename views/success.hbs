@@ -18,19 +18,33 @@
   </head>
   <body>
     <header>
+      <h2>Your fediverse handles</h2>
+
+      {{#if profile.length}}
+        <p>
+          These handles were found in your profile:
+        </p>
+
+        <ol>
+          {{#each profile}}
+            <li>{{this}}</li>
+          {{/each}}
+        </ol>
+
+      {{else}}
+        <p>
+          No handles were found in your own profile. Please use the format
+          @name@host.tld or https://host.tld/@name
+        </p>
+      {{/if}}
+
       <h2>Fediverse handles of your followings</h2>
     </header>
 
     <main>
       <p>
-        <del>Mail addresses are included as well because some people forget to
-          add the first @ of their handle: name@host.tld instead of
-          @name@host.tld</del>
-        Handles that look like mail addresses are excluded until a check is
-        implemented to make sure that they aren't mail addresses.
-      </p>
-      <p>
-        <em>CSV Download at the bottom of the list.</em>
+        Mail addresses are included as well because some people forget to add
+        the first @ of their handle: name@host.tld instead of @name@host.tld
       </p>
       <p>
         <ol id="urlList">
