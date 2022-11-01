@@ -52,15 +52,13 @@
         {{checked_accounts}}
         followings were checked,
         {{found_handles}}
-        possible handles found and
-        {{good_handles}}
-        handles reachable.
+        possible handles found.
       </p>
       <p>
         <ul id="urlList">
 
           {{#each handles}}
-            <li><a target="_blank" href="https://{{@key}}">{{@key}}</a>
+            <li id="{{@key}}"><a target="_blank" href="https://{{@key}}">{{@key}}</a>
               <ol>
                 {{#each this}}
                   <li>{{this}}</li>
@@ -117,9 +115,7 @@
     </main>
 
     <script>
-      let accounts = [{{#each handles}}
-        "{{this}}",
-      {{/each}}]
+      let accounts = {{handles}}
     </script>
 
     <script
