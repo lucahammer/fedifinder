@@ -149,11 +149,8 @@ function sort_handles(handles, domains) {
 
   handles.forEach((handle) => {
     let curr_domain = handle.split("@").slice(-1)[0];
-    if (domains.find(({ domain }) => domain === curr_domain).well_known) {
-      if (curr_domain in sorted_handles)
-        sorted_handles[curr_domain].push(handle);
-      else sorted_handles[curr_domain] = [handle];
-    } else not_fedi.push(handle);
+    if (curr_domain in sorted_handles) sorted_handles[curr_domain].push(handle);
+    else sorted_handles[curr_domain] = [handle];
   });
 
   //console.log(not_fedi);
@@ -216,28 +213,18 @@ app.get(
           let found_handles = handles.length;
 
           let domains = extract_domains(handles);
-          let results = [];
-          domains.forEach((domain) => results.push(check_domain(domain)));
-          Promise.all(results).then((domains_well_known) => {
-            let sorted_handles = sort_handles(handles, domains_well_known);
+          let sorted_handles = sort_handles(handles, domains);
 
-            let good_handles = 0;
-            for (let instance in sorted_handles) {
-              good_handles += sorted_handles[instance].length;
-            }
+          res.header(
+            "Cache-Control",
+            "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
+          );
 
-            res.header(
-              "Cache-Control",
-              "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
-            );
-
-            res.render("success.hbs", {
-              good_handles: good_handles,
-              found_handles: found_handles,
-              checked_accounts: checked_accounts,
-              handles: sorted_handles,
-              profile: findHandles(user_to_text(req.user._json)),
-            });
+          res.render("success.hbs", {
+            found_handles: found_handles,
+            checked_accounts: checked_accounts,
+            handles: sorted_handles,
+            profile: findHandles(user_to_text(req.user._json)),
           });
         }
       }
