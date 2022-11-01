@@ -5,15 +5,11 @@
       name="description"
       content="Fediverse accounts of your Twitter followings"
     />
-    <link
-      id="favicon"
-      rel="icon"
-      href="https://glitch.com/favicon-app.ico"
-      type="image/x-icon"
-    />
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="/socket.io.min.js"></script>
+    <script src="/jquery-3.6.1.min.js"></script>
     <script src="/client.js"></script>
   </head>
   <body>
@@ -44,20 +40,34 @@
     <main>
       <p>
         While the handles are sorted by their instance, they can all follow and
-        interact with each other. You can download all handles at once at the
+        interact with each other. You can export all handles at once at the
         bottom of the list.
         {{checked_accounts}}
         followings were checked,
         {{found_handles}}
-        possible handles found and
-        {{good_handles}}
-        handles reachable.
+        possible handles found.
       </p>
+
+      <p id="infobox">
+        Please wait a moment until the domains got checked, if they are part of
+        the fediverse. The export is updated on the fly.<br /><br />
+
+        <span id="nr_working">0</span>
+        handles on domains that are probaly part of the fediverse.<br />
+        <span id="nr_not_working">0</span>
+        handles on other domains. Probably mail addresse or other false
+        positives.
+      </p>
+
       <p>
         <ul id="urlList">
 
           {{#each handles}}
-            <li><a target="_blank" href="https://{{@key}}">{{@key}}</a>
+            <li id="{{@key}}"><a
+                target="_blank"
+                href="https://{{@key}}"
+              >{{@key}}</a>
+              <span id="info-{{@key}}"></span>
               <ol>
                 {{#each this}}
                   <li>{{this}}</li>
@@ -114,9 +124,8 @@
     </main>
 
     <script>
-      let accounts = [{{#each handles}}
-        "{{this}}",
-      {{/each}}]
+      let accounts =
+      {{{json handles}}};
     </script>
 
     <script

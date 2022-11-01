@@ -9,6 +9,10 @@ const url = require("url");
 const Sequelize = require("sequelize");
 const https = require("https");
 
+hbs.registerHelper("json", function (context) {
+    return JSON.stringify(context);
+});
+
 app.use(express.static("public"));
 
 passport.use(
@@ -47,14 +51,14 @@ app.use(
   require("express-session")({
     secret: "keyboard cat",
     resave: true,
-    saveUninitialized: true,
+    saveUninitialized: false,
   })
 );
 
 // Initialize Passport and restore authentication state, if any, from the
 // session.
 app.use(passport.initialize());
-app.use(passport.session({ secret: "keyboard cat", cookie: { secure: true } }));
+//app.use(passport.session({ secret: "keyboard cat", cookie: {sameSite: 'none', secure: true } }));
 
 // Define routes.
 app.get("/logoff", function (req, res) {
@@ -67,7 +71,11 @@ app.get("/auth/twitter", passport.authenticate("twitter"));
 function handleFromUrl(urlstring) {
   if (urlstring.match(/^http/i)) {
     let handleUrl = url.parse(urlstring, true);
-    return urlstring.replace(/\/+$/, '').split("/").slice(-1) + "@" + handleUrl.host.toLowerCase();
+    return (
+      urlstring.replace(/\/+$/, "").split("/").slice(-1) +
+      "@" +
+      handleUrl.host.toLowerCase()
+    );
   } else {
     // not a proper URL
     // host.tld/@name host.tld/web/@name
@@ -145,11 +153,8 @@ function sort_handles(handles, domains) {
 
   handles.forEach((handle) => {
     let curr_domain = handle.split("@").slice(-1)[0];
-    if (domains.find(({ domain }) => domain === curr_domain).well_known) {
-      if (curr_domain in sorted_handles)
-        sorted_handles[curr_domain].push(handle);
-      else sorted_handles[curr_domain] = [handle];
-    } else not_fedi.push(handle);
+    if (curr_domain in sorted_handles) sorted_handles[curr_domain].push(handle);
+    else sorted_handles[curr_domain] = [handle];
   });
 
   //console.log(not_fedi);
@@ -174,7 +179,7 @@ app.get(
 
     var page = 0;
     let checked_accounts = 0;
-    var maxPage = 15;
+    var maxPage = process.env.MAX_PAGE;
     var handles = [];
     T.get(
       "friends/list",
@@ -212,28 +217,18 @@ app.get(
           let found_handles = handles.length;
 
           let domains = extract_domains(handles);
-          let results = [];
-          domains.forEach((domain) => results.push(check_domain(domain)));
-          Promise.all(results).then((domains_well_known) => {
-            let sorted_handles = sort_handles(handles, domains_well_known);
+          let sorted_handles = sort_handles(handles, domains);
 
-            let good_handles = 0;
-            for (let instance in sorted_handles) {
-              good_handles += sorted_handles[instance].length;
-            }
+          res.header(
+            "Cache-Control",
+            "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
+          );
 
-            res.header(
-              "Cache-Control",
-              "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
-            );
-
-            res.render("success.hbs", {
-              good_handles: good_handles,
-              found_handles: found_handles,
-              checked_accounts: checked_accounts,
-              handles: sorted_handles,
-              profile: findHandles(user_to_text(req.user._json)),
-            });
+          res.render("success.hbs", {
+            found_handles: found_handles,
+            checked_accounts: checked_accounts,
+            handles: sorted_handles,
+            profile: findHandles(user_to_text(req.user._json)),
           });
         }
       }
@@ -411,3 +406,29 @@ function checkHttps(req, res, next) {
   }
 }
 app.all("*", checkHttps);
+
+const { Server } = require("socket.io");
+const io = new Server(server);
+var connections = [];
+
+io.sockets.on("connection", function (socket) {
+  connections.push(socket);
+  //console.log("a user connected");
+
+  socket.on("checkDomains", function (data) {
+    //console.log(data);
+    let domains = data.domains.split(",");
+    Promise.all(
+      domains.map((domain) =>
+        check_well_known(domain)
+          .catch(() => undefined)
+          .then((completed) => {
+            socket.emit("checkedDomains", {
+              domain: domain,
+              well_known: completed,
+            });
+          })
+      )
+    );
+  });
+});
