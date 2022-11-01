@@ -103,8 +103,13 @@ socket.on("userLists", function (lists) {
   $form.append(
     '<input type="button" onClick="loadListMembers();" value="Scan members">'
   );
+  $form.append('<input type="button" onClick="skipList()" value="Skip list">');
   $("#choices").append($form);
 });
+
+function skipList() {
+  $("#lists option:selected").remove();
+}
 
 socket.on("usersFromList", function (data) {
   for (const [domain, handles] of Object.entries(data.handles)) {
