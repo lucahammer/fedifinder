@@ -67,11 +67,7 @@ app.get("/auth/twitter", passport.authenticate("twitter"));
 function handleFromUrl(urlstring) {
   if (urlstring.match(/^http/i)) {
     let handleUrl = url.parse(urlstring, true);
-    return (
-      urlstring.replace(/\/+$/, "").split("/").slice(-1) +
-      "@" +
-      handleUrl.host.toLowerCase()
-    );
+    return urlstring.replace(/\/+$/, '').split("/").slice(-1) + "@" + handleUrl.host.toLowerCase();
   } else {
     // not a proper URL
     // host.tld/@name host.tld/web/@name
