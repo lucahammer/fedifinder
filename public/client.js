@@ -1,4 +1,13 @@
+const socket = io();
 let csv = "";
+
+socket.on("checkedDomains", function (data) {
+  console.log(data);
+});
+
+$(function () {
+  socket.emit("checkDomains", { domains: "lucahammer.com,vis.social" });
+});
 
 function generateCSV() {
   csv = "Account address,Show boosts\n";
