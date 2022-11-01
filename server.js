@@ -9,6 +9,10 @@ const url = require("url");
 const Sequelize = require("sequelize");
 const https = require("https");
 
+hbs.registerHelper("json", function (context) {
+    return JSON.stringify(context);
+});
+
 app.use(express.static("public"));
 
 passport.use(
@@ -47,7 +51,7 @@ app.use(
   require("express-session")({
     secret: "keyboard cat",
     resave: true,
-    saveUninitialized: true,
+    saveUninitialized: false,
   })
 );
 
