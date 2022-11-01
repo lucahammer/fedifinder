@@ -241,7 +241,6 @@ app.get(
         }
       }
     );
-
   }
 );
 
@@ -455,7 +454,7 @@ io.sockets.on("connection", function (socket) {
     );
   });
 
-  socket.on("getLists", function (data) {
+  socket.on("getLists", function (dataFront) {
     var T = new Twit({
       consumer_key: process.env.TWITTER_CONSUMER_KEY,
       consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
@@ -467,13 +466,19 @@ io.sockets.on("connection", function (socket) {
 
     T.get(
       "lists/list",
-      { screen_name: data.username, reverse: true },
+      { screen_name: dataFront.username, reverse: true },
       function getData(err, data, response) {
+        let lists = [];
         if (err) {
-          //response.redirect("/error.html");
           socket.emit("listError", err);
         }
-        console.log(data);
+        data.map((list) =>
+          lists.push({
+            name: list["name"],
+            id_str: list["id_str"],
+            member_count: list["member_count"],
+          })
+        );
 
         if (data["next_cursor"])
           T.get(
@@ -486,8 +491,63 @@ io.sockets.on("connection", function (socket) {
             getData
           );
         else {
-          console.log("no pages");
-          console.log(data);
+          socket.emit("userLists", lists);
+        }
+      }
+    );
+  });
+
+  socket.on("scanList", function (list_id) {
+    var T = new Twit({
+      consumer_key: process.env.TWITTER_CONSUMER_KEY,
+      consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
+      access_token: socket.request.user.accessToken,
+      access_token_secret: socket.request.user.tokenSecret,
+      timeout_ms: 60 * 1000,
+      strictSSL: true,
+    });
+    let checked_accounts = 0;
+    T.get(
+      "lists/members",
+      { list_id: list_id, count: 5000, skip_status: true },
+      function getData(err, data, response) {
+        let handles = [];
+        if (err) {
+          socket.emit("Error", err);
+        }
+        checked_accounts += data["users"].length;
+        handles = handles.concat(
+          data["users"].map((user) => findHandles(user_to_text(user)))
+        );
+
+        if (data["next_cursor"])
+          T.get(
+            "lists/members",
+            {
+              screen_name: data.username,
+              reverse: true,
+              cursor: data["next_cursor"],
+            },
+            getData
+          );
+        else {
+          handles = handles.filter(
+            (handle) => typeof handle != "undefined" && handle.length > 0
+          );
+          handles = [].concat(...handles);
+          handles = [...new Set(handles)];
+          handles.sort();
+
+          let found_handles = handles.length;
+
+          let domains = extract_domains(handles);
+          let sorted_handles = sort_handles(handles, domains);
+
+          socket.emit("usersFromList", {
+            found_handles: found_handles,
+            checked_accounts: checked_accounts,
+            handles: sorted_handles,
+          });
         }
       }
     );
