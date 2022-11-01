@@ -357,10 +357,6 @@ function add_to_db(domain, well_known) {
 }
 
 async function asyncCall() {
-  console.log("calling");
-  db_to_log();
-  const info = await check_well_known("lucahammer.com");
-  console.log(info);
   db_to_log();
 }
 
