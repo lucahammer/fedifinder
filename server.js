@@ -54,7 +54,7 @@ app.use(
 // Initialize Passport and restore authentication state, if any, from the
 // session.
 app.use(passport.initialize());
-app.use(passport.session());
+app.use(passport.session({ secret: "keyboard cat", cookie: { secure: true } }));
 
 // Define routes.
 app.get("/logoff", function (req, res) {
@@ -355,10 +355,6 @@ function add_to_db(domain, well_known) {
 }
 
 async function asyncCall() {
-  console.log("calling");
-  db_to_log();
-  const info = await check_well_known("lucahammer.com");
-  console.log(info);
   db_to_log();
 }
 
@@ -405,3 +401,13 @@ function get_well_known_live(host_domain) {
       });
   });
 }
+
+function checkHttps(req, res, next) {
+  // protocol check, if http, redirect to https
+  if (req.get("X-Forwarded-Proto").indexOf("https") != -1) {
+    return next();
+  } else {
+    res.redirect("https://" + req.hostname + req.url);
+  }
+}
+app.all("*", checkHttps);
