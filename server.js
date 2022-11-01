@@ -8,9 +8,10 @@ const hbs = require("hbs");
 const url = require("url");
 const Sequelize = require("sequelize");
 const https = require("https");
+const session = require("express-session");
 
 hbs.registerHelper("json", function (context) {
-    return JSON.stringify(context);
+  return JSON.stringify(context);
 });
 
 app.use(express.static("public"));
@@ -47,18 +48,24 @@ passport.deserializeUser(function (obj, cb) {
 });
 
 app.use(require("body-parser").urlencoded({ extended: true }));
+
+const sessionMiddleware = session({
+  secret: "keyboard cat",
+  resave: true,
+  saveUninitialized: false,
+});
+app.use(sessionMiddleware);
+
+// Initialize Passport and restore authentication state, if any, from the
+// session.
+app.use(passport.initialize());
 app.use(
-  require("express-session")({
+  passport.session({
     secret: "keyboard cat",
     resave: true,
     saveUninitialized: false,
   })
 );
-
-// Initialize Passport and restore authentication state, if any, from the
-// session.
-app.use(passport.initialize());
-//app.use(passport.session({ secret: "keyboard cat", cookie: {sameSite: 'none', secure: true } }));
 
 // Define routes.
 app.get("/logoff", function (req, res) {
@@ -225,6 +232,7 @@ app.get(
           );
 
           res.render("success.hbs", {
+            username: req.user.username,
             found_handles: found_handles,
             checked_accounts: checked_accounts,
             handles: sorted_handles,
@@ -411,12 +419,26 @@ const { Server } = require("socket.io");
 const io = new Server(server);
 var connections = [];
 
+const wrap = (middleware) => (socket, next) =>
+  middleware(socket.request, {}, next);
+
+io.use(wrap(sessionMiddleware));
+io.use(wrap(passport.initialize()));
+io.use(wrap(passport.session()));
+
+io.use((socket, next) => {
+  if (socket.request.user) {
+    next();
+  } else {
+    next(new Error("unauthorized"));
+  }
+});
+
 io.sockets.on("connection", function (socket) {
   connections.push(socket);
-  //console.log("a user connected");
+  //console.log(socket.request.user);
 
   socket.on("checkDomains", function (data) {
-    //console.log(data);
     let domains = data.domains.split(",");
     Promise.all(
       domains.map((domain) =>
@@ -429,6 +451,105 @@ io.sockets.on("connection", function (socket) {
             });
           })
       )
+    );
+  });
+
+  socket.on("getLists", function (dataFront) {
+    var T = new Twit({
+      consumer_key: process.env.TWITTER_CONSUMER_KEY,
+      consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
+      access_token: socket.request.user.accessToken,
+      access_token_secret: socket.request.user.tokenSecret,
+      timeout_ms: 60 * 1000,
+      strictSSL: true,
+    });
+
+    T.get(
+      "lists/list",
+      { screen_name: dataFront.username, reverse: true },
+      function getData(err, data, response) {
+        let lists = [];
+        if (err) {
+          socket.emit("listError", err);
+        }
+        data.map((list) =>
+          lists.push({
+            name: list["name"],
+            id_str: list["id_str"],
+            member_count: list["member_count"],
+          })
+        );
+
+        if (data["next_cursor"])
+          T.get(
+            "lists/list",
+            {
+              screen_name: data.username,
+              reverse: true,
+              cursor: data["next_cursor"],
+            },
+            getData
+          );
+        else {
+          socket.emit("userLists", lists);
+        }
+      }
+    );
+  });
+
+  socket.on("scanList", function (list_id) {
+    var T = new Twit({
+      consumer_key: process.env.TWITTER_CONSUMER_KEY,
+      consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
+      access_token: socket.request.user.accessToken,
+      access_token_secret: socket.request.user.tokenSecret,
+      timeout_ms: 60 * 1000,
+      strictSSL: true,
+    });
+    let checked_accounts = 0;
+    T.get(
+      "lists/members",
+      { list_id: list_id, count: 5000, skip_status: true },
+      function getData(err, data, response) {
+        let handles = [];
+        if (err) {
+          socket.emit("Error", err);
+        }
+        checked_accounts += data["users"].length;
+        handles = handles.concat(
+          data["users"].map((user) => findHandles(user_to_text(user)))
+        );
+
+        if (data["next_cursor"])
+          T.get(
+            "lists/members",
+            {
+              screen_name: data.username,
+              reverse: true,
+              cursor: data["next_cursor"],
+            },
+            getData
+          );
+        else {
+          handles = handles.filter(
+            (handle) => typeof handle != "undefined" && handle.length > 0
+          );
+          handles = [].concat(...handles);
+          handles = [...new Set(handles)];
+          handles.sort();
+
+          let found_handles = handles.length;
+
+          let domains = extract_domains(handles);
+          let sorted_handles = sort_handles(handles, domains);
+
+          socket.emit("usersFromList", {
+            found_handles: found_handles,
+            checked_accounts: checked_accounts,
+            handles: sorted_handles,
+          });
+        }
+      }
     );
   });
 });
