@@ -506,7 +506,6 @@ io.sockets.on("connection", function (socket) {
       timeout_ms: 60 * 1000,
       strictSSL: true,
     });
-    let checked_accounts = 0;
     T.get(
       "lists/members",
       { list_id: list_id, count: 5000, skip_status: true },
@@ -515,7 +514,6 @@ io.sockets.on("connection", function (socket) {
         if (err) {
           socket.emit("Error", err);
         }
-        checked_accounts += data["users"].length;
         handles = handles.concat(
           data["users"].map((user) => findHandles(user_to_text(user)))
         );
@@ -545,7 +543,6 @@ io.sockets.on("connection", function (socket) {
 
           socket.emit("usersFromList", {
             found_handles: found_handles,
-            checked_accounts: checked_accounts,
             handles: sorted_handles,
           });
         }
