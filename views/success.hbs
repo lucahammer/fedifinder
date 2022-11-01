@@ -8,9 +8,15 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <script>
+      let accounts =
+      {{{json handles}}}; let username = "{{username}}";
+    </script>
     <script src="/socket.io.min.js"></script>
     <script src="/jquery-3.6.1.min.js"></script>
     <script src="/client.js"></script>
+
   </head>
   <body>
     <header>
@@ -18,7 +24,7 @@
 
       {{#if profile.length}}
         <p>
-          These handles were found in your profile:
+          These handles were found in your profile @{{username}}:
         </p>
 
         <ol>
@@ -29,8 +35,8 @@
 
       {{else}}
         <p>
-          No handles were found in your own profile. Please use the format
-          @name@host.tld or https://host.tld/@name
+          No handles were found on your profile @{{username}}. Please use the
+          format @name@host.tld or https://host.tld/@name
         </p>
       {{/if}}
 
@@ -107,7 +113,7 @@
       c-2.787,0-5.385-2.358-5.773-5.243L8.395,62.63c-0.387-2.885,1.578-5.243,4.365-5.243h64.48
       C80.029,57.387,81.992,59.745,81.605,62.63z"
             ></path></svg>
-          Download fedifinder_following_accounts.csv</a>
+          Export fedifinder_following_accounts.csv</a>
         <small>You can import the CSV in the settings of your Mastodon account.
           Make sure to use "merge" to not overwrite your current followings.</small>
 
@@ -122,11 +128,6 @@
         of the tool or give feedback there.
       </p>
     </main>
-
-    <script>
-      let accounts =
-      {{{json handles}}};
-    </script>
 
     <script
       src="https://button.glitch.me/button.js"
