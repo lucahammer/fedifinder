@@ -54,7 +54,7 @@ app.use(
 // Initialize Passport and restore authentication state, if any, from the
 // session.
 app.use(passport.initialize());
-app.use(passport.session({ secret: "keyboard cat", cookie: { secure: true } }));
+//app.use(passport.session({ secret: "keyboard cat", cookie: {sameSite: 'none', secure: true } }));
 
 // Define routes.
 app.get("/logoff", function (req, res) {
@@ -67,7 +67,11 @@ app.get("/auth/twitter", passport.authenticate("twitter"));
 function handleFromUrl(urlstring) {
   if (urlstring.match(/^http/i)) {
     let handleUrl = url.parse(urlstring, true);
-    return urlstring.replace(/\/+$/, '').split("/").slice(-1) + "@" + handleUrl.host.toLowerCase();
+    return (
+      urlstring.replace(/\/+$/, "").split("/").slice(-1) +
+      "@" +
+      handleUrl.host.toLowerCase()
+    );
   } else {
     // not a proper URL
     // host.tld/@name host.tld/web/@name
@@ -174,7 +178,7 @@ app.get(
 
     var page = 0;
     let checked_accounts = 0;
-    var maxPage = 15;
+    var maxPage = process.env.MAX_PAGE;
     var handles = [];
     T.get(
       "friends/list",
@@ -411,3 +415,29 @@ function checkHttps(req, res, next) {
   }
 }
 app.all("*", checkHttps);
+
+const { Server } = require("socket.io");
+const io = new Server(server);
+var connections = [];
+
+io.sockets.on("connection", function (socket) {
+  connections.push(socket);
+  //console.log("a user connected");
+
+  socket.on("checkDomains", function (data) {
+    //console.log(data);
+    let domains = data.domains.split(",");
+    Promise.all(
+      domains.map((domain) =>
+        check_well_known(domain)
+          .catch(() => undefined)
+          .then((completed) => {
+            socket.emit("checkedDomains", {
+              domain: domain,
+              well_known: completed,
+            });
+          })
+      )
+    );
+  });
+});
