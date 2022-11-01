@@ -11,7 +11,6 @@
     <script src="/socket.io.min.js"></script>
     <script src="/jquery-3.6.1.min.js"></script>
     <script src="/client.js"></script>
-
   </head>
   <body>
     <header>
@@ -46,10 +45,20 @@
         {{checked_accounts}}
         followings were checked,
         {{found_handles}}
-        possible handles found. Please wait a moment until the domains got
-        checked, if they are part of the fediverse. The export is updated on the
-        fly.
+        possible handles found.
       </p>
+
+      <p id="infobox">
+        Please wait a moment until the domains got checked, if they are part of
+        the fediverse. The export is updated on the fly.<br /><br />
+
+        <span id="nr_working">0</span>
+        handles on domains that are probaly part of the fediverse.<br />
+        <span id="nr_not_working">0</span>
+        handles on other domains. Probably mail addresse or other false
+        positives.
+      </p>
+
       <p>
         <ul id="urlList">
 
