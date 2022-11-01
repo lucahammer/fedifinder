@@ -2,18 +2,31 @@ const socket = io();
 let csv = "";
 
 socket.on("checkedDomains", function (data) {
-  console.log(data);
+  // add info about domains
+  let css_id = "#" + data.domain.replaceAll(".", "\\.");
+  if (data.well_known) {
+    $(css_id).css("color", "green").css("font-weight", "bold");
+  } else {
+    $(css_id).wrap("<del></del>");
+    delete accounts[data.domain];
+  }
 });
 
 $(function () {
-  socket.emit("checkDomains", { domains: "lucahammer.com,vis.social" });
+  // once everything is loaded, sent the domains to the server for checking
+  let domains = "";
+  for (const [domain, handles] of Object.entries(accounts)) {
+    domains += domain + ",";
+  }
+  domains = domains.slice(0, -1);
+  socket.emit("checkDomains", { domains: domains });
 });
 
 function generateCSV() {
   csv = "Account address,Show boosts\n";
 
-  for (var i = 0; i < accounts.length; i++) {
-    csv += accounts[i] + ",true\n";
+  for (const [domain, handles] of Object.entries(accounts)) {
+    handles.forEach((handle) => (csv += handle + ",true\n"));
   }
 
   let download = new Blob([csv], { type: "text/plain" });
