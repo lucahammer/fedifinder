@@ -50,7 +50,7 @@ passport.deserializeUser(function (obj, cb) {
 app.use(require("body-parser").urlencoded({ extended: true }));
 
 const sessionMiddleware = session({
-  secret: "keyboard cat",
+  secret: process.env.SECRET,
   resave: true,
   saveUninitialized: false,
 });
@@ -61,7 +61,7 @@ app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(
   passport.session({
-    secret: "keyboard cat",
+    secret: process.env.SECRET,
     resave: true,
     saveUninitialized: false,
   })
