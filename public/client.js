@@ -13,14 +13,9 @@ $(function () {
 });
 
 function removeDuplicates() {
-  let working = 0;
   for (const [domain, handles] of Object.entries(accounts)) {
     accounts[domain] = [...new Set(handles)];
-    working += accounts[domain].length;
   }
-  number_of_working_handles = working;
-  $("#nr_working").text(number_of_working_handles);
-  $("#nr_not_working").text(number_of_wrong_handles);
 }
 
 function checkDomains() {
@@ -56,7 +51,13 @@ function displayAccounts() {
   $list = $("<ul id='urlList'></ul>");
   for (const [domain, handles] of Object.entries(accounts)) {
     $domain = $(
-      "<li id='" + domain + "'><a href='https://" + domain + "'>" + domain + "</a></li>"
+      "<li id='" +
+        domain +
+        "'><a href='https://" +
+        domain +
+        "'>" +
+        domain +
+        "</a></li>"
     );
     $ol = $("<ol></ol>");
     handles.forEach((handle) => $ol.append("<li>" + handle + "</li>"));
