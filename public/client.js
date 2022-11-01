@@ -1,15 +1,21 @@
 const socket = io();
 let csv = "";
+let number_of_working_handles = 0;
+let number_of_wrong_handles = 0;
 
 socket.on("checkedDomains", function (data) {
   // add info about domains
   let css_id = "#" + data.domain.replaceAll(".", "\\.");
   if (data.well_known) {
-    $(css_id).css("color", "green").css("font-weight", "bold");
+    $(css_id).css("color", "forestgreen")
+    number_of_working_handles += accounts[data.domain].length;
   } else {
     $(css_id).wrap("<del></del>");
+    number_of_wrong_handles += accounts[data.domain].length;
     delete accounts[data.domain];
   }
+  $('#nr_working').text(number_of_working_handles);
+  $('#nr_not_working').text(number_of_wrong_handles);
 });
 
 $(function () {

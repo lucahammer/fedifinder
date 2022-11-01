@@ -17,7 +17,9 @@
     "socket.io": "^4.5.3",
     "hbs": "^4.2.0",
     "sequelize": "^6.25.2",
-    "sqlite3": "^5.1.2"
+    "sqlite3": "^5.1.2",
+    "xml2js": "^0.4.23",
+    "concat-stream": "^2.0.0"
   },
   "engines": {
     "node": "10.x"
