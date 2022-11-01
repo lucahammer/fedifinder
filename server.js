@@ -54,7 +54,7 @@ app.use(
 // Initialize Passport and restore authentication state, if any, from the
 // session.
 app.use(passport.initialize());
-app.use(passport.session());
+app.use(passport.session({ secret: "keyboard cat", cookie: { secure: true } }));
 
 // Define routes.
 app.get("/logoff", function (req, res) {
@@ -65,10 +65,12 @@ app.get("/logoff", function (req, res) {
 app.get("/auth/twitter", passport.authenticate("twitter"));
 
 function handleFromUrl(urlstring) {
-  if (urlstring.includes("http")) {
+  if (urlstring.match(/^http/i)) {
     let handleUrl = url.parse(urlstring, true);
     return (
-      urlstring.replace(/\/+$/, "").split("/").slice(-1) + "@" + handleUrl.host
+      urlstring.replace(/\/+$/, "").split("/").slice(-1) +
+      "@" +
+      handleUrl.host.toLowerCase()
     );
   } else {
     // not a proper URL
@@ -403,3 +405,13 @@ function get_well_known_live(host_domain) {
       });
   });
 }
+
+function checkHttps(req, res, next) {
+  // protocol check, if http, redirect to https
+  if (req.get("X-Forwarded-Proto").indexOf("https") != -1) {
+    return next();
+  } else {
+    res.redirect("https://" + req.hostname + req.url);
+  }
+}
+app.all("*", checkHttps);
