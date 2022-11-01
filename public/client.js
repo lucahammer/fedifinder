@@ -7,15 +7,15 @@ socket.on("checkedDomains", function (data) {
   // add info about domains
   let css_id = "#" + data.domain.replaceAll(".", "\\.");
   if (data.well_known) {
-    $(css_id).css("color", "forestgreen")
+    $(css_id).css("color", "forestgreen");
     number_of_working_handles += accounts[data.domain].length;
   } else {
     $(css_id).wrap("<del></del>");
     number_of_wrong_handles += accounts[data.domain].length;
     delete accounts[data.domain];
   }
-  $('#nr_working').text(number_of_working_handles);
-  $('#nr_not_working').text(number_of_wrong_handles);
+  $("#nr_working").text(number_of_working_handles);
+  $("#nr_not_working").text(number_of_wrong_handles);
 });
 
 $(function () {
@@ -26,6 +26,10 @@ $(function () {
   }
   domains = domains.slice(0, -1);
   socket.emit("checkDomains", { domains: domains });
+
+  socket.emit("getLists", {
+    username: username,
+  });
 });
 
 function generateCSV() {
