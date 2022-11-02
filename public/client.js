@@ -1,4 +1,5 @@
 const socket = io();
+let accounts = {};
 let csv = "";
 let number_of_working_handles = 0;
 let number_of_wrong_handles = 0;
@@ -6,10 +7,6 @@ let lists = 0;
 
 $(function () {
   // run after everything is loaded
-  checkDomains();
-  socket.emit("getLists", {
-    username: username,
-  });
 });
 
 function removeDuplicates() {
@@ -45,6 +42,16 @@ function generateCSV() {
 function loadListMembers() {
   socket.emit("scanList", $("#lists option:selected").val());
   $("#lists option:selected").remove();
+}
+
+function scanFollowings() {
+  socket.emit("scanFollowings");
+  $("#followingsLoader").prop("disabled", true);
+}
+
+function loadLists() {
+  socket.emit("loadLists", username);
+  $("#listLoader").prop("disabled", true);
 }
 
 function displayAccounts() {
@@ -83,8 +90,7 @@ socket.on("checkedDomains", function (data) {
 });
 
 socket.on("userLists", function (lists) {
-  $form = $("<form></form>");
-  $form.append($("<h3>Add handles from list members</h3>"));
+  $("#listLoader").remove();
   $select = $(
     "<select id='lists' style='width:100%;margin-bottom:10px;'></select>"
   );
@@ -99,6 +105,7 @@ socket.on("userLists", function (lists) {
         ")</option>"
     )
   );
+  $form = $("#choices");
   $form.append($select);
   $form.append(
     '<input type="button" onClick="loadListMembers();" value="Scan members">'
@@ -111,8 +118,8 @@ function skipList() {
   $("#lists option:selected").remove();
 }
 
-socket.on("usersFromList", function (data) {
-  for (const [domain, handles] of Object.entries(data.handles)) {
+socket.on("newHandles", function (data) {
+  for (const [domain, handles] of Object.entries(data)) {
     if (domain in accounts) accounts[domain].push(...handles);
     else accounts[domain] = handles;
   }
@@ -121,4 +128,29 @@ socket.on("usersFromList", function (data) {
   checkDomains();
 });
 
-socket.on("Error", (data) => console.log(data));
+socket.on("Error", (data) => {
+  console.log("Server sent an error message:");
+  console.log(data);
+  if ("code" in data && data.code == 88) {
+    $("#error").text(
+      "The Twitter API returned an error because of rate limiting. \
+Please wait 15 minutes before trying again. You can still use the other options."
+    );
+    $("#error").css("background-color", "orange");
+    $("#error").css("padding", "5px");
+
+    let timer = new Date(new Date().getTime() + 15 * 60000);
+
+    let countdown = setInterval(function () {
+      let seconds = Math.floor((timer - new Date()) / 1000);
+      $("#followingsLoader").val("wait " + seconds + " seconds");
+      if (seconds < 0) {
+        clearInterval(countdown);
+        $("#error").text("");
+        $("#error").removeAttr("style");
+        $("#followingsLoader").prop("disabled", false);
+        $("#followingsLoader").val("Scan followings");
+      }
+    }, 1000);
+  }
+});
