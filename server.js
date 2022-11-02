@@ -305,10 +305,14 @@ function check_instance(domain) {
       .then(async (data) => {
         if (data === null) {
           const nodeinfo_url = await get_well_known_live(domain);
-          let nodeinfo = await get_nodeinfo(nodeinfo_url);
-          nodeinfo["domain"] = domain;
-          add_to_db(nodeinfo);
-          resolve(nodeinfo);
+          if (nodeinfo_url) {
+            let nodeinfo = await get_nodeinfo(nodeinfo_url);
+            nodeinfo["domain"] = domain;
+            add_to_db(nodeinfo);
+            resolve(nodeinfo);
+          } else {
+            resolve({ domain: domain, part_of_fediverse: false });
+          }
         } else resolve(data);
       })
       .catch((err) => {
@@ -336,7 +340,11 @@ async function get_well_known_live(host_domain) {
           body += d;
         });
         res.on("end", () => {
-          resolve(JSON.parse(body)["links"][0]["href"]);
+          try {
+            resolve(JSON.parse(body)["links"][0]["href"]);
+          } catch (error) {
+            resolve(false);
+          }
         });
       })
       .on("error", (e) => {
