@@ -1,36 +1,39 @@
 const socket = io();
 let accounts = {};
 let csv = "";
-let number_of_working_handles = 0;
-let number_of_wrong_handles = 0;
 let lists = 0;
+let checked_accounts = 0;
 
 $(function () {
   // run after everything is loaded
 });
 
 function removeDuplicates() {
-  for (const [domain, handles] of Object.entries(accounts)) {
-    accounts[domain] = [...new Set(handles)];
+  for (const [domain, data] of Object.entries(accounts)) {
+    accounts[domain]["handles"] = [...new Set(data["handles"])];
   }
 }
 
 function checkDomains() {
   let domains = "";
-  for (const [domain, handles] of Object.entries(accounts)) {
-    domains += domain + ",";
+  for (const [domain, data] of Object.entries(accounts)) {
+    if ("part_of_fediverse" in data === false) {
+      domains += domain + ",";
+    }
   }
   domains = domains.slice(0, -1);
-  socket.emit("checkDomains", { domains: domains });
-  number_of_working_handles = 0;
-  number_of_wrong_handles = 0;
+  if (domains.length > 0) {
+    socket.emit("checkDomains", { domains: domains });
+  }
 }
 
 function generateCSV() {
   csv = "Account address,Show boosts\n";
 
-  for (const [domain, handles] of Object.entries(accounts)) {
-    handles.forEach((handle) => (csv += handle + ",true\n"));
+  for (const [domain, data] of Object.entries(accounts)) {
+    if ("part_of_fediverse" in data && data["part_of_fediverse"]) {
+      data["handles"].forEach((handle) => (csv += handle + ",true\n"));
+    }
   }
 
   let download = new Blob([csv], { type: "text/plain" });
@@ -54,53 +57,58 @@ function loadLists() {
   $("#listLoader").prop("disabled", true);
 }
 
+function updateCounts() {
+  let counter = 0;
+  for (const [domain, data] of Object.entries(accounts)) {
+    if ("part_of_fediverse" in data && data["part_of_fediverse"])
+      counter += data["handles"].length;
+  }
+  $("#nr_working").text(counter);
+  $("#nr_checked").text(checked_accounts);
+}
+
 function displayAccounts() {
   $list = $("<ul id='urlList'></ul>");
-  for (const [domain, handles] of Object.entries(accounts)) {
-    $domain = $(
-      "<li id='" +
-        domain +
-        "'><a href='https://" +
-        domain +
-        "'>" +
-        domain +
-        "</a></li>"
-    );
-    $ol = $("<ol></ol>");
-    handles.forEach((handle) => $ol.append("<li>" + handle + "</li>"));
-    $domain.append($ol);
-    $list.append($domain);
+  for (const [domain, data] of Object.entries(accounts)) {
+    if ("part_of_fediverse" in data && data["part_of_fediverse"]) {
+      let openStatus = data.openRegistrations
+        ? "<b>registration open</b>"
+        : "registration closed";
+
+      $domain = $(
+        "<li id='" +
+          domain +
+          "'><a target='_blank' href='https://" +
+          domain +
+          "'>" +
+          domain +
+          "</a><br><span>" +
+          data.software +
+          ", " +
+          data.users.toLocaleString() +
+          " users, " +
+          data.posts.toLocaleString() +
+          " posts, " +
+          openStatus +
+          "</span></li>"
+      );
+      $ol = $("<ol></ol>");
+      data["handles"].forEach((handle) =>
+        $ol.append("<li style='color:forestgreen'>" + handle + "</li>")
+      );
+      $domain.append($ol);
+
+      $list.append($domain);
+    }
   }
   $("#urlList").replaceWith($list);
 }
 
 socket.on("checkedDomains", function (data) {
   // add info about domains
-  let css_id = "#" + data.domain.replaceAll(".", "\\.");
-  let openStatus = data.openRegistrations
-    ? "<b>registration open</b>"
-    : "registration closed";
-  if (data.part_of_fediverse) {
-    $(css_id + " li").css("color", "forestgreen");
-    $(
-      "<br><span>" +
-        data.software +
-        ", " +
-        data.users.toLocaleString() +
-        " users, " +
-        data.posts.toLocaleString() +
-        " posts, " +
-        openStatus +
-        "</span>"
-    ).insertAfter(css_id + " a");
-    number_of_working_handles += accounts[data.domain].length;
-  } else {
-    $(css_id).wrap("<del></del>");
-    number_of_wrong_handles += accounts[data.domain].length;
-    delete accounts[data.domain];
-  }
-  $("#nr_working").text(number_of_working_handles);
-  $("#nr_not_working").text(number_of_wrong_handles);
+  accounts[data["domain"]] = Object.assign({}, accounts[data["domain"]], data);
+  updateCounts();
+  displayAccounts();
 });
 
 socket.on("userLists", function (lists) {
@@ -133,14 +141,17 @@ function skipList() {
 }
 
 socket.on("newHandles", function (data) {
-  for (const [domain, handles] of Object.entries(data)) {
-    if (domain in accounts) accounts[domain].push(...handles);
-    else accounts[domain] = handles;
+  checked_accounts += data["amount"];
+  for (const [domain, handles] of Object.entries(data["handles"])) {
+    if (domain in accounts) accounts[domain]["handles"].push(...handles);
+    else accounts[domain] = { handles: handles };
   }
-  removeDuplicates();
-  displayAccounts();
-  checkDomains();
-  $("#download").css("display", "block");
+
+  if (Object.keys(accounts).length > 0) {
+    removeDuplicates();
+    checkDomains();
+    $("#download").css("display", "block");
+  }
 });
 
 socket.on("Error", (data) => {
