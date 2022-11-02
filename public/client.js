@@ -78,7 +78,7 @@ socket.on("checkedDomains", function (data) {
   // add info about domains
   let css_id = "#" + data.domain.replaceAll(".", "\\.");
   let openStatus = data.openRegistrations
-    ? "registration open"
+    ? "<b>registration open</b>"
     : "registration closed";
   if (data.part_of_fediverse) {
     $(css_id + " li").css("color", "forestgreen");
