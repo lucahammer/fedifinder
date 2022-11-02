@@ -483,6 +483,7 @@ io.sockets.on("connection", function (socket) {
 
   socket.on("scanList", function (list_id) {
     let T = create_T(socket.request.user);
+    let amount = 0;
 
     T.get(
       "lists/members",
@@ -493,6 +494,7 @@ io.sockets.on("connection", function (socket) {
           socket.emit("Error", err);
           return;
         }
+        amount += data["users"].length;
         handles = handles.concat(
           data["users"].map((user) => findHandles(user_to_text(user)))
         );
@@ -510,7 +512,10 @@ io.sockets.on("connection", function (socket) {
         else {
           let sorted_handles = sort_handles(handles);
 
-          socket.emit("newHandles", sorted_handles);
+          socket.emit("newHandles", {
+            amount: amount,
+            handles: sorted_handles,
+          });
         }
       }
     );
@@ -551,7 +556,10 @@ io.sockets.on("connection", function (socket) {
           );
         else {
           let sorted_handles = sort_handles(handles);
-          socket.emit("newHandles", sorted_handles);
+          socket.emit("newHandles", {
+            amount: checked_accounts,
+            handles: sorted_handles,
+          });
         }
       }
     );
