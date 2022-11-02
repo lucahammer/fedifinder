@@ -424,6 +424,7 @@ io.sockets.on("connection", function (socket) {
         let lists = [];
         if (err) {
           socket.emit("listError", err);
+          return;
         }
         data.map((list) =>
           lists.push({
@@ -460,6 +461,7 @@ io.sockets.on("connection", function (socket) {
         let handles = [];
         if (err) {
           socket.emit("Error", err);
+          return;
         }
         handles = handles.concat(
           data["users"].map((user) => findHandles(user_to_text(user)))
