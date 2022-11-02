@@ -10,8 +10,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <script>
-      let accounts =
-      {{{json handles}}}; let username = "{{username}}";
+      let username = "{{username}}";
     </script>
     <script src="/socket.io.min.js"></script>
     <script src="/jquery-3.6.1.min.js"></script>
@@ -40,7 +39,7 @@
         </p>
       {{/if}}
 
-      <h2>Fediverse handles of your followings</h2>
+      <h2>Fediverse handles of your Twitter contacts</h2>
     </header>
 
     <main>
@@ -51,9 +50,6 @@
       </p>
 
       <p id="infobox">
-        Please wait a moment until the domains got checked, if they are part of
-        the fediverse. The export is updated on the fly.<br /><br />
-
         <span id="nr_working">0</span>
         handles on domains that are probably part of the fediverse.<br />
         <span id="nr_not_working">0</span>
@@ -61,50 +57,50 @@
         positives.
       </p>
       
-      <div id="choices">
+      <p id="error">
         
-      </div>
+      </p>
+
+      <form id="choices" style="max-width:100%;width:auto;">
+        <h3>Add handles from accounts you follow</h3>
+        <input
+          id="followingsLoader"
+          type="button"
+          onclick="scanFollowings();"
+          value="Scan followings"
+        />
+        <h3>Add handles from list members</h3>
+        <input
+          id="listLoader"
+          type="button"
+          onclick="loadLists();"
+          value="Load lists"
+        />
+      </form>
 
       <p>
         <ul id="urlList">
-
-          {{#each handles}}
-            <li id="{{@key}}"><a
-                target="_blank"
-                href="https://{{@key}}"
-              >{{@key}}</a>
-              <span id="info-{{@key}}"></span>
-              <ol>
-                {{#each this}}
-                  <li>{{this}}</li>
-                {{/each}}
-              </ol>
-            </li>
-
-          {{/each}}
-
         </ul>
       </p>
 
       <p>
         <a
           style="background: #AFE3C0;
-    display: block;
-    cursor: pointer;
-    text-align: center;
-    height: 50px;
-    font-size: 20px;
-    padding: 9px;
-    font-weight: bold;"
+                 display: block;
+                 cursor: pointer;
+                 text-align: center;
+                 font-size: 20px;
+                 padding: 10px;
+                 margin:10px 0;
+                 font-weight: bold;"
           download="following_accounts.csv"
           id="downloadlink"
-          onClick="generateCSV()"
-          style="display: none"
+          onclick="generateCSV()"
         ><svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"
             height="17"
-            viewBox="0 0 80 80"
+            viewbox="0 0 80 80"
           ><path
               d="M88.42,49.504L72.68,12.043C71.432,9.545,68.131,7.5,65.344,7.5H55.1L57,27.822h13.5L45,48.969
       L19.5,27.822H33L34.899,7.5H24.658c-2.789,0-6.09,2.045-7.336,4.543L1.582,49.504c-1.248,2.5-1.893,6.801-1.434,9.557l3.4,18.428

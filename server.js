@@ -154,9 +154,16 @@ function user_to_text(user) {
   return text;
 }
 
-function sort_handles(handles, domains) {
+function sort_handles(handles) {
+  handles = handles.filter(
+    (handle) => typeof handle != "undefined" && handle.length > 0
+  );
+  handles = [].concat(...handles);
+  handles = [...new Set(handles)];
+  handles.sort();
+
+  let domains = extract_domains(handles);
   let sorted_handles = {};
-  let not_fedi = [];
 
   handles.forEach((handle) => {
     let curr_domain = handle.split("@").slice(-1)[0];
@@ -164,8 +171,6 @@ function sort_handles(handles, domains) {
     else sorted_handles[curr_domain] = [handle];
   });
 
-  //console.log(not_fedi);
-  //console.log(sorted_handles)
   return sorted_handles;
 }
 
@@ -175,72 +180,15 @@ app.get(
   function (req, res) {
     var user = req.user;
 
-    var T = new Twit({
-      consumer_key: process.env.TWITTER_CONSUMER_KEY,
-      consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
-      access_token: user.accessToken,
-      access_token_secret: user.tokenSecret,
-      timeout_ms: 60 * 1000,
-      strictSSL: true,
-    });
-
-    var page = 0;
-    let checked_accounts = 0;
-    var maxPage = process.env.MAX_PAGE;
-    var handles = [];
-    T.get(
-      "friends/list",
-      { screen_name: req.user.username, count: 200, skip_status: true },
-      function getData(err, data, response) {
-        if (err) {
-          //response.redirect("/error.html");
-          return res.send(err);
-        }
-        checked_accounts += data["users"].length;
-        handles = handles.concat(
-          data["users"].map((user) => findHandles(user_to_text(user)))
-        );
-        page++;
-
-        if (data["next_cursor"] > 0 && page < maxPage)
-          T.get(
-            "friends/list",
-            {
-              screen_name: req.user.username,
-              count: 200,
-              skip_status: true,
-              cursor: data["next_cursor"],
-            },
-            getData
-          );
-        else {
-          handles = handles.filter(
-            (handle) => typeof handle != "undefined" && handle.length > 0
-          );
-          handles = [].concat(...handles);
-          handles = [...new Set(handles)];
-          handles.sort();
-
-          let found_handles = handles.length;
-
-          let domains = extract_domains(handles);
-          let sorted_handles = sort_handles(handles, domains);
-
-          res.header(
-            "Cache-Control",
-            "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
-          );
-
-          res.render("success.hbs", {
-            username: req.user.username,
-            found_handles: found_handles,
-            checked_accounts: checked_accounts,
-            handles: sorted_handles,
-            profile: findHandles(user_to_text(req.user._json)),
-          });
-        }
-      }
+    res.header(
+      "Cache-Control",
+      "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
     );
+
+    res.render("success.hbs", {
+      username: req.user.username,
+      profile: findHandles(user_to_text(req.user._json)),
+    });
   }
 );
 
@@ -413,6 +361,7 @@ function checkHttps(req, res, next) {
     res.redirect("https://" + req.hostname + req.url);
   }
 }
+// force all requests to be SSL
 app.all("*", checkHttps);
 
 const { Server } = require("socket.io");
@@ -436,7 +385,6 @@ io.use((socket, next) => {
 
 io.sockets.on("connection", function (socket) {
   connections.push(socket);
-  //console.log(socket.request.user);
 
   socket.on("checkDomains", function (data) {
     let domains = data.domains.split(",");
@@ -454,19 +402,24 @@ io.sockets.on("connection", function (socket) {
     );
   });
 
-  socket.on("getLists", function (dataFront) {
-    var T = new Twit({
+  function create_T(user) {
+    let T = new Twit({
       consumer_key: process.env.TWITTER_CONSUMER_KEY,
       consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
-      access_token: socket.request.user.accessToken,
-      access_token_secret: socket.request.user.tokenSecret,
+      access_token: user.accessToken,
+      access_token_secret: user.tokenSecret,
       timeout_ms: 60 * 1000,
       strictSSL: true,
     });
+    return T;
+  }
+
+  socket.on("loadLists", function (username) {
+    let T = create_T(socket.request.user);
 
     T.get(
       "lists/list",
-      { screen_name: dataFront.username, reverse: true },
+      { screen_name: username, reverse: true },
       function getData(err, data, response) {
         let lists = [];
         if (err) {
@@ -498,14 +451,8 @@ io.sockets.on("connection", function (socket) {
   });
 
   socket.on("scanList", function (list_id) {
-    var T = new Twit({
-      consumer_key: process.env.TWITTER_CONSUMER_KEY,
-      consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
-      access_token: socket.request.user.accessToken,
-      access_token_secret: socket.request.user.tokenSecret,
-      timeout_ms: 60 * 1000,
-      strictSSL: true,
-    });
+    let T = create_T(socket.request.user);
+
     T.get(
       "lists/members",
       { list_id: list_id, count: 5000, skip_status: true },
@@ -529,22 +476,50 @@ io.sockets.on("connection", function (socket) {
             getData
           );
         else {
-          handles = handles.filter(
-            (handle) => typeof handle != "undefined" && handle.length > 0
+          let sorted_handles = sort_handles(handles);
+
+          socket.emit("newHandles", sorted_handles);
+        }
+      }
+    );
+  });
+
+  socket.on("scanFollowings", function () {
+    let user = socket.request.user;
+    let T = create_T(user);
+
+    var page = 0;
+    let checked_accounts = 0;
+    var maxPage = process.env.MAX_PAGE;
+    var handles = [];
+    T.get(
+      "friends/list",
+      { screen_name: user.username, count: 200, skip_status: true },
+      function getData(err, data, response) {
+        if (err) {
+          socket.emit("Error", err);
+          return;
+        }
+        checked_accounts += data["users"].length;
+        handles = handles.concat(
+          data["users"].map((user) => findHandles(user_to_text(user)))
+        );
+        page++;
+
+        if (data["next_cursor"] > 0 && page < maxPage)
+          T.get(
+            "friends/list",
+            {
+              screen_name: user.username,
+              count: 200,
+              skip_status: true,
+              cursor: data["next_cursor"],
+            },
+            getData
           );
-          handles = [].concat(...handles);
-          handles = [...new Set(handles)];
-          handles.sort();
-
-          let found_handles = handles.length;
-
-          let domains = extract_domains(handles);
-          let sorted_handles = sort_handles(handles, domains);
-
-          socket.emit("usersFromList", {
-            found_handles: found_handles,
-            handles: sorted_handles,
-          });
+        else {
+          let sorted_handles = sort_handles(handles);
+          socket.emit("newHandles", sorted_handles);
         }
       }
     );
