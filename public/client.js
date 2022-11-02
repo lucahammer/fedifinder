@@ -77,8 +77,22 @@ function displayAccounts() {
 socket.on("checkedDomains", function (data) {
   // add info about domains
   let css_id = "#" + data.domain.replaceAll(".", "\\.");
-  if (data.well_known) {
-    $(css_id).css("color", "forestgreen");
+  let openStatus = data.openRegistrations
+    ? "<b>registration open</b>"
+    : "registration closed";
+  if (data.part_of_fediverse) {
+    $(css_id + " li").css("color", "forestgreen");
+    $(
+      "<br><span>" +
+        data.software +
+        ", " +
+        data.users.toLocaleString() +
+        " users, " +
+        data.posts.toLocaleString() +
+        " posts, " +
+        openStatus +
+        "</span>"
+    ).insertAfter(css_id + " a");
     number_of_working_handles += accounts[data.domain].length;
   } else {
     $(css_id).wrap("<del></del>");
@@ -126,6 +140,7 @@ socket.on("newHandles", function (data) {
   removeDuplicates();
   displayAccounts();
   checkDomains();
+  $("#download").css("display", "block");
 });
 
 socket.on("Error", (data) => {

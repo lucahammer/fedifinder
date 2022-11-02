@@ -212,12 +212,6 @@ var server = app.listen(process.env.PORT, function () {
 // WARNING: THIS IS BAD. DON'T TURN OFF TLS
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-// default instances
-let instances = [
-  ["mastodon.social", true],
-  ["gmail.com", false],
-  ["vis.social", true],
-];
 let Instance;
 
 // setup a new database
@@ -248,10 +242,22 @@ sequelize
     console.log("Connection has been established successfully.");
     // define a new table 'instances'
     Instance = sequelize.define("instances", {
-      instance: {
+      domain: {
         type: Sequelize.STRING,
       },
-      well_known: {
+      part_of_fediverse: {
+        type: Sequelize.BOOLEAN,
+      },
+      software: {
+        type: Sequelize.STRING,
+      },
+      users: {
+        type: Sequelize.INTEGER,
+      },
+      posts: {
+        type: Sequelize.INTEGER,
+      },
+      openRegistrations: {
         type: Sequelize.BOOLEAN,
       },
     });
@@ -263,66 +269,47 @@ sequelize
   });
 
 function setup() {
-  Instance.sync({ force: true }).then(function () {
-    // Add the default instances to the database
-    for (var i = 0; i < instances.length; i++) {
-      Instance.create({
-        instance: instances[i][0],
-        well_known: instances[i][1],
-      });
-    }
-  });
-
-  Instance.findOne({ where: { instance: "vis.social" } }).then(function (
-    instances
-  ) {
-    console.log(instances.well_known);
-  });
+  Instance.sync({ force: true });
 }
 
 function db_to_log() {
   Instance.findAll().then(function (instances) {
     instances.forEach(function (instance) {
-      console.log(instance.instance + ": " + instance.well_known);
+      console.log(instance);
     });
   });
 }
 
 // visit this URL to reset the DB
-app.get(process.env.DB_CLEAR, function (request, response) {
+app.get(process.env.DB_CLEAR, function (req, res) {
   setup();
-  response.redirect("/");
+  res.redirect("/");
 });
 
 app.get("/test", function (req, res) {
   asyncCall();
+  res.redirect("/");
 });
 
-function add_to_db(domain, well_known) {
-  Instance.create({
-    instance: domain,
-    well_known: well_known,
-  });
+function add_to_db(nodeinfo) {
+  Instance.create(nodeinfo);
 }
 
 async function asyncCall() {
   db_to_log();
 }
 
-async function check_domain(domain) {
-  const info = await check_well_known(domain);
-  return { domain: domain, well_known: info };
-}
-
-function check_well_known(domain) {
+function check_instance(domain) {
   return new Promise((resolve) => {
-    Instance.findOne({ where: { instance: domain } })
+    Instance.findOne({ where: { domain: domain } })
       .then(async (data) => {
         if (data === null) {
-          const well_known_live = await get_well_known_live(domain);
-          add_to_db(domain, well_known_live);
-          resolve(well_known_live);
-        } else resolve(data.well_known);
+          const nodeinfo_url = await get_well_known_live(domain);
+          let nodeinfo = await get_nodeinfo(nodeinfo_url);
+          nodeinfo["domain"] = domain;
+          add_to_db(nodeinfo);
+          resolve(nodeinfo);
+        } else resolve(data);
       })
       .catch((err) => {
         console.log(err);
@@ -330,24 +317,62 @@ function check_well_known(domain) {
   });
 }
 
-function get_well_known_live(host_domain) {
+async function get_well_known_live(host_domain) {
   return new Promise((resolve) => {
     let options = {
-      method: "HEAD",
+      method: "GET",
       host: host_domain,
-      path: "/.well-known/host-meta",
+      json: true,
+      path: "/.well-known/nodeinfo",
     };
 
     https
       .get(options, (res) => {
-        if (res.statusCode == 200) {
-          resolve(true);
-        } else {
+        let body = "";
+        if (res.statusCode != 200) {
           resolve(false);
         }
+        res.on("data", (d) => {
+          body += d;
+        });
+        res.on("end", () => {
+          resolve(JSON.parse(body)["links"][0]["href"]);
+        });
       })
       .on("error", (e) => {
         resolve(false);
+        //console.error(e);
+      });
+  });
+}
+
+function get_nodeinfo(nodeinfo_url) {
+  return new Promise((resolve) => {
+    https
+      .get(nodeinfo_url, (res) => {
+        let body = "";
+        if (res.statusCode != 200) {
+          resolve({ part_of_fediverse: false });
+        }
+        res.on("data", (d) => {
+          body += d;
+        });
+        res.on("end", () => {
+          let nodeinfo = JSON.parse(body);
+          resolve({
+            part_of_fediverse: true,
+            software:
+              nodeinfo["software"]["name"] +
+              " " +
+              nodeinfo["software"]["version"],
+            users: nodeinfo["usage"]["users"]["total"],
+            posts: nodeinfo["usage"]["localPosts"],
+            openRegistrations: nodeinfo["openRegistrations"],
+          });
+        });
+      })
+      .on("error", (e) => {
+        resolve({ part_of_fediverse: false });
         //console.error(e);
       });
   });
@@ -390,13 +415,10 @@ io.sockets.on("connection", function (socket) {
     let domains = data.domains.split(",");
     Promise.all(
       domains.map((domain) =>
-        check_well_known(domain)
+        check_instance(domain)
           .catch(() => undefined)
-          .then((completed) => {
-            socket.emit("checkedDomains", {
-              domain: domain,
-              well_known: completed,
-            });
+          .then((data) => {
+            socket.emit("checkedDomains", data);
           })
       )
     );
