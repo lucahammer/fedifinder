@@ -204,7 +204,7 @@ socket.on("newHandles", function (data) {
 socket.on("Error", (data) => {
   console.log("Server sent an error message:");
   console.log(data);
-  if ("code" in data && data.code == 88) {
+  if ("code" in data && data.code == 429) {
     // rate limit error
     // todo: differentiate between endpoints
     $("#error").text(
@@ -214,17 +214,23 @@ Please wait 15 minutes before trying again. You can still use the other options.
     $("#error").css("background-color", "orange");
     $("#error").css("padding", "5px");
 
-    let timer = new Date(new Date().getTime() + 15 * 60000);
+    let timer = new Date(0);
+    timer.setUTCSeconds(data.rateLimit.reset);
 
     let countdown = setInterval(function () {
       let seconds = Math.floor((timer - new Date()) / 1000);
+      $("#followingsLoader").prop("disabled", true);
+      $("#followersLoader").prop("disabled", true);
       $("#followingsLoader").val("wait " + seconds + " seconds");
+      $("#followersLoader").val("wait " + seconds + " seconds");
       if (seconds < 0) {
         clearInterval(countdown);
         $("#error").text("");
         $("#error").removeAttr("style");
         $("#followingsLoader").prop("disabled", false);
         $("#followingsLoader").val("Scan followings");
+        $("#followersLoader").prop("disabled", false);
+        $("#followersLoader").val("Scan followers");
       }
     }, 1000);
   }
