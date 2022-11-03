@@ -10,10 +10,6 @@ const Sequelize = require("sequelize");
 const https = require("https");
 const session = require("express-session");
 
-hbs.registerHelper("json", function (context) {
-  return JSON.stringify(context);
-});
-
 app.use(express.static("public"));
 
 passport.use(
@@ -68,6 +64,8 @@ app.use(
 );
 
 // Define routes.
+app.all("*", checkHttps);
+
 app.get("/logoff", function (req, res) {
   req.session.destroy();
   res.redirect("/");
@@ -75,7 +73,42 @@ app.get("/logoff", function (req, res) {
 
 app.get("/auth/twitter", passport.authenticate("twitter"));
 
+app.get(
+  "/login/twitter/return",
+  passport.authenticate("twitter", { failureRedirect: "/" }),
+  function (req, res) {
+    res.redirect("/success");
+  }
+);
+
+app.get(
+  "/success",
+  require("connect-ensure-login").ensureLoggedIn("/"),
+  function (req, res) {
+    res.header(
+      "Cache-Control",
+      "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
+    );
+    res.render("success.hbs", {
+      username: req.user.username,
+      profile: findHandles(user_to_text(req.user._json)),
+    });
+  }
+);
+
+app.get(process.env.DB_CLEAR, function (req, res) {
+  // visit this URL to reset the DB
+  setup();
+  res.redirect("/");
+});
+
+var server = app.listen(process.env.PORT, function () {
+  // listen for requests
+  console.log("Your app is listening on port " + server.address().port);
+});
+
 function handleFromUrl(urlstring) {
+  // transform an URL-like string into a fediverse handle: @name@server.tld
   if (urlstring.match(/^http/i)) {
     let handleUrl = url.parse(urlstring, true);
     return (
@@ -96,14 +129,16 @@ function handleFromUrl(urlstring) {
 }
 
 function extract_domains(handles) {
+  // get domains from a list of handles
   let domains = handles.map((handle) => handle.split("@").slice(-1)[0]);
   domains = [...new Set(domains)];
-
   return domains;
 }
 
 function findHandles(text) {
-  // different sperators people use
+  // split text into string and check them for handles
+
+  // different string sperators people use
   let words = text.split(/,|\s|\(|\)/);
 
   // remove common false positives
@@ -155,6 +190,10 @@ function user_to_text(user) {
 }
 
 function sort_handles(handles) {
+  // transform a list if lists of handles into a dictionary where handles are sorted by domain
+  /*
+  {'domain_x.tld' : ['@name@domain_x.tld', '@name2@domain_x.tld']}
+  */
   handles = handles.filter(
     (handle) => typeof handle != "undefined" && handle.length > 0
   );
@@ -173,34 +212,6 @@ function sort_handles(handles) {
 
   return sorted_handles;
 }
-
-app.get(
-  "/login/twitter/return",
-  passport.authenticate("twitter", { failureRedirect: "/" }),
-  function (req, res) {
-    res.redirect("/success");
-  }
-);
-
-app.get(
-  "/success",
-  require("connect-ensure-login").ensureLoggedIn("/"),
-  function (req, res) {
-    res.header(
-      "Cache-Control",
-      "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
-    );
-    res.render("success.hbs", {
-      username: req.user.username,
-      profile: findHandles(user_to_text(req.user._json)),
-    });
-  }
-);
-
-// listen for requests :)
-var server = app.listen(process.env.PORT, function () {
-  console.log("Your app is listening on port " + server.address().port);
-});
 
 // WARNING: THIS IS BAD. DON'T TURN OFF TLS
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
@@ -262,10 +273,12 @@ sequelize
   });
 
 function setup() {
+  // removes all entries from the database by dropping and recreating all tables
   Instance.sync({ force: true });
 }
 
 function db_to_log() {
+  // for debugging
   Instance.findAll().then(function (instances) {
     instances.forEach(function (instance) {
       console.log(instance);
@@ -273,26 +286,12 @@ function db_to_log() {
   });
 }
 
-// visit this URL to reset the DB
-app.get(process.env.DB_CLEAR, function (req, res) {
-  setup();
-  res.redirect("/");
-});
-
-app.get("/test", function (req, res) {
-  asyncCall();
-  res.redirect("/");
-});
-
 function add_to_db(nodeinfo) {
   Instance.create(nodeinfo);
 }
 
-async function asyncCall() {
-  db_to_log();
-}
-
 function check_instance(domain) {
+  // retrieve info about a domain
   return new Promise((resolve) => {
     Instance.findOne({ where: { domain: domain } })
       .then(async (data) => {
@@ -315,6 +314,7 @@ function check_instance(domain) {
 }
 
 async function get_well_known_live(host_domain) {
+  // get url of nodeinfo json
   return new Promise((resolve) => {
     let options = {
       method: "GET",
@@ -348,6 +348,7 @@ async function get_well_known_live(host_domain) {
 }
 
 function get_nodeinfo(nodeinfo_url) {
+  // get fresh nodeinfo and save to db
   return new Promise((resolve) => {
     https
       .get(nodeinfo_url, (res) => {
@@ -387,12 +388,9 @@ function checkHttps(req, res, next) {
     res.redirect("https://" + req.hostname + req.url);
   }
 }
-// force all requests to be SSL
-app.all("*", checkHttps);
 
 const { Server } = require("socket.io");
 const io = new Server(server);
-var connections = [];
 
 const wrap = (middleware) => (socket, next) =>
   middleware(socket.request, {}, next);
@@ -410,8 +408,6 @@ io.use((socket, next) => {
 });
 
 io.sockets.on("connection", function (socket) {
-  connections.push(socket);
-
   socket.on("checkDomains", function (data) {
     let domains = data.domains.split(",");
     Promise.all(
@@ -437,9 +433,9 @@ io.sockets.on("connection", function (socket) {
     return T;
   }
 
-  socket.on("loadLists", function (username) {
-    let T = create_T(socket.request.user);
+  let T = create_T(socket.request.user);
 
+  socket.on("loadLists", function (username) {
     T.get(
       "lists/list",
       { screen_name: username, reverse: true },
@@ -475,7 +471,6 @@ io.sockets.on("connection", function (socket) {
   });
 
   socket.on("scanList", function (list_id) {
-    let T = create_T(socket.request.user);
     let amount = 0;
 
     T.get(
@@ -516,7 +511,6 @@ io.sockets.on("connection", function (socket) {
 
   socket.on("scanFollowings", function () {
     let user = socket.request.user;
-    let T = create_T(user);
 
     var page = 0;
     let checked_accounts = 0;
