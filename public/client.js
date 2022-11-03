@@ -99,15 +99,26 @@ function skipList() {
   checkListsLeft();
 }
 
+function showBroken() {
+  $("#brokenList").css("display", "block");
+  $("#displayBroken").css("display", "none");
+}
+
 function updateCounts() {
   // calculate scanned accounts and found handles
   let counter = 0;
+  let broken_counter = 0;
   for (const [domain, data] of Object.entries(accounts)) {
     if ("part_of_fediverse" in data && data["part_of_fediverse"])
       counter += data["handles"].length;
+    if ("status" in data && data["status"] != null) {
+      broken_counter += data["handles"].length;
+      $("#broken").css("display", "block");
+    }
   }
   $("#nr_working").text(counter);
   $("#nr_checked").text(checked_accounts);
+  $("#nr_broken").text(broken_counter);
 }
 
 function displayAccounts() {
@@ -147,6 +158,33 @@ function displayAccounts() {
     }
   }
   $("#urlList").replaceWith($list);
+
+  $list = $("<ul id='brokenList' style='display:none;font-size: .9em;'></ul>");
+  for (const [domain, data] of Object.entries(accounts)) {
+    if ("status" in data && data["status"] != null) {
+      $domain = $(
+        "<li id='" +
+          domain +
+          "'><a target='_blank' href='https://" +
+          domain +
+          "'>" +
+          domain +
+          "</a><br><span>Maybe down, maybe not Fediverse. Error code: " +
+          data["status"] +
+          "</span></li>"
+      );
+      $ol = $("<ol></ol>");
+      data["handles"].forEach((handle) => {
+        let acc = handle.handle + " (@" + handle.username + ")";
+        $ol.append($("<li>").text(acc).css("color", "darkred"));
+      });
+      $domain.append($ol);
+
+      $list.append($domain);
+    }
+  }
+  $("#brokenList").replaceWith($list);
+  $("#displayBroken").css("display", "inline");
 }
 
 socket.on("checkedDomains", function (data) {
