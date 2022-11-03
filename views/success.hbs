@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
   <head>
     <title>Fedifinder</title>
@@ -45,16 +46,8 @@
     <main>
       <p>
         While the handles are sorted by their instance, they can all follow and
-        interact with each other. You can export all handles at once at the
-        bottom of the list.
-      </p>
-
-      <p id="infobox">
-        Scanned
-        <span id="nr_checked">0</span>
-        accounts and found
-        <span id="nr_working">0</span>
-        handles on domains that are probably part of the fediverse.<br />
+        interact with each other. You can export all handles at once with the
+        export button at the bottom of the list.
       </p>
 
       <p id="error">
@@ -69,6 +62,12 @@
           onclick="scanFollowings();"
           value="Scan followings"
         />
+        <input
+          id="followersLoader"
+          type="button"
+          onclick="scanFollowers();"
+          value="Scan followers"
+        />
         <h3>Add handles from list members</h3>
         <input
           id="listLoader"
@@ -77,6 +76,14 @@
           value="Load lists"
         />
       </form>
+
+      <p id="infobox" style="visibility:hidden;">
+        Scanned
+        <span id="nr_checked">0</span>
+        accounts and found
+        <span id="nr_working">0</span>
+        unique handles on domains that are probably part of the fediverse.<br />
+      </p>
 
       <p>
         <ul id="urlList">
