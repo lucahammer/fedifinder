@@ -162,7 +162,7 @@ function user_to_text(user) {
   return text;
 }
 
-function sort_handles(handles) {
+function sortHandles(handles) {
   // transform a list if lists of handles into a dictionary where handles are sorted by domain
   /*
   {'domain_x.tld' : ['@name@domain_x.tld', '@name2@domain_x.tld']}
@@ -468,7 +468,7 @@ io.sockets.on("connection", function (socket) {
             getData
           );
         else {
-          let sorted_handles = sort_handles(handles);
+          let sorted_handles = sortHandles(handles);
 
           socket.emit("newHandles", {
             amount: amount,
@@ -512,7 +512,7 @@ io.sockets.on("connection", function (socket) {
             getData
           );
         else {
-          let sorted_handles = sort_handles(handles);
+          let sorted_handles = sortHandles(handles);
           socket.emit("newHandles", {
             amount: checked_accounts,
             handles: sorted_handles,
