@@ -82,7 +82,8 @@
         <span id="nr_checked">0</span>
         accounts and found
         <span id="nr_working">0</span>
-        unique handles on domains that are probably part of the fediverse.<br />
+        unique handles on domains that are probably part of the fediverse.
+        <br />
       </p>
 
       <p>
@@ -119,6 +120,23 @@
           Export fedifinder_following_accounts.csv</a>
         <small>You can import the CSV in the settings of your Mastodon account.
           Make sure to use "merge" to not overwrite your current followings.</small>
+
+      </p>
+
+      <p id="broken" style="display:none"><small>
+          To check if a server is part of the fediverse, fedifinder asks the
+          server for the nodeinfo file (eg.
+          https://mastodon.social/.well-known/nodeinfo). If a server doesn't
+          respond to such a request, it's likely that it's not part of the
+          fediverse. But it could also mean that it's currently down.
+          <span id="nr_broken">0</span>
+          handles were found from servers that did not respond. Most of them are
+          probably mail addresses. None of them are included in the export.
+          <button id="displayBroken" onclick="showBroken()">
+            Display handles from unreachable servers.
+          </button></small>
+        <ul id="brokenList">
+        </ul>
 
       </p>
 
