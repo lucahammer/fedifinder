@@ -1,6 +1,5 @@
 const express = require("express");
 let app = express();
-var server = require("http").createServer(app);
 const passport = require("passport");
 const Strategy = require("passport-twitter").Strategy;
 const Twit = require("twit");
@@ -9,29 +8,27 @@ const url = require("url");
 const Sequelize = require("sequelize");
 const https = require("https");
 const session = require("express-session");
+const bodyParser = require("body-parser");
+const TwitterApi = require("twitter-api-v2").TwitterApi;
+const TwitterV2IncludesHelper =
+  require("twitter-api-v2").TwitterV2IncludesHelper;
 
-hbs.registerHelper("json", function (context) {
-  return JSON.stringify(context);
-});
+const sessionOptions = {
+  secret: process.env.SECRET,
+  resave: true,
+  saveUninitialized: false,
+};
 
-app.use(express.static("public"));
+const sessionMiddleware = session(sessionOptions);
 
 passport.use(
   new Strategy(
     {
       consumerKey: process.env.TWITTER_CONSUMER_KEY,
       consumerSecret: process.env.TWITTER_CONSUMER_SECRET,
-      callbackURL:
-        "https://" +
-        process.env.PROJECT_DOMAIN +
-        ".glitch.me/login/twitter/return",
+      callbackURL: `https://${process.env.PROJECT_DOMAIN}.glitch.me/login/twitter/return`,
     },
     function (token, tokenSecret, profile, cb) {
-      // In this example, the user's Twitter profile is supplied as the user
-      // record.  In a production-quality application, the Twitter profile should
-      // be associated with a user record in the application's database, which
-      // allows for account linking and authentication with other identity
-      // providers.
       profile["tokenSecret"] = tokenSecret;
       profile["accessToken"] = token;
       return cb(null, profile);
@@ -47,132 +44,21 @@ passport.deserializeUser(function (obj, cb) {
   cb(null, obj);
 });
 
-app.use(require("body-parser").urlencoded({ extended: true }));
-
-const sessionMiddleware = session({
-  secret: process.env.SECRET,
-  resave: true,
-  saveUninitialized: false,
-});
+app.use(express.static("public"));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(sessionMiddleware);
-
-// Initialize Passport and restore authentication state, if any, from the
-// session.
 app.use(passport.initialize());
-app.use(
-  passport.session({
-    secret: process.env.SECRET,
-    resave: true,
-    saveUninitialized: false,
-  })
-);
+app.use(passport.session(sessionOptions));
 
 // Define routes.
+app.all("*", checkHttps);
+
 app.get("/logoff", function (req, res) {
   req.session.destroy();
   res.redirect("/");
 });
 
 app.get("/auth/twitter", passport.authenticate("twitter"));
-
-function handleFromUrl(urlstring) {
-  if (urlstring.match(/^http/i)) {
-    let handleUrl = url.parse(urlstring, true);
-    return (
-      urlstring.replace(/\/+$/, "").split("/").slice(-1) +
-      "@" +
-      handleUrl.host.toLowerCase()
-    );
-  } else {
-    // not a proper URL
-    // host.tld/@name host.tld/web/@name
-    return (
-      "@" +
-      urlstring.split("@").slice(-1)[0].replace(/\/+$/, "") +
-      "@" +
-      urlstring.split("/")[0]
-    );
-  }
-}
-
-function extract_domains(handles) {
-  let domains = handles.map((handle) => handle.split("@").slice(-1)[0]);
-  domains = [...new Set(domains)];
-
-  return domains;
-}
-
-function findHandles(text) {
-  // different sperators people use
-  let words = text.split(/,|\s|\(|\)/);
-
-  // remove common false positives
-  let unwanted_domains =
-    /gmail\.com|medium\.com|tiktok\.com|youtube\.com|pronouns\.page/;
-  words = words.filter((word) => !unwanted_domains.test(word));
-
-  // @username@server.tld
-  let handles = words.filter((word) =>
-    /^@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word)
-  );
-
-  // some people don't include the initial @
-  handles = handles.concat(
-    words
-      .filter((word) => /^[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word))
-      .map((maillike) => "@" + maillike)
-  );
-
-  // server.tld/@username
-  handles = handles.concat(
-    words
-      .filter((word) => /^.+\.[a-zA-Z]+.*\/@[a-zA-Z0-9_]+\/*$/.test(word))
-      .map((url) => handleFromUrl(url))
-  );
-
-  return handles;
-}
-
-function user_to_text(user) {
-  // where handles could be: name, description, location, entities url urls expanded_url, entities description urls expanded_url
-  let text =
-    user["name"] + " " + user["description"] + " " + user["location"] + " ";
-  if ("url" in user["entities"]) {
-    text =
-      text +
-      user["entities"]["url"]["urls"].map(
-        (url) => " " + url["expanded_url"] + " "
-      );
-  }
-  if ("description" in user["entities"]) {
-    text =
-      text +
-      user["entities"]["description"]["urls"].map(
-        (url) => " " + url["expanded_url"] + " "
-      );
-  }
-  return text;
-}
-
-function sort_handles(handles) {
-  handles = handles.filter(
-    (handle) => typeof handle != "undefined" && handle.length > 0
-  );
-  handles = [].concat(...handles);
-  handles = [...new Set(handles)];
-  handles.sort();
-
-  let domains = extract_domains(handles);
-  let sorted_handles = {};
-
-  handles.forEach((handle) => {
-    let curr_domain = handle.split("@").slice(-1)[0];
-    if (curr_domain in sorted_handles) sorted_handles[curr_domain].push(handle);
-    else sorted_handles[curr_domain] = [handle];
-  });
-
-  return sorted_handles;
-}
 
 app.get(
   "/login/twitter/return",
@@ -197,10 +83,97 @@ app.get(
   }
 );
 
-// listen for requests :)
-var server = app.listen(process.env.PORT, function () {
+app.get(process.env.DB_CLEAR, function (req, res) {
+  // visit this URL to reset the DB
+  setup();
+  res.redirect("/");
+});
+
+const server = app.listen(process.env.PORT, function () {
+  // listen for requests
   console.log("Your app is listening on port " + server.address().port);
 });
+
+function handleFromUrl(urlstring) {
+  // transform an URL-like string into a fediverse handle: @name@server.tld
+  if (urlstring.match(/^http/i)) {
+    let handleUrl = url.parse(urlstring, true);
+    let name = urlstring.replace(/\/+$/, "").split("/").slice(-1);
+    return `${name}@${handleUrl.host.toLowerCase()}`;
+  } else {
+    // not a proper URL
+    // host.tld/@name host.tld/web/@name
+    let name = urlstring.split("@").slice(-1)[0].replace(/\/+$/, "");
+    let domain = urlstring.split("/")[0];
+    return `@${name}@${domain}`;
+  }
+}
+
+function findHandles(text) {
+  // split text into string and check them for handles
+
+  // different string sperators people use
+  let words = text.split(/,|\s|\(|\)/);
+
+  // remove common false positives
+  let unwanted_domains =
+    /gmail\.com|medium\.com|tiktok\.com|youtube\.com|pronouns\.page/;
+  words = words.filter((word) => !unwanted_domains.test(word));
+
+  // @username@server.tld
+  let handles = words.filter((word) =>
+    /^@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word)
+  );
+
+  // some people don't include the initial @
+  handles = handles.concat(
+    words
+      .filter((word) => /^[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word))
+      .map((maillike) => `@${maillike}`)
+  );
+
+  // server.tld/@username
+  handles = handles.concat(
+    words
+      .filter((word) => /^.+\.[a-zA-Z]+.*\/@[a-zA-Z0-9_]+\/*$/.test(word))
+      .map((url) => handleFromUrl(url))
+  );
+
+  return handles;
+}
+
+function user_to_text(user) {
+  // where handles could be: name, description, location, entities url urls expanded_url, entities description urls expanded_url
+  let text = `${user["name"]} ${user["description"]} ${user["location"]}`;
+  if ("entities" in user) {
+    if ("url" in user["entities"] && "urls" in user["entities"]["url"]) {
+      user["entities"]["url"]["urls"].map(
+        (url) => (text += ` ${url["expanded_url"]} `)
+      );
+    }
+    if (
+      "description" in user["entities"] &&
+      "urls" in user["entities"]["description"]
+    ) {
+      user["entities"]["description"]["urls"].map(
+        (url) => (text += ` ${url["expanded_url"]} `)
+      );
+    }
+  }
+  return text;
+}
+
+function tweet_to_text(tweet) {
+  // combine tweet text and expanded_urls
+  let text = tweet["text"] + " ";
+
+  if ("entities" in tweet && "urls" in tweet["entities"]) {
+    tweet["entities"]["urls"].map(
+      (url) => (text += ` ${url["expanded_url"]} `)
+    );
+  }
+  return text;
+}
 
 // WARNING: THIS IS BAD. DON'T TURN OFF TLS
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
@@ -262,10 +235,12 @@ sequelize
   });
 
 function setup() {
+  // removes all entries from the database by dropping and recreating all tables
   Instance.sync({ force: true });
 }
 
 function db_to_log() {
+  // for debugging
   Instance.findAll().then(function (instances) {
     instances.forEach(function (instance) {
       console.log(instance);
@@ -273,26 +248,12 @@ function db_to_log() {
   });
 }
 
-// visit this URL to reset the DB
-app.get(process.env.DB_CLEAR, function (req, res) {
-  setup();
-  res.redirect("/");
-});
-
-app.get("/test", function (req, res) {
-  asyncCall();
-  res.redirect("/");
-});
-
 function add_to_db(nodeinfo) {
   Instance.create(nodeinfo);
 }
 
-async function asyncCall() {
-  db_to_log();
-}
-
 function check_instance(domain) {
+  // retrieve info about a domain
   return new Promise((resolve) => {
     Instance.findOne({ where: { domain: domain } })
       .then(async (data) => {
@@ -315,6 +276,7 @@ function check_instance(domain) {
 }
 
 async function get_well_known_live(host_domain) {
+  // get url of nodeinfo json
   return new Promise((resolve) => {
     let options = {
       method: "GET",
@@ -348,6 +310,7 @@ async function get_well_known_live(host_domain) {
 }
 
 function get_nodeinfo(nodeinfo_url) {
+  // get fresh nodeinfo and save to db
   return new Promise((resolve) => {
     https
       .get(nodeinfo_url, (res) => {
@@ -362,10 +325,7 @@ function get_nodeinfo(nodeinfo_url) {
           let nodeinfo = JSON.parse(body);
           resolve({
             part_of_fediverse: true,
-            software:
-              nodeinfo["software"]["name"] +
-              " " +
-              nodeinfo["software"]["version"],
+            software: `${nodeinfo["software"]["name"]} ${nodeinfo["software"]["version"]}`,
             users: nodeinfo["usage"]["users"]["total"],
             posts: nodeinfo["usage"]["localPosts"],
             openRegistrations: nodeinfo["openRegistrations"],
@@ -387,12 +347,9 @@ function checkHttps(req, res, next) {
     res.redirect("https://" + req.hostname + req.url);
   }
 }
-// force all requests to be SSL
-app.all("*", checkHttps);
 
 const { Server } = require("socket.io");
 const io = new Server(server);
-var connections = [];
 
 const wrap = (middleware) => (socket, next) =>
   middleware(socket.request, {}, next);
@@ -410,8 +367,6 @@ io.use((socket, next) => {
 });
 
 io.sockets.on("connection", function (socket) {
-  connections.push(socket);
-
   socket.on("checkDomains", function (data) {
     let domains = data.domains.split(",");
     Promise.all(
@@ -425,136 +380,109 @@ io.sockets.on("connection", function (socket) {
     );
   });
 
-  function create_T(user) {
-    let T = new Twit({
-      consumer_key: process.env.TWITTER_CONSUMER_KEY,
-      consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
-      access_token: user.accessToken,
-      access_token_secret: user.tokenSecret,
-      timeout_ms: 60 * 1000,
-      strictSSL: true,
+  function create_twitter_client(user) {
+    const client = new TwitterApi({
+      appKey: process.env.TWITTER_CONSUMER_KEY,
+      appSecret: process.env.TWITTER_CONSUMER_SECRET,
+      accessToken: user.accessToken,
+      accessSecret: user.tokenSecret,
     });
-    return T;
+
+    return client;
   }
 
-  socket.on("loadLists", function (username) {
-    let T = create_T(socket.request.user);
+  async function processAccounts(data) {
+    // scan accounts for handles
+    let accounts = [];
 
-    T.get(
-      "lists/list",
-      { screen_name: username, reverse: true },
-      function getData(err, data, response) {
-        let lists = [];
-        if (err) {
-          socket.emit("listError", err);
-          return;
-        }
-        data.map((list) =>
-          lists.push({
-            name: list["name"],
-            id_str: list["id_str"],
-            member_count: list["member_count"],
-          })
-        );
-
-        if (data["next_cursor"])
-          T.get(
-            "lists/list",
-            {
-              screen_name: data.username,
-              reverse: true,
-              cursor: data["next_cursor"],
-            },
-            getData
-          );
-        else {
-          socket.emit("userLists", lists);
-        }
+    try {
+      for await (const user of data) {
+        const pinnedTweet = data.includes.pinnedTweet(user);
+        let text = user_to_text(user);
+        pinnedTweet ? (text += " " + tweet_to_text(pinnedTweet)) : "";
+        let handles = findHandles(text);
+        accounts.push({
+          username: user.username,
+          handles: handles,
+        });
       }
-    );
+      accounts.length > 0 ? socket.emit("newHandles", accounts) : void 0;
+    } catch (err) {
+      socket.emit("Error", err);
+      accounts.length > 0 ? socket.emit("newHandles", accounts) : void 0;
+    }
+  }
+
+  let client = create_twitter_client(socket.request.user);
+
+  socket.on("loadLists", async (username) => {
+    let lists = [];
+
+    // get lists owned by user
+    const ownedLists = await client.v2.listsOwned(socket.request.user.id, {
+      "list.fields": ["member_count"],
+    });
+    for await (const list of ownedLists) {
+      lists.push({
+        name: list["name"],
+        id_str: list["id"],
+        member_count: list["member_count"],
+      });
+    }
+
+    // get subscribed lists of user
+    const followedLists = await client.v2.listFollowed(socket.request.user.id, {
+      "list.fields": ["member_count"],
+    });
+    for await (const list of followedLists) {
+      lists.push({
+        name: list["name"],
+        id_str: list["id"],
+        member_count: list["member_count"],
+      });
+    }
+    socket.emit("userLists", lists);
   });
 
-  socket.on("scanList", function (list_id) {
-    let T = create_T(socket.request.user);
-    let amount = 0;
-
-    T.get(
-      "lists/members",
-      { list_id: list_id, count: 5000, skip_status: true },
-      function getData(err, data, response) {
-        let handles = [];
-        if (err) {
-          socket.emit("Error", err);
-          return;
-        }
-        amount += data["users"].length;
-        handles = handles.concat(
-          data["users"].map((user) => findHandles(user_to_text(user)))
-        );
-
-        if (data["next_cursor"])
-          T.get(
-            "lists/members",
-            {
-              screen_name: data.username,
-              reverse: true,
-              cursor: data["next_cursor"],
-            },
-            getData
-          );
-        else {
-          let sorted_handles = sort_handles(handles);
-
-          socket.emit("newHandles", {
-            amount: amount,
-            handles: sorted_handles,
-          });
-        }
-      }
-    );
+  socket.on("scanList", async (list_id) => {
+    // get list members from Twitter
+    const data = await client.v2.listMembers(list_id, {
+      "user.fields": ["name", "description", "url", "location", "entities"],
+      expansions: ["pinned_tweet_id"],
+      "tweet.fields": ["text", "entities"],
+    });
+    processAccounts(data);
   });
 
-  socket.on("scanFollowings", function () {
-    let user = socket.request.user;
-    let T = create_T(user);
+  socket.on("scanFollowings", async () => {
+    // get followings from Twitter
+    try {
+      const data = await client.v2.following(socket.request.user.id, {
+        asPaginator: true,
+        max_results: 1000,
+        "user.fields": ["name", "description", "url", "location", "entities"],
+        expansions: ["pinned_tweet_id"],
+        "tweet.fields": ["text", "entities"],
+      });
+      processAccounts(data);
+    } catch (err) {
+      socket.emit("Error", err);
+    }
+  });
 
-    var page = 0;
-    let checked_accounts = 0;
-    var maxPage = process.env.MAX_PAGE;
-    var handles = [];
-    T.get(
-      "friends/list",
-      { screen_name: user.username, count: 200, skip_status: true },
-      function getData(err, data, response) {
-        if (err) {
-          socket.emit("Error", err);
-          return;
-        }
-        checked_accounts += data["users"].length;
-        handles = handles.concat(
-          data["users"].map((user) => findHandles(user_to_text(user)))
-        );
-        page++;
-
-        if (data["next_cursor"] > 0 && page < maxPage)
-          T.get(
-            "friends/list",
-            {
-              screen_name: user.username,
-              count: 200,
-              skip_status: true,
-              cursor: data["next_cursor"],
-            },
-            getData
-          );
-        else {
-          let sorted_handles = sort_handles(handles);
-          socket.emit("newHandles", {
-            amount: checked_accounts,
-            handles: sorted_handles,
-          });
-        }
-      }
-    );
+  socket.on("scanFollowers", async () => {
+    // get followings from Twitter
+    try {
+      const data = await client.v2.followers(socket.request.user.id, {
+        asPaginator: true,
+        max_results: 1000,
+        "user.fields": ["name", "description", "url", "location", "entities"],
+        expansions: ["pinned_tweet_id"],
+        "tweet.fields": ["text", "entities"],
+      });
+      processAccounts(data);
+    } catch (err) {
+      socket.emit("Error", err);
+    }
   });
 });
