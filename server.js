@@ -1,6 +1,5 @@
 const express = require("express");
 let app = express();
-var server = require("http").createServer(app);
 const passport = require("passport");
 const Strategy = require("passport-twitter").Strategy;
 const Twit = require("twit");
@@ -86,7 +85,7 @@ app.get(process.env.DB_CLEAR, function (req, res) {
   res.redirect("/");
 });
 
-var server = app.listen(process.env.PORT, function () {
+const server = app.listen(process.env.PORT, function () {
   // listen for requests
   console.log("Your app is listening on port " + server.address().port);
 });
@@ -482,10 +481,10 @@ io.sockets.on("connection", function (socket) {
   socket.on("scanFollowings", function () {
     let user = socket.request.user;
 
-    var page = 0;
+    let page = 0;
     let checked_accounts = 0;
-    var maxPage = process.env.MAX_PAGE;
-    var handles = [];
+    const maxPage = process.env.MAX_PAGE;
+    let handles = [];
     T.get(
       "friends/list",
       { screen_name: user.username, count: 200, skip_status: true },
