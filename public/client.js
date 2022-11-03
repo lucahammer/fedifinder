@@ -145,6 +145,8 @@ socket.on("userLists", function (lists) {
 socket.on("newHandles", function (data) {
   // process newly found handles
   checked_accounts += data["amount"];
+  updateCounts();
+
   for (const [domain, handles] of Object.entries(data["handles"])) {
     if (domain in accounts) accounts[domain]["handles"].push(...handles);
     else accounts[domain] = { handles: handles };
