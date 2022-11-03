@@ -102,7 +102,13 @@ function handleFromUrl(urlstring) {
   } else {
     // not a proper URL
     // host.tld/@name host.tld/web/@name
-    let name = urlstring.split("@").slice(-1)[0].replace(/\/+$/, "");
+    if ("@" in urlstring) {
+      let name = urlstring.split("@").slice(-1)[0].replace(/\/+$/, "");
+    }
+    if ("profile" in urlstring) {
+      // friendica: sub.domain.tld/profile/name
+      let name = urlstring.split("/profile/").slice(-1)[0].replace(/\/+$/, "");
+    }
     let domain = urlstring.split("/")[0];
     return `@${name}@${domain}`;
   }
@@ -133,9 +139,12 @@ function findHandles(text) {
   );
 
   // server.tld/@username
+  // friendica: sub.domain.tld/profile/name
   handles = handles.concat(
     words
-      .filter((word) => /^.+\.[a-zA-Z]+.*\/@[a-zA-Z0-9_]+\/*$/.test(word))
+      .filter((word) =>
+        /^.+\.[a-zA-Z]+.*\/(@|profile\/)[a-zA-Z0-9_]+\/*$/.test(word)
+      )
       .map((url) => handleFromUrl(url))
   );
 
