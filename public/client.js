@@ -5,8 +5,33 @@ let checked_accounts = 0;
 
 function removeDuplicates() {
   for (const [domain, data] of Object.entries(accounts)) {
-    accounts[domain]["handles"] = [...new Set(data["handles"])];
+    accounts[domain]["handles"] = [
+      ...new Map(
+        accounts[domain]["handles"].map((v) => [v.handle, v])
+      ).values(),
+    ];
   }
+}
+
+function addHandles(data) {
+  // add recieved handles to accounts list
+
+  data.forEach((account) => {
+    if (account["handles"].length > 0) {
+      account["handles"].forEach((handle) => {
+        let domain = handle.split("@").slice(-1)[0];
+        if (domain in accounts) {
+          accounts[domain]["handles"].push({
+            username: account.username,
+            handle: handle,
+          });
+        } else
+          accounts[domain] = {
+            handles: [{ username: account.username, handle: handle }],
+          };
+      });
+    }
+  });
 }
 
 function checkDomains() {
@@ -39,14 +64,28 @@ function generateCSV() {
   link.download = "fedifinder_following_accounts.csv";
 }
 
+function checkListsLeft() {
+  if ($("#lists option").length < 1) {
+    $("#lists").remove();
+    $("#listLoader").prop("disabled", true);
+    $("#listSkipper").prop("disabled", true);
+  }
+}
+
 function loadListMembers() {
   socket.emit("scanList", $("#lists option:selected").val());
   $("#lists option:selected").remove();
+  checkListsLeft();
 }
 
 function scanFollowings() {
   socket.emit("scanFollowings");
   $("#followingsLoader").prop("disabled", true);
+}
+
+function scanFollowers() {
+  socket.emit("scanFollowers");
+  $("#followersLoader").prop("disabled", true);
 }
 
 function loadLists() {
@@ -57,6 +96,7 @@ function loadLists() {
 function skipList() {
   // remove the selected list from the menu
   $("#lists option:selected").remove();
+  checkListsLeft();
 }
 
 function updateCounts() {
@@ -97,9 +137,10 @@ function displayAccounts() {
           "</span></li>"
       );
       $ol = $("<ol></ol>");
-      data["handles"].forEach((handle) =>
-        $ol.append("<li style='color:forestgreen'>" + handle + "</li>")
-      );
+      data["handles"].forEach((handle) => {
+        let acc = handle.handle + " (@" + handle.username + ")";
+        $ol.append($("<li>").text(acc).css("color", "forestgreen"));
+      });
       $domain.append($ol);
 
       $list.append($domain);
@@ -136,25 +177,26 @@ socket.on("userLists", function (lists) {
   $form = $("#choices");
   $form.append($select);
   $form.append(
-    '<input type="button" onClick="loadListMembers();" value="Scan members">'
+    '<input id="listLoader" type="button" onClick="loadListMembers();" value="Scan members">'
   );
-  $form.append('<input type="button" onClick="skipList()" value="Skip list">');
+  $form.append(
+    '<input id="listSkipper" type="button" onClick="skipList()" value="Skip list">'
+  );
   $("#choices").append($form);
 });
 
 socket.on("newHandles", function (data) {
-  // process newly found handles
-  checked_accounts += data["amount"];
+  // receive new handles
+
+  checked_accounts += data.length;
   updateCounts();
 
-  for (const [domain, handles] of Object.entries(data["handles"])) {
-    if (domain in accounts) accounts[domain]["handles"].push(...handles);
-    else accounts[domain] = { handles: handles };
-  }
+  addHandles(data);
 
   if (Object.keys(accounts).length > 0) {
     removeDuplicates();
     checkDomains();
+    $("#infobox").css("visibility", "visible");
     $("#download").css("display", "block");
   }
 });
