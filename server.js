@@ -112,22 +112,23 @@ function findHandles(text) {
   // split text into string and check them for handles
 
   // different string sperators people use
-  let words = text.split(/,|\s|\(|\)/);
+  text = text.replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n@\.]/gu, " ");
+  let words = text.split(/,|\s|\(|\)|'|\n|\r|\t|▲|\.\s|\s$/);
 
   // remove common false positives
   let unwanted_domains =
-    /gmail\.com|medium\.com|tiktok\.com|youtube\.com|pronouns\.page/;
+    /gmail\.com|medium\.com|tiktok\.com|youtube\.com|pronouns\.page|mail@|observablehq|twitter\.com|contact@|kontakt@|protonmail|medium\.com|traewelling\.de|press@|support@|info@|pobox|hey\.com/;
   words = words.filter((word) => !unwanted_domains.test(word));
 
   // @username@server.tld
   let handles = words.filter((word) =>
-    /^@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word)
+    /@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+/.test(word)
   );
 
   // some people don't include the initial @
   handles = handles.concat(
     words
-      .filter((word) => /^[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word))
+      .filter((word) => /^[a-zA-Z0-9_]+@.+\.[a-zA-Z|]+$/.test(word))
       .map((maillike) => `@${maillike}`)
   );
 
@@ -225,6 +226,12 @@ sequelize
       openRegistrations: {
         type: Sequelize.BOOLEAN,
       },
+      status: {
+        type: Sequelize.STRING,
+      },
+      retries: {
+        type: Sequelize.INTEGER,
+      },
     });
 
     //setup();
@@ -259,14 +266,47 @@ function check_instance(domain) {
         if (data === null) {
           const nodeinfo_url = await get_well_known_live(domain);
           if (nodeinfo_url) {
-            let nodeinfo = await get_nodeinfo(nodeinfo_url);
-            nodeinfo["domain"] = domain;
-            add_to_db(nodeinfo);
-            resolve(nodeinfo);
+            if (typeof nodeinfo_url === "object" && "error" in nodeinfo_url) {
+              //todo: bad code, but tired
+              add_to_db({
+                domain: domain,
+                status: nodeinfo_url["error"],
+              });
+            } else {
+              let nodeinfo = await get_nodeinfo(nodeinfo_url);
+              nodeinfo["domain"] = domain;
+              add_to_db(nodeinfo);
+              resolve(nodeinfo);
+            }
           } else {
             resolve({ domain: domain, part_of_fediverse: false });
           }
-        } else resolve(data);
+        } else {
+          resolve(data);
+          if (data["status"] === "ETIMEDOUT" && data["retries"] <= 5) {
+            // if it timed out in the past, try again; but not too often
+            Instance.update(
+              { retries: data["retries"]++ },
+              { where: { domain: domain } }
+            )
+              //.then((result) => console.log(result))
+              .catch((err) => console.log(Error(err)));
+            const nodeinfo_url = await get_well_known_live(domain);
+            if (nodeinfo_url) {
+              if (typeof nodeinfo_url === "object" && "error" in nodeinfo_url) {
+                //todo: bad code, but tired
+                add_to_db({
+                  domain: domain,
+                  status: nodeinfo_url["error"],
+                });
+              } else {
+                let nodeinfo = await get_nodeinfo(nodeinfo_url);
+                nodeinfo["domain"] = domain;
+                add_to_db(nodeinfo);
+              }
+            }
+          }
+        }
       })
       .catch((err) => {
         console.log(err);
@@ -302,8 +342,10 @@ async function get_well_known_live(host_domain) {
         });
       })
       .on("error", (e) => {
-        resolve(false);
-        //console.error(e);
+        if (e["code"] === "ECONNREFUSED") resolve(false);
+        if (e["code"] === "ECONNRESET") resolve(false);
+        resolve({ error: e["code"] });
+        //todo: resolve unknown status
       });
   });
 }
@@ -332,7 +374,7 @@ function get_nodeinfo(nodeinfo_url) {
         });
       })
       .on("error", (e) => {
-        resolve({ part_of_fediverse: false });
+        resolve({ error: e["code"] });
         //console.error(e);
       });
   });
