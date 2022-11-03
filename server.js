@@ -393,6 +393,7 @@ io.sockets.on("connection", function (socket) {
   async function processAccounts(data) {
     // scan accounts for handles
     let accounts = [];
+    let batch_size = 500;
 
     try {
       for await (const user of data) {
@@ -404,6 +405,12 @@ io.sockets.on("connection", function (socket) {
           username: user.username,
           handles: handles,
         });
+
+        if (accounts.length >= batch_size) {
+          // don't wait until all accounts are loaded
+          socket.emit("newHandles", accounts);
+          accounts = [];
+        }
       }
       accounts.length > 0 ? socket.emit("newHandles", accounts) : void 0;
     } catch (err) {
