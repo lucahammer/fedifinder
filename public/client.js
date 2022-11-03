@@ -54,7 +54,7 @@ function generateCSV() {
 
   for (const [domain, data] of Object.entries(accounts)) {
     if ("part_of_fediverse" in data && data["part_of_fediverse"]) {
-      data["handles"].forEach((handle) => (csv += handle + ",true\n"));
+      data["handles"].forEach((handle) => (csv += handle.handle + ",true\n"));
     }
   }
 
