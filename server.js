@@ -15,6 +15,7 @@ const sessionOptions = {
   resave: true,
   saveUninitialized: false,
 };
+
 const sessionMiddleware = session(sessionOptions);
 
 passport.use(
@@ -132,7 +133,7 @@ function findHandles(text) {
   handles = handles.concat(
     words
       .filter((word) => /^[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word))
-      .map((maillike) => "@" + maillike)
+      .map((maillike) => `@${maillike}`)
   );
 
   // server.tld/@username
