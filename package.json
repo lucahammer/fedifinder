@@ -1,6 +1,6 @@
 {
   "name": "fedifinder",
-  "version": "2.1.1",
+  "version": "2.2.2",
   "description": "Extracts fediverse handles and URLS from Twitter accounts.",
   "main": "server.js",
   "scripts": {
@@ -18,7 +18,8 @@
     "hbs": "^4.2.0",
     "sequelize": "^6.25.2",
     "sqlite3": "^5.1.2",
-    "xml2js": "^0.4.23"
+    "xml2js": "^0.4.23",
+    "twitter-api-v2": "^1.12.9"
   },
   "engines": {
     "node": "10.x"

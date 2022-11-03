@@ -10,6 +10,7 @@ dependencies:
   socket.io: 4.5.3
   sqlite3: 5.1.2
   twit: 2.2.11
+  twitter-api-v2: 1.12.9
   xml2js: 0.4.23
 packages:
   /@gar/promisify/1.1.3:
@@ -1757,6 +1758,10 @@ packages:
       node: '>=0.10.0'
     resolution:
       integrity: sha512-BkdwvZGRVoUTcEBp0zuocuqfih4LB+kEFUWkWJOVBg6pAE9Ebv9vmsYTTrfXleZGf45Bj5H3A1/O9YhF2uSYNg==
+  /twitter-api-v2/1.12.9:
+    dev: false
+    resolution:
+      integrity: sha512-nmKwcUiXgoEfcOtAH/hYojy0oSxbouWvvNsHVphiHSW9x9aus2Jdg9/NRB2Gzyq5G6xl+EkjUlEWwBQjp1FOfg==
   /type-is/1.6.18:
     dependencies:
       media-typer: 0.3.0
@@ -1948,4 +1953,5 @@ specifiers:
   socket.io: ^4.5.3
   sqlite3: ^5.1.2
   twit: ^2.2.11
+  twitter-api-v2: ^1.12.9
   xml2js: ^0.4.23
