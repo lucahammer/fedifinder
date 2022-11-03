@@ -102,14 +102,15 @@ function handleFromUrl(urlstring) {
   } else {
     // not a proper URL
     // host.tld/@name host.tld/web/@name
-    if ("@" in urlstring) {
-      let name = urlstring.split("@").slice(-1)[0].replace(/\/+$/, "");
-    }
-    if ("profile" in urlstring) {
+    let name = "";
+    let domain = "";
+    if (urlstring.includes("@")) {
+      name = urlstring.split("@").slice(-1)[0].replace(/\/+$/, "");
+    } else if (urlstring.includes("/profile/")) {
       // friendica: sub.domain.tld/profile/name
-      let name = urlstring.split("/profile/").slice(-1)[0].replace(/\/+$/, "");
+      name = urlstring.split("/profile/").slice(-1)[0].replace(/\/+$/, "");
     }
-    let domain = urlstring.split("/")[0];
+    domain = urlstring.split("/")[0];
     return `@${name}@${domain}`;
   }
 }
