@@ -2,7 +2,6 @@ const express = require("express");
 let app = express();
 const passport = require("passport");
 const Strategy = require("passport-twitter").Strategy;
-const Twit = require("twit");
 const hbs = require("hbs");
 const url = require("url");
 const Sequelize = require("sequelize");
