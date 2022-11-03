@@ -9,25 +9,23 @@ const url = require("url");
 const Sequelize = require("sequelize");
 const https = require("https");
 const session = require("express-session");
+const bodyParser = require("body-parser");
 
-app.use(express.static("public"));
+const sessionOptions = {
+  secret: process.env.SECRET,
+  resave: true,
+  saveUninitialized: false,
+};
+const sessionMiddleware = session(sessionOptions);
 
 passport.use(
   new Strategy(
     {
       consumerKey: process.env.TWITTER_CONSUMER_KEY,
       consumerSecret: process.env.TWITTER_CONSUMER_SECRET,
-      callbackURL:
-        "https://" +
-        process.env.PROJECT_DOMAIN +
-        ".glitch.me/login/twitter/return",
+      callbackURL: `https://${process.env.PROJECT_DOMAIN}.glitch.me/login/twitter/return`,
     },
     function (token, tokenSecret, profile, cb) {
-      // In this example, the user's Twitter profile is supplied as the user
-      // record.  In a production-quality application, the Twitter profile should
-      // be associated with a user record in the application's database, which
-      // allows for account linking and authentication with other identity
-      // providers.
       profile["tokenSecret"] = tokenSecret;
       profile["accessToken"] = token;
       return cb(null, profile);
@@ -43,25 +41,11 @@ passport.deserializeUser(function (obj, cb) {
   cb(null, obj);
 });
 
-app.use(require("body-parser").urlencoded({ extended: true }));
-
-const sessionMiddleware = session({
-  secret: process.env.SECRET,
-  resave: true,
-  saveUninitialized: false,
-});
+app.use(express.static("public"));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(sessionMiddleware);
-
-// Initialize Passport and restore authentication state, if any, from the
-// session.
 app.use(passport.initialize());
-app.use(
-  passport.session({
-    secret: process.env.SECRET,
-    resave: true,
-    saveUninitialized: false,
-  })
-);
+app.use(passport.session(sessionOptions));
 
 // Define routes.
 app.all("*", checkHttps);
@@ -111,20 +95,14 @@ function handleFromUrl(urlstring) {
   // transform an URL-like string into a fediverse handle: @name@server.tld
   if (urlstring.match(/^http/i)) {
     let handleUrl = url.parse(urlstring, true);
-    return (
-      urlstring.replace(/\/+$/, "").split("/").slice(-1) +
-      "@" +
-      handleUrl.host.toLowerCase()
-    );
+    let name = urlstring.replace(/\/+$/, "").split("/").slice(-1);
+    return `${name}@${handleUrl.host.toLowerCase()}`;
   } else {
     // not a proper URL
     // host.tld/@name host.tld/web/@name
-    return (
-      "@" +
-      urlstring.split("@").slice(-1)[0].replace(/\/+$/, "") +
-      "@" +
-      urlstring.split("/")[0]
-    );
+    let name = urlstring.split("@").slice(-1)[0].replace(/\/+$/, "");
+    let domain = urlstring.split("/")[0];
+    return `@${name}@${domain}`;
   }
 }
 
@@ -170,21 +148,16 @@ function findHandles(text) {
 
 function user_to_text(user) {
   // where handles could be: name, description, location, entities url urls expanded_url, entities description urls expanded_url
-  let text =
-    user["name"] + " " + user["description"] + " " + user["location"] + " ";
+  let text = `${user["name"]} ${user["description"]} ${user["location"]}`;
   if ("url" in user["entities"]) {
-    text =
-      text +
-      user["entities"]["url"]["urls"].map(
-        (url) => " " + url["expanded_url"] + " "
-      );
+    user["entities"]["url"]["urls"].map(
+      (url) => (text += ` ${url["expanded_url"]} `)
+    );
   }
   if ("description" in user["entities"]) {
-    text =
-      text +
-      user["entities"]["description"]["urls"].map(
-        (url) => " " + url["expanded_url"] + " "
-      );
+    user["entities"]["description"]["urls"].map(
+      (url) => (text += ` ${url["expanded_url"]} `)
+    );
   }
   return text;
 }
@@ -363,10 +336,7 @@ function get_nodeinfo(nodeinfo_url) {
           let nodeinfo = JSON.parse(body);
           resolve({
             part_of_fediverse: true,
-            software:
-              nodeinfo["software"]["name"] +
-              " " +
-              nodeinfo["software"]["version"],
+            software: `${nodeinfo["software"]["name"]} ${nodeinfo["software"]["version"]}`,
             users: nodeinfo["usage"]["users"]["total"],
             posts: nodeinfo["usage"]["localPosts"],
             openRegistrations: nodeinfo["openRegistrations"],

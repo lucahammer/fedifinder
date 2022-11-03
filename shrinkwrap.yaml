@@ -1,5 +1,4 @@
 dependencies:
-  concat-stream: 2.0.0
   connect-ensure-login: 0.1.1
   cookie-parser: 1.4.6
   express: 4.18.2
@@ -247,10 +246,6 @@ packages:
     dev: false
     resolution:
       integrity: sha512-iCuPHDFgrHX7H2vEI/5xpz07zSHB00TpugqhmYtVmMO6518mCuRMoOYFldEBl0g187ufozdaHgWKcYFb61qGiA==
-  /buffer-from/1.1.2:
-    dev: false
-    resolution:
-      integrity: sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==
   /bytes/3.1.2:
     dev: false
     engines:
@@ -331,17 +326,6 @@ packages:
     dev: false
     resolution:
       integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==
-  /concat-stream/2.0.0:
-    dependencies:
-      buffer-from: 1.1.2
-      inherits: 2.0.4
-      readable-stream: 3.6.0
-      typedarray: 0.0.6
-    dev: false
-    engines:
-      '0': node >= 6.0
-    resolution:
-      integrity: sha512-MWufYdFw53ccGjCA+Ol7XJYpAlW6/prSMzuPOTRnJGcGzuhLn4Scrz7qf6o8bROZ514ltazcIFJZevcfbo0x7A==
   /connect-ensure-login/0.1.1:
     dev: false
     engines:
@@ -1782,10 +1766,6 @@ packages:
       node: '>= 0.6'
     resolution:
       integrity: sha512-TkRKr9sUTxEH8MdfuCSP7VizJyzRNMjj2J2do2Jr3Kym598JVdEksuzPQCnlFPW4ky9Q+iA+ma9BGm06XQBy8g==
-  /typedarray/0.0.6:
-    dev: false
-    resolution:
-      integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==
   /uglify-js/3.17.4:
     dev: false
     engines:
@@ -1957,7 +1937,6 @@ registry: 'https://registry.npmjs.org/'
 shrinkwrapMinorVersion: 9
 shrinkwrapVersion: 3
 specifiers:
-  concat-stream: ^2.0.0
   connect-ensure-login: ^0.1.1
   cookie-parser: ^1.4.6
   express: ^4.18.2
