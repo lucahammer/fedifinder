@@ -1,12 +1,7 @@
 const socket = io();
 let accounts = {};
-let csv = "";
-let lists = 0;
+let user_lists = [];
 let checked_accounts = 0;
-
-$(function () {
-  // run after everything is loaded
-});
 
 function removeDuplicates() {
   for (const [domain, data] of Object.entries(accounts)) {
@@ -15,6 +10,7 @@ function removeDuplicates() {
 }
 
 function checkDomains() {
+  // send unchecked domains to server to get more info
   let domains = "";
   for (const [domain, data] of Object.entries(accounts)) {
     if ("part_of_fediverse" in data === false) {
@@ -28,6 +24,7 @@ function checkDomains() {
 }
 
 function generateCSV() {
+  let csv = "";
   csv = "Account address,Show boosts\n";
 
   for (const [domain, data] of Object.entries(accounts)) {
@@ -57,7 +54,13 @@ function loadLists() {
   $("#listLoader").prop("disabled", true);
 }
 
+function skipList() {
+  // remove the selected list from the menu
+  $("#lists option:selected").remove();
+}
+
 function updateCounts() {
+  // calculate scanned accounts and found handles
   let counter = 0;
   for (const [domain, data] of Object.entries(accounts)) {
     if ("part_of_fediverse" in data && data["part_of_fediverse"])
@@ -68,6 +71,7 @@ function updateCounts() {
 }
 
 function displayAccounts() {
+  // replace the list of handles
   $list = $("<ul id='urlList'></ul>");
   for (const [domain, data] of Object.entries(accounts)) {
     if ("part_of_fediverse" in data && data["part_of_fediverse"]) {
@@ -112,6 +116,8 @@ socket.on("checkedDomains", function (data) {
 });
 
 socket.on("userLists", function (lists) {
+  // create menu to scan lists
+  user_lists = lists;
   $("#listLoader").remove();
   $select = $(
     "<select id='lists' style='width:100%;margin-bottom:10px;'></select>"
@@ -136,11 +142,8 @@ socket.on("userLists", function (lists) {
   $("#choices").append($form);
 });
 
-function skipList() {
-  $("#lists option:selected").remove();
-}
-
 socket.on("newHandles", function (data) {
+  // process newly found handles
   checked_accounts += data["amount"];
   for (const [domain, handles] of Object.entries(data["handles"])) {
     if (domain in accounts) accounts[domain]["handles"].push(...handles);
@@ -158,6 +161,8 @@ socket.on("Error", (data) => {
   console.log("Server sent an error message:");
   console.log(data);
   if ("code" in data && data.code == 88) {
+    // rate limit error
+    // todo: differentiate between endpoints
     $("#error").text(
       "The Twitter API returned an error because of rate limiting. \
 Please wait 15 minutes before trying again. You can still use the other options."
