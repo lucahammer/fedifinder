@@ -89,33 +89,7 @@ app.get(process.env.DB_CLEAR, function (req, res) {
   res.redirect("/");
 });
 
-app.get("/resetRetryCounts", async (req, res) => {
-  db_to_log()
-  let retried = await Instance.findAll({
-    where: {
-      retries: {
-        [Op.gt]: 1,
-      },
-    },
-  });
-  console.log(retried.length);
-  await Instance.destroy({
-    where: {
-      retries: {
-        [Op.gt]: 1,
-      },
-    },
-  });
-  retried = await Instance.findAll({
-    where: {
-      retries: {
-        [Op.gt]: 1,
-      },
-    },
-  });
-  console.log(retried.length);
-  res.redirect("/success");
-});
+
 
 const server = app.listen(process.env.PORT, function () {
   // listen for requests
