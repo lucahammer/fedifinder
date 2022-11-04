@@ -120,7 +120,7 @@ function findHandles(text) {
 
   // different string sperators people use
   text = text.replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n@\.]/gu, " ");
-  let words = text.split(/,|\s|\(|\)|'|\n|\r|\t|▲|\.\s|\s$/);
+  let words = text.split(/,|\s|“|\(|\)|'|》|\n|\r|\t|・|…|▲|\.\s|\s$/);
 
   // remove common false positives
   let unwanted_domains =
