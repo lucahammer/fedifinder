@@ -89,8 +89,6 @@ app.get(process.env.DB_CLEAR, function (req, res) {
   res.redirect("/");
 });
 
-
-
 const server = app.listen(process.env.PORT, function () {
   // listen for requests
   console.log("Your app is listening on port " + server.address().port);
@@ -123,7 +121,7 @@ function findHandles(text) {
 
   // different string sperators people use
   text = text.replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n@\.]/gu, " ");
-  let words = text.split(/,|\s|“|\(|\)|'|》|\n|\r|\t|・|…|▲|\.\s|\s$/);
+  let words = text.split(/,|\s|“|\(|\)|'|》|\n|\r|\t|・|\||…|▲|\.\s|\s$/);
 
   // remove common false positives
   let unwanted_domains =
@@ -284,7 +282,7 @@ function check_instance(domain) {
               add_to_db({
                 domain: domain,
                 status: nodeinfo_url["error"],
-                retries: 1
+                retries: 1,
               });
             } else {
               let nodeinfo = await get_nodeinfo(nodeinfo_url);
@@ -340,7 +338,7 @@ function check_instance(domain) {
             resolve(nodeinfo);
           }
         } else {
-          resolve({ domain: domain, part_of_fediverse: false, retries: 1});
+          resolve({ domain: domain, part_of_fediverse: false, retries: 1 });
         }
       });
   });
@@ -407,6 +405,7 @@ function get_nodeinfo(nodeinfo_url) {
         });
       })
       .on("error", (e) => {
+        console.log(e);
         resolve({ error: e["code"] });
         //console.log(nodeinfo_url);
         //console.error(e);
