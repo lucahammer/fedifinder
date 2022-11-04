@@ -11,6 +11,7 @@ const bodyParser = require("body-parser");
 const TwitterApi = require("twitter-api-v2").TwitterApi;
 const TwitterV2IncludesHelper =
   require("twitter-api-v2").TwitterV2IncludesHelper;
+const Op = require("sequelize").Op;
 
 const sessionOptions = {
   secret: process.env.SECRET,
@@ -88,6 +89,34 @@ app.get(process.env.DB_CLEAR, function (req, res) {
   res.redirect("/");
 });
 
+app.get("/resetRetryCounts", async (req, res) => {
+  db_to_log()
+  let retried = await Instance.findAll({
+    where: {
+      retries: {
+        [Op.gt]: 1,
+      },
+    },
+  });
+  console.log(retried.length);
+  await Instance.destroy({
+    where: {
+      retries: {
+        [Op.gt]: 1,
+      },
+    },
+  });
+  retried = await Instance.findAll({
+    where: {
+      retries: {
+        [Op.gt]: 1,
+      },
+    },
+  });
+  console.log(retried.length);
+  res.redirect("/success");
+});
+
 const server = app.listen(process.env.PORT, function () {
   // listen for requests
   console.log("Your app is listening on port " + server.address().port);
@@ -98,7 +127,7 @@ function handleFromUrl(urlstring) {
   if (urlstring.match(/^http/i)) {
     let handleUrl = url.parse(urlstring, true);
     let name = urlstring.replace(/\/+$/, "").split("/").slice(-1);
-    return `${name}@${handleUrl.host.toLowerCase()}`;
+    return `${name}@${handleUrl.host}`.toLowerCase();
   } else {
     // not a proper URL
     // host.tld/@name host.tld/web/@name
@@ -111,7 +140,7 @@ function handleFromUrl(urlstring) {
       name = urlstring.split("/profile/").slice(-1)[0].replace(/\/+$/, "");
     }
     domain = urlstring.split("/")[0];
-    return `@${name}@${domain}`;
+    return `@${name}@${domain}`.toLowerCase();
   }
 }
 
@@ -120,7 +149,7 @@ function findHandles(text) {
 
   // different string sperators people use
   text = text.replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n@\.]/gu, " ");
-  let words = text.split(/,|\s|\丨|“|\(|\)|'|》|\n|\r|\t|・|…|▲|\.\s|\s$/);
+  let words = text.split(/,|\s|“|\(|\)|'|》|\n|\r|\t|・|…|▲|\.\s|\s$/);
 
   // remove common false positives
   let unwanted_domains =
@@ -281,6 +310,7 @@ function check_instance(domain) {
               add_to_db({
                 domain: domain,
                 status: nodeinfo_url["error"],
+                retries: 1
               });
             } else {
               let nodeinfo = await get_nodeinfo(nodeinfo_url);
@@ -289,11 +319,11 @@ function check_instance(domain) {
               resolve(nodeinfo);
             }
           } else {
-            resolve({ domain: domain, part_of_fediverse: false });
+            resolve({ domain: domain, part_of_fediverse: false, retries: 1 });
           }
         } else {
           resolve(data);
-          if (data["status"] === "ETIMEDOUT" && data["retries"] <= 10) {
+          if (data["status"] === "ETIMEDOUT" && data["retries"] <= 5) {
             // if it timed out in the past, try again; but not too often
             Instance.update(
               { retries: data["retries"]++ },
@@ -336,7 +366,7 @@ function check_instance(domain) {
             resolve(nodeinfo);
           }
         } else {
-          resolve({ domain: domain, part_of_fediverse: false });
+          resolve({ domain: domain, part_of_fediverse: false, retries: 1});
         }
       });
   });
@@ -350,6 +380,7 @@ async function get_well_known_live(host_domain) {
       host: host_domain,
       json: true,
       path: "/.well-known/nodeinfo",
+      timeout: 10000,
     };
 
     https
@@ -382,7 +413,7 @@ function get_nodeinfo(nodeinfo_url) {
   // get fresh nodeinfo and save to db
   return new Promise((resolve) => {
     https
-      .get(nodeinfo_url, (res) => {
+      .get(nodeinfo_url, { timeout: 10000 }, (res) => {
         let body = "";
         if (res.statusCode != 200) {
           resolve({ part_of_fediverse: false });
@@ -403,6 +434,7 @@ function get_nodeinfo(nodeinfo_url) {
       })
       .on("error", (e) => {
         resolve({ error: e["code"] });
+        //console.log(nodeinfo_url);
         //console.error(e);
       });
   });
