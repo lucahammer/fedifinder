@@ -120,7 +120,7 @@ function findHandles(text) {
 
   // different string sperators people use
   text = text.replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n@\.]/gu, " ");
-  let words = text.split(/,|\s|\(|\)|'|\n|\r|\t|▲|\.\s|\s$/);
+  let words = text.split(/,|\s|“|\(|\)|'|》|\n|\r|\t|・|…|▲|\.\s|\s$/);
 
   // remove common false positives
   let unwanted_domains =
@@ -293,7 +293,7 @@ function check_instance(domain) {
           }
         } else {
           resolve(data);
-          if (data["status"] === "ETIMEDOUT" && data["retries"] <= 5) {
+          if (data["status"] === "ETIMEDOUT" && data["retries"] <= 10) {
             // if it timed out in the past, try again; but not too often
             Instance.update(
               { retries: data["retries"]++ },
@@ -318,8 +318,26 @@ function check_instance(domain) {
           }
         }
       })
-      .catch((err) => {
+      .catch(async (err) => {
+        console.log(domain);
         console.log(err);
+        const nodeinfo_url = await get_well_known_live(domain);
+        if (nodeinfo_url) {
+          if (typeof nodeinfo_url === "object" && "error" in nodeinfo_url) {
+            //todo: bad code, but tired
+            add_to_db({
+              domain: domain,
+              status: nodeinfo_url["error"],
+            });
+          } else {
+            let nodeinfo = await get_nodeinfo(nodeinfo_url);
+            nodeinfo["domain"] = domain;
+            add_to_db(nodeinfo);
+            resolve(nodeinfo);
+          }
+        } else {
+          resolve({ domain: domain, part_of_fediverse: false });
+        }
       });
   });
 }
