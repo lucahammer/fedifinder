@@ -459,13 +459,13 @@ io.sockets.on("connection", function (socket) {
       )
     );
   });
-  
+
   const errorHandler = (handler) => {
-  const handleError = (err) => {
-    console.log(err)
-    socket.emit("Error", { Error: "SessionError" });
+    const handleError = (err) => {
+      console.log(err);
+      socket.emit("Error", { Error: "SessionError" });
+    };
   };
-};
 
   function create_twitter_client(user) {
     const client = new TwitterApi({
@@ -510,42 +510,53 @@ io.sockets.on("connection", function (socket) {
   let client = create_twitter_client(socket.request.user);
 
   socket.on("loadLists", async (username) => {
-    let lists = [];
+    try {
+      let lists = [];
 
-    // get lists owned by user
-    const ownedLists = await client.v2.listsOwned(socket.request.user.id, {
-      "list.fields": ["member_count"],
-    });
-    for await (const list of ownedLists) {
-      lists.push({
-        name: list["name"],
-        id_str: list["id"],
-        member_count: list["member_count"],
+      // get lists owned by user
+      const ownedLists = await client.v2.listsOwned(socket.request.user.id, {
+        "list.fields": ["member_count"],
       });
-    }
+      for await (const list of ownedLists) {
+        lists.push({
+          name: list["name"],
+          id_str: list["id"],
+          member_count: list["member_count"],
+        });
+      }
 
-    // get subscribed lists of user
-    const followedLists = await client.v2.listFollowed(socket.request.user.id, {
-      "list.fields": ["member_count"],
-    });
-    for await (const list of followedLists) {
-      lists.push({
-        name: list["name"],
-        id_str: list["id"],
-        member_count: list["member_count"],
-      });
+      // get subscribed lists of user
+      const followedLists = await client.v2.listFollowed(
+        socket.request.user.id,
+        {
+          "list.fields": ["member_count"],
+        }
+      );
+      for await (const list of followedLists) {
+        lists.push({
+          name: list["name"],
+          id_str: list["id"],
+          member_count: list["member_count"],
+        });
+      }
+      socket.emit("userLists", lists);
+    } catch (err) {
+      socket.emit("Error", err);
     }
-    socket.emit("userLists", lists);
   });
 
   socket.on("scanList", async (list_id) => {
     // get list members from Twitter
-    const data = await client.v2.listMembers(list_id, {
-      "user.fields": ["name", "description", "url", "location", "entities"],
-      expansions: ["pinned_tweet_id"],
-      "tweet.fields": ["text", "entities"],
-    });
-    processAccounts(data);
+    try {
+      const data = await client.v2.listMembers(list_id, {
+        "user.fields": ["name", "description", "url", "location", "entities"],
+        expansions: ["pinned_tweet_id"],
+        "tweet.fields": ["text", "entities"],
+      });
+      processAccounts(data);
+    } catch (err) {
+      socket.emit("Error", err);
+    }
   });
 
   socket.on("scanFollowings", async () => {
