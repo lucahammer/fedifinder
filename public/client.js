@@ -239,7 +239,12 @@ socket.on("newHandles", function (data) {
   }
 });
 
-socket.on("Error", (data) => {
+socket.on("connect_error", (err) => handleErrors(err));
+socket.on("connect_failed", (err) => handleErrors(err));
+socket.on("disconnect", (err) => handleErrors(err));
+socket.on("Error", handleErrors(err));
+
+function handleErrors(data) {
   console.log("Server sent an error message:");
   console.log(data);
   if ("code" in data && data.code == 429) {
@@ -271,9 +276,7 @@ Please wait 15 minutes before trying again. You can still use the other options.
         $("#followersLoader").val("Scan followers");
       }
     }, 1000);
-  }
-
-  if ("Error" in data && data.Error == "SessionError") {
+  } else if ("Error" in data && data.Error == "SessionError") {
     $("#error").text(
       "The Twitter API returned an error because of rate limiting. \
 Please wait 15 minutes before trying again. You can still use the other options."
@@ -288,4 +291,4 @@ Please reload the page.\n\n" + data
     $("#error").css("background-color", "orange");
     $("#error").css("padding", "5px");
   }
-});
+}
