@@ -468,14 +468,18 @@ io.sockets.on("connection", function (socket) {
   };
 
   function create_twitter_client(user) {
-    const client = new TwitterApi({
-      appKey: process.env.TWITTER_CONSUMER_KEY,
-      appSecret: process.env.TWITTER_CONSUMER_SECRET,
-      accessToken: user.accessToken,
-      accessSecret: user.tokenSecret,
-    });
+    try {
+      const client = new TwitterApi({
+        appKey: process.env.TWITTER_CONSUMER_KEY,
+        appSecret: process.env.TWITTER_CONSUMER_SECRET,
+        accessToken: user.accessToken,
+        accessSecret: user.tokenSecret,
+      });
 
-    return client;
+      return client;
+    } catch (err) {
+      socket.emit("Error", err);
+    }
   }
 
   async function processAccounts(data) {

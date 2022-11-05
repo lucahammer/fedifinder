@@ -239,7 +239,12 @@ socket.on("newHandles", function (data) {
   }
 });
 
-socket.on("Error", (data) => {
+socket.on("connect_error", (err) => handleErrors(err));
+socket.on("connect_failed", (err) => handleErrors(err));
+socket.on("disconnect", (err) => handleErrors(err));
+socket.on("Error", handleErrors(err));
+
+function handleErrors(data) {
   console.log("Server sent an error message:");
   console.log(data);
   if ("code" in data && data.code == 429) {
@@ -288,4 +293,4 @@ Please reload the page.\n\n" + data
     $("#error").css("background-color", "orange");
     $("#error").css("padding", "5px");
   }
-});
+}
