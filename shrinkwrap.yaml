@@ -9,6 +9,7 @@ dependencies:
   sequelize: 6.25.3
   socket.io: 4.5.3
   sqlite3: 5.1.2
+  tiny-test-framework: 1.0.3
   twitter-api-v2: 1.12.9
   xml2js: 0.4.23
 packages:
@@ -1438,6 +1439,10 @@ packages:
       node: '>= 10'
     resolution:
       integrity: sha512-an/KZQzQUkZCkuoAA64hM92X0Urb6VpRhAFllDzz44U2mcD5scmT3zBc4VgVpkugF580+DQn8eAFSyoQt0tznA==
+  /tiny-test-framework/1.0.3:
+    dev: false
+    resolution:
+      integrity: sha512-PNvXlEcyRDYgU2f/1Jd+YXq/He0vg+Iz5V0OsFt+lXrR530SbEahx0uRtY3L7JyL/UBMdh/ACrfTzigvqOo4Hg==
   /toidentifier/1.0.1:
     dev: false
     engines:
@@ -1631,5 +1636,6 @@ specifiers:
   sequelize: ^6.25.2
   socket.io: ^4.5.3
   sqlite3: ^5.1.2
+  tiny-test-framework: ^1.0.3
   twitter-api-v2: ^1.12.9
   xml2js: ^0.4.23

@@ -149,8 +149,22 @@ function displayAccounts() {
       );
       $ol = $("<ol></ol>");
       data["handles"].forEach((handle) => {
-        let acc = handle.handle + " (@" + handle.username + ")";
-        $ol.append($("<li>").text(acc).css("color", "forestgreen"));
+        $acc = $("<a>")
+          .attr("href", "https://" + domain + "/" + handle.handle)
+          .text(handle["handle"])
+          .addClass("link");
+
+        $twit = $("<a>")
+          .attr("href", "https://twitter.com/" + handle.username)
+          .text("(@" + handle.username + ")")
+          .addClass("link");
+        $ol.append(
+          $("<li>")
+            .append($acc)
+            .css("color", "forestgreen")
+            .append(" ")
+            .append($twit)
+        );
       });
       $domain.append($ol);
 
@@ -242,12 +256,19 @@ socket.on("newHandles", function (data) {
 socket.on("connect_error", (err) => handleErrors(err));
 socket.on("connect_failed", (err) => handleErrors(err));
 socket.on("disconnect", (err) => handleErrors(err));
-socket.on("Error", handleErrors(err));
+socket.on("Error", (err) => handleErrors(err));
 
 function handleErrors(data) {
   console.log("Server sent an error message:");
   console.log(data);
-  if ("code" in data && data.code == 429) {
+  if (typeof data === "string") {
+    $("#error").text(
+      "An unexpected error occured. \
+Please reload the page.\n\n" + data
+    );
+    $("#error").css("background-color", "orange");
+    $("#error").css("padding", "5px");
+  } else if ("code" in data && data.code == 429) {
     // rate limit error
     // todo: differentiate between endpoints
     $("#error").text(

@@ -18,7 +18,8 @@
     "sequelize": "^6.25.2",
     "sqlite3": "^5.1.2",
     "xml2js": "^0.4.23",
-    "twitter-api-v2": "^1.12.9"
+    "twitter-api-v2": "^1.12.9",
+    "tiny-test-framework": "^1.0.3"
   },
   "engines": {
     "node": "10.x"
