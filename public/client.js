@@ -272,4 +272,20 @@ Please wait 15 minutes before trying again. You can still use the other options.
       }
     }, 1000);
   }
+
+  if ("Error" in data && data.Error == "SessionError") {
+    $("#error").text(
+      "The Twitter API returned an error because of rate limiting. \
+Please wait 15 minutes before trying again. You can still use the other options."
+    );
+    $("#error").css("background-color", "orange");
+    $("#error").css("padding", "5px");
+  } else {
+    $("#error").text(
+      "An unexpected error occured. \
+Please reload the page.\n\n" + data
+    );
+    $("#error").css("background-color", "orange");
+    $("#error").css("padding", "5px");
+  }
 });
