@@ -1,4 +1,5 @@
 dependencies:
+  bufferutil: 4.0.7
   connect-ensure-login: 0.1.1
   cookie-parser: 1.4.6
   express: 4.18.2
@@ -9,8 +10,8 @@ dependencies:
   sequelize: 6.25.3
   socket.io: 4.5.3
   sqlite3: 5.1.2
-  tiny-test-framework: 1.0.3
   twitter-api-v2: 1.12.9
+  utf-8-validate: 5.0.10
   xml2js: 0.4.23
 packages:
   /@gar/promisify/1.1.3:
@@ -204,6 +205,15 @@ packages:
     dev: false
     resolution:
       integrity: sha512-iCuPHDFgrHX7H2vEI/5xpz07zSHB00TpugqhmYtVmMO6518mCuRMoOYFldEBl0g187ufozdaHgWKcYFb61qGiA==
+  /bufferutil/4.0.7:
+    dependencies:
+      node-gyp-build: 4.5.0
+    dev: false
+    engines:
+      node: '>=6.14.2'
+    requiresBuild: true
+    resolution:
+      integrity: sha512-kukuqc39WOHtdxtw4UScxF/WVnMFVSQVKhtx3AjZJzhd0RGZZldcrfSEbVsWWe6KNH253574cq5F+wpv0G9pJw==
   /bytes/3.1.2:
     dev: false
     engines:
@@ -974,6 +984,11 @@ packages:
       encoding: ^0.1.0
     resolution:
       integrity: sha512-ZjMPFEfVx5j+y2yF35Kzx5sF7kDzxuDj6ziH4FFbOp87zKDZNx8yExJIb05OGF4Nlt9IHFIMBkRl41VdvcNdbQ==
+  /node-gyp-build/4.5.0:
+    dev: false
+    hasBin: true
+    resolution:
+      integrity: sha512-2iGbaQBV+ITgCz76ZEjmhUKAKVf7xfY1sRl4UiKQspfZMH2h06SyhNsnSVy50cwkFQDGLyif6m/6uFXHkOZ6rg==
   /node-gyp/8.4.1:
     dependencies:
       env-paths: 2.2.1
@@ -1439,10 +1454,6 @@ packages:
       node: '>= 10'
     resolution:
       integrity: sha512-an/KZQzQUkZCkuoAA64hM92X0Urb6VpRhAFllDzz44U2mcD5scmT3zBc4VgVpkugF580+DQn8eAFSyoQt0tznA==
-  /tiny-test-framework/1.0.3:
-    dev: false
-    resolution:
-      integrity: sha512-PNvXlEcyRDYgU2f/1Jd+YXq/He0vg+Iz5V0OsFt+lXrR530SbEahx0uRtY3L7JyL/UBMdh/ACrfTzigvqOo4Hg==
   /toidentifier/1.0.1:
     dev: false
     engines:
@@ -1506,6 +1517,15 @@ packages:
       node: '>= 0.8'
     resolution:
       integrity: sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ==
+  /utf-8-validate/5.0.10:
+    dependencies:
+      node-gyp-build: 4.5.0
+    dev: false
+    engines:
+      node: '>=6.14.2'
+    requiresBuild: true
+    resolution:
+      integrity: sha512-Z6czzLq4u8fPOyx7TU6X3dvUZVvoJmxSQ+IcrlmagKhilxlhZgxPK6C5Jqbkw1IDUmFTM+cz9QDnnLTwDz/2gQ==
   /util-deprecate/1.0.2:
     dev: false
     resolution:
@@ -1626,6 +1646,7 @@ registry: 'https://registry.npmjs.org/'
 shrinkwrapMinorVersion: 9
 shrinkwrapVersion: 3
 specifiers:
+  bufferutil: ^4.0.7
   connect-ensure-login: ^0.1.1
   cookie-parser: ^1.4.6
   express: ^4.18.2
@@ -1636,6 +1657,6 @@ specifiers:
   sequelize: ^6.25.2
   socket.io: ^4.5.3
   sqlite3: ^5.1.2
-  tiny-test-framework: ^1.0.3
   twitter-api-v2: ^1.12.9
+  utf-8-validate: ^5.0.10
   xml2js: ^0.4.23
