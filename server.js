@@ -130,7 +130,7 @@ function findHandles(text) {
 
   // @username@server.tld
   let handles = words.filter((word) =>
-    /@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+/.test(word)
+    /^@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word)
   );
 
   // some people don't include the initial @
@@ -394,14 +394,20 @@ function get_nodeinfo(nodeinfo_url) {
           body += d;
         });
         res.on("end", () => {
-          let nodeinfo = JSON.parse(body);
-          resolve({
-            part_of_fediverse: true,
-            software: `${nodeinfo["software"]["name"]} ${nodeinfo["software"]["version"]}`,
-            users: nodeinfo["usage"]["users"]["total"],
-            posts: nodeinfo["usage"]["localPosts"],
-            openRegistrations: nodeinfo["openRegistrations"],
-          });
+          if (body.startsWith("<") === false) {
+            try {
+              let nodeinfo = JSON.parse(body);
+              resolve({
+                part_of_fediverse: true,
+                software: `${nodeinfo["software"]["name"]} ${nodeinfo["software"]["version"]}`,
+                users: nodeinfo["usage"]["users"]["total"],
+                posts: nodeinfo["usage"]["localPosts"],
+                openRegistrations: nodeinfo["openRegistrations"],
+              });
+            } catch (err) {
+              console.log(err);
+            }
+          }
         });
       })
       .on("error", (e) => {
