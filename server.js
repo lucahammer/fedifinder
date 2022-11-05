@@ -442,7 +442,8 @@ io.use((socket, next) => {
   if (socket.request.user) {
     next();
   } else {
-    next(new Error("unauthorized"));
+    socket.emit("Error", { Error: "SessionError" });
+    //next(new Error("unauthorized"));
   }
 });
 
