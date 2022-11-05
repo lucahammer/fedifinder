@@ -23,7 +23,7 @@
     "utf-8-validate": "^5.0.10"
   },
   "engines": {
-    "node": "10.x"
+    "node": "16.x"
   },
   "keywords": [
     "node",
