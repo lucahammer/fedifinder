@@ -221,6 +221,8 @@ sequelize
     Instance = sequelize.define("instances", {
       domain: {
         type: Sequelize.STRING,
+        primaryKey: true,
+        unique: true,
       },
       part_of_fediverse: {
         type: Sequelize.BOOLEAN,
@@ -245,106 +247,104 @@ sequelize
       },
     });
 
-    //setup();
+    if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
   })
   .catch(function (err) {
     console.log("Unable to connect to the database: ", err);
   });
 
-function setup() {
+async function setup() {
   // removes all entries from the database by dropping and recreating all tables
-  Instance.sync({ force: true });
+  let data = await Instance.sync({ force: true });
+  return data;
 }
 
-function db_to_log() {
+async function db_to_log() {
   // for debugging
-  Instance.findAll().then(function (instances) {
+  await Instance.findAll().then(function (instances) {
     instances.forEach(function (instance) {
       console.log(instance);
     });
   });
 }
 
-function add_to_db(nodeinfo) {
-  Instance.create(nodeinfo);
+async function db_add(nodeinfo) {
+  try {
+    let data = await Instance.upsert(nodeinfo);
+    return data[0];
+  } catch (err) {
+    console.log(err);
+  }
 }
 
-function check_instance(domain) {
+async function db_remove(domain) {
+  try {
+    return await Instance.destroy({ where: { domain: domain } });
+  } catch (err) {
+    console.log(err);
+  }
+}
+async function db_update(domain, data) {
+  try {
+    return await Instance.update(data, { where: { domain: domain } });
+  } catch (err) {
+    console.log(err);
+  }
+}
+
+async function remove_domains_by_retries(retries) {
+  try {
+    return await Instance.destroy({ where: { retries: { [Op.gt]: retries } } });
+  } catch (err) {
+    console.log(err);
+  }
+}
+
+async function update_data(domain) {
+  const data = await get_nodeinfo_url(domain);
+  if (data && "nodeinfo_url" in data) {
+    let nodeinfo = await get_nodeinfo(data.nodeinfo_url);
+    if (nodeinfo) {
+      nodeinfo["domain"] = domain;
+      db_add(nodeinfo);
+      return nodeinfo;
+    }
+  } else if (
+    data &&
+    "status" in data &&
+    data.status != "ECONNREFUSED" &&
+    data.status != "ECONNRESET"
+  ) {
+    return {
+      domain: domain,
+      part_of_fediverse: false,
+      retries: 1,
+      status: data.status,
+    };
+  } else {
+    return { domain: domain, part_of_fediverse: false, retries: 1 };
+  }
+}
+
+async function check_instance(domain) {
   // retrieve info about a domain
-  return new Promise((resolve) => {
-    Instance.findOne({ where: { domain: domain } })
-      .then(async (data) => {
-        if (data === null) {
-          const nodeinfo_url = await get_well_known_live(domain);
-          if (nodeinfo_url) {
-            if (typeof nodeinfo_url === "object" && "error" in nodeinfo_url) {
-              //todo: bad code, but tired
-              add_to_db({
-                domain: domain,
-                status: nodeinfo_url["error"],
-                retries: 1,
-              });
-            } else {
-              let nodeinfo = await get_nodeinfo(nodeinfo_url);
-              nodeinfo["domain"] = domain;
-              add_to_db(nodeinfo);
-              resolve(nodeinfo);
-            }
-          } else {
-            resolve({ domain: domain, part_of_fediverse: false, retries: 1 });
-          }
-        } else {
-          resolve(data);
-          if (data["status"] === "ETIMEDOUT" && data["retries"] <= 5) {
-            // if it timed out in the past, try again; but not too often
-            Instance.update(
-              { retries: data["retries"]++ },
-              { where: { domain: domain } }
-            )
-              //.then((result) => console.log(result))
-              .catch((err) => console.log(Error(err)));
-            const nodeinfo_url = await get_well_known_live(domain);
-            if (nodeinfo_url) {
-              if (typeof nodeinfo_url === "object" && "error" in nodeinfo_url) {
-                //todo: bad code, but tired
-                add_to_db({
-                  domain: domain,
-                  status: nodeinfo_url["error"],
-                });
-              } else {
-                let nodeinfo = await get_nodeinfo(nodeinfo_url);
-                nodeinfo["domain"] = domain;
-                add_to_db(nodeinfo);
-              }
-            }
-          }
-        }
-      })
-      .catch(async (err) => {
-        console.log(domain);
-        console.log(err);
-        const nodeinfo_url = await get_well_known_live(domain);
-        if (nodeinfo_url) {
-          if (typeof nodeinfo_url === "object" && "error" in nodeinfo_url) {
-            //todo: bad code, but tired
-            add_to_db({
-              domain: domain,
-              status: nodeinfo_url["error"],
-            });
-          } else {
-            let nodeinfo = await get_nodeinfo(nodeinfo_url);
-            nodeinfo["domain"] = domain;
-            add_to_db(nodeinfo);
-            resolve(nodeinfo);
-          }
-        } else {
-          resolve({ domain: domain, part_of_fediverse: false, retries: 1 });
-        }
-      });
-  });
+  let data = await Instance.findOne({ where: { domain: domain } });
+
+  if (data === null) {
+    // no cached info -> get new info
+    let new_data = await update_data(domain);
+    return new_data;
+  } else {
+    if (data["status"] === "ETIMEDOUT" && data["retries"] <= 5) {
+      // if it timed out in the past, try again; but not too often
+      return await db_update(domain, { retries: data["retries"] + 1 });
+      //update_data(domain);
+    }
+    return data;
+  }
 }
 
-async function get_well_known_live(host_domain) {
+async function get_nodeinfo_url(host_domain) {
   // get url of nodeinfo json
   return new Promise((resolve) => {
     let options = {
@@ -352,7 +352,7 @@ async function get_well_known_live(host_domain) {
       host: host_domain,
       json: true,
       path: "/.well-known/nodeinfo",
-      timeout: 10000,
+      timeout: 5000,
     };
 
     https
@@ -365,19 +365,22 @@ async function get_well_known_live(host_domain) {
           body += d;
         });
         res.on("end", () => {
-          try {
-            resolve(JSON.parse(body)["links"][0]["href"]);
-          } catch (error) {
-            resolve(false);
-          }
+          if (body.startsWith("<") === false) {
+            try {
+              resolve({ nodeinfo_url: JSON.parse(body)["links"][0]["href"] });
+            } catch (err) {
+              resolve(false);
+            }
+          } else resolve(false);
         });
       })
-      .on("error", (e) => {
-        if (e["code"] === "ECONNREFUSED") resolve(false);
-        if (e["code"] === "ECONNRESET") resolve(false);
-        resolve({ error: e["code"] });
+      .on("error", (err) => {
+        //console.log(err);
+        resolve({ status: err["code"] });
         //todo: resolve unknown status
       });
+  }).catch((err) => {
+    //console.log(err)
   });
 }
 
@@ -385,7 +388,7 @@ function get_nodeinfo(nodeinfo_url) {
   // get fresh nodeinfo and save to db
   return new Promise((resolve) => {
     https
-      .get(nodeinfo_url, { timeout: 10000 }, (res) => {
+      .get(nodeinfo_url, { timeout: 5000 }, (res) => {
         let body = "";
         if (res.statusCode != 200) {
           resolve({ part_of_fediverse: false });
@@ -405,6 +408,7 @@ function get_nodeinfo(nodeinfo_url) {
                 openRegistrations: nodeinfo["openRegistrations"],
               });
             } catch (err) {
+              console.log(nodeinfo_url);
               console.log(err);
             }
           }
@@ -412,7 +416,7 @@ function get_nodeinfo(nodeinfo_url) {
       })
       .on("error", (e) => {
         console.log(e);
-        resolve({ error: e["code"] });
+        resolve({ status: e["code"] });
         //console.log(nodeinfo_url);
         //console.error(e);
       });
@@ -452,7 +456,7 @@ io.sockets.on("connection", function (socket) {
     Promise.all(
       domains.map((domain) =>
         check_instance(domain)
-          .catch(() => undefined)
+          .catch((err) => console.log(err))
           .then((data) => {
             socket.emit("checkedDomains", data);
           })
@@ -595,3 +599,87 @@ io.sockets.on("connection", function (socket) {
     }
   });
 });
+
+async function tests() {
+  console.log("Start Tests");
+  const assert = require("assert").strict;
+  //Instance.sync({force:true})
+
+  const it = (description, function_to_test) => {
+    try {
+      function_to_test();
+      console.log("\x1b[32m%s\x1b[0m", `\u2714 ${description}`);
+    } catch (error) {
+      console.log("\n\x1b[31m%s\x1b[0m", `\u2718 ${description}`);
+      console.error(error);
+    }
+  };
+
+  it("should return handle based on URL string", () => {
+    assert.strictEqual(
+      handleFromUrl("https://vis.social/@luca"),
+      "@luca@vis.social"
+    );
+    assert.strictEqual(handleFromUrl("vis.social/@luca"), "@luca@vis.social");
+    assert.strictEqual(
+      handleFromUrl("http://vis.social/@luca"),
+      "@luca@vis.social"
+    );
+  });
+
+  it("should return list of handles from a text string", () => {
+    let text =
+      "Twitter was my special interest. Scientific Programmer @sfb1472 fedi\
+@luca@lucahammer.com \
+http://vis.social/web/@Luca/ \
+http://det.social/@luca \
+@pv@botsin.space";
+    assert(findHandles(text), [
+      "@pv@botsin.space",
+      "@fedi@luca@lucahammer.com",
+      "@luca@vis.social",
+      "@luca@det.social",
+    ]);
+  });
+
+  it("should get the nodeinfo URL", async () => {
+    let data = await get_nodeinfo_url("lucahammer.com");
+    assert(data.nodeinfo_url == "https://lucahammer.com/wp-json/nodeinfo/2.1");
+  });
+
+  it("remove data from the db, add an entry, update the entry, remove entries with many retries", async () => {
+    await setup();
+    let empty = await Instance.findAll({ where: {} });
+    assert(empty.length == 0);
+
+    let added_instance = await db_add({ domain: "test.com", retries: 100 });
+    assert(added_instance.domain == "test.com");
+
+    await db_update("test.com", { retries: (added_instance["retries"] += 1) });
+    let updated_instance = await Instance.findOne({
+      where: { domain: "test.com" },
+    });
+    assert(updated_instance.retries, 101);
+
+    await db_add({ domain: "test2.com", retries: 100 });
+    let before_cleaning = await Instance.findAll({});
+    assert(before_cleaning.length == 2);
+    await remove_domains_by_retries(100);
+    let cleaned = await Instance.findAll({});
+    assert(cleaned.length == 1);
+  });
+
+  it("should get new info about an instance and save to db", async () => {
+    let info = await check_instance("lucahammer.com");
+    assert(info.users == 1);
+    let data = await Instance.findOne({
+      where: { domain: "lucahammer.com" },
+    });
+    assert(data.part_of_fediverse == true);
+  });
+
+  it("should get no info about a non fediverse website", async () => {
+    let info = await check_instance("google.com");
+    assert(info.part_of_fediverse == false);
+  });
+}
