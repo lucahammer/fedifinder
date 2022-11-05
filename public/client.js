@@ -152,7 +152,7 @@ function displayAccounts() {
       $ol = $("<ol></ol>");
       data["handles"].forEach((handle) => {
         $acc = $("<a>")
-          .attr("href", "https://" + domain + "/" + handle.handle)
+          .attr("href", "https://" + domain + "/@" + handle.handle.split('@')[1])
           .text(handle["handle"])
           .addClass("link");
 
