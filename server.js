@@ -99,7 +99,7 @@ function handleFromUrl(urlstring) {
   if (urlstring.match(/^http/i)) {
     let handleUrl = url.parse(urlstring, true);
     let name = urlstring.replace(/\/+$/, "").split("/").slice(-1);
-    return `${name}@${handleUrl.host}`.toLowerCase();
+    return `${name}@${handleUrl.host}`;
   } else {
     // not a proper URL
     // host.tld/@name host.tld/web/@name
@@ -112,7 +112,7 @@ function handleFromUrl(urlstring) {
       name = urlstring.split("/profile/").slice(-1)[0].replace(/\/+$/, "");
     }
     domain = urlstring.split("/")[0];
-    return `@${name}@${domain}`.toLowerCase();
+    return `@${name}@${domain}`;
   }
 }
 
@@ -120,7 +120,7 @@ function findHandles(text) {
   // split text into string and check them for handles
 
   // different string sperators people use
-  text = text.replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n@\.]/gu, " ");
+  text = text.replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n@\.]/gu, " ").toLowerCase();
   let words = text.split(/,|\s|“|\(|\)|'|》|\n|\r|\t|・|\||…|▲|\.\s|\s$/);
 
   // remove common false positives
