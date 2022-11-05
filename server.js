@@ -415,7 +415,7 @@ function get_nodeinfo(nodeinfo_url) {
         });
       })
       .on("error", (e) => {
-        console.log(e);
+        //console.log(e);
         resolve({ status: e["code"] });
         //console.log(nodeinfo_url);
         //console.error(e);

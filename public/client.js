@@ -5,11 +5,13 @@ let checked_accounts = 0;
 
 function removeDuplicates() {
   for (const [domain, data] of Object.entries(accounts)) {
-    accounts[domain]["handles"] = [
-      ...new Map(
-        accounts[domain]["handles"].map((v) => [v.handle, v])
-      ).values(),
-    ];
+    if ("handles" in accounts[domain]) {
+      accounts[domain]["handles"] = [
+        ...new Map(
+          accounts[domain]["handles"].map((v) => [v.handle, v])
+        ).values(),
+      ];
+    }
   }
 }
 
