@@ -276,9 +276,7 @@ Please wait 15 minutes before trying again. You can still use the other options.
         $("#followersLoader").val("Scan followers");
       }
     }, 1000);
-  }
-
-  if ("Error" in data && data.Error == "SessionError") {
+  } else if ("Error" in data && data.Error == "SessionError") {
     $("#error").text(
       "The Twitter API returned an error because of rate limiting. \
 Please wait 15 minutes before trying again. You can still use the other options."
