@@ -442,8 +442,7 @@ io.use((socket, next) => {
   if (socket.request.user) {
     next();
   } else {
-    socket.emit("Error", { Error: "SessionError" });
-    //next(new Error("unauthorized"));
+    next(new Error("unauthorized"));
   }
 });
 
@@ -460,6 +459,13 @@ io.sockets.on("connection", function (socket) {
       )
     );
   });
+  
+  const errorHandler = (handler) => {
+  const handleError = (err) => {
+    console.log(err)
+    socket.emit("Error", { Error: "SessionError" });
+  };
+};
 
   function create_twitter_client(user) {
     const client = new TwitterApi({
