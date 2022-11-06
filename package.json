@@ -15,12 +15,13 @@
     "passport-twitter": "^1.0.4",
     "socket.io": "^4.5.3",
     "hbs": "^4.2.0",
-    "sequelize": "^6.25.2",
+    "sequelize": "^6.25.3",
     "sqlite3": "^5.1.2",
     "xml2js": "^0.4.23",
     "twitter-api-v2": "^1.12.9",
     "bufferutil": "^4.0.7",
-    "utf-8-validate": "^5.0.10"
+    "utf-8-validate": "^5.0.10",
+    "express-session-sequelize": "^2.3.0"
   },
   "engines": {
     "node": "16.x"
