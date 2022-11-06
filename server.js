@@ -311,7 +311,9 @@ async function db_add(nodeinfo) {
   let data = await Instance.findOne({ where: { domain: nodeinfo["domain"] } });
   if (data) return data;
   else {
-    Instance.create(nodeinfo);
+    try {
+      await Instance.create(nodeinfo);
+    } catch (err) {}
     return nodeinfo;
   }
 }
