@@ -2,6 +2,9 @@ const socket = io();
 let accounts = {};
 let user_lists = [];
 let checked_accounts = 0;
+let sent_accounts = 0;
+let received_accounts = 0;
+let display_brokenList = "none";
 
 function removeDuplicates() {
   for (const [domain, data] of Object.entries(accounts)) {
@@ -41,6 +44,7 @@ function checkDomains() {
   let domains = "";
   for (const [domain, data] of Object.entries(accounts)) {
     if ("part_of_fediverse" in data === false) {
+      sent_accounts += data["handles"].length;
       domains += domain + ",";
     }
   }
@@ -121,6 +125,7 @@ function updateCounts() {
   $("#nr_working").text(counter);
   $("#nr_checked").text(checked_accounts);
   $("#nr_broken").text(broken_counter);
+  $("#nr_waiting").text(sent_accounts-received_accounts);
 }
 
 function displayAccounts() {
@@ -152,7 +157,10 @@ function displayAccounts() {
       $ol = $("<ol></ol>");
       data["handles"].forEach((handle) => {
         $acc = $("<a>")
-          .attr("href", "https://" + domain + "/@" + handle.handle.split('@')[1])
+          .attr(
+            "href",
+            "https://" + domain + "/@" + handle.handle.split("@")[1]
+          )
           .text(handle["handle"])
           .addClass("link");
 
@@ -175,7 +183,10 @@ function displayAccounts() {
   }
   $("#urlList").replaceWith($list);
 
-  $list = $("<ul id='brokenList' style='display:none;font-size: .9em;'></ul>");
+  $list = $("<ul id='brokenList' style='font-size: .9em;'></ul>").css(
+    "display",
+    display_brokenList
+  );
   for (const [domain, data] of Object.entries(accounts)) {
     if ("status" in data && data["status"] != null) {
       $domain = $(
@@ -206,6 +217,10 @@ function displayAccounts() {
 socket.on("checkedDomains", function (data) {
   // add info about domains
   accounts[data["domain"]] = Object.assign({}, accounts[data["domain"]], data);
+  try {received_accounts += accounts[data["domain"]]["handles"].length;}
+  catch(err){
+    console.log(data)
+  }
   updateCounts();
   displayAccounts();
 });
