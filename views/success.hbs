@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html>
   <head>
     <title>Fedifinder</title>
@@ -48,8 +47,10 @@
     <main>
       <p>
         While the handles are sorted by their instance, they can all follow and
-        interact with each other. You can export all handles at once with the
-        export button at the bottom of the list.
+        interact with each other. You can
+        <b>export all handles at once with the green button at the bottom</b>
+        of the list and import them to your fediverse software
+        (domain.tld/settings/import for Mastodon).
       </p>
 
       <p id="error">
@@ -80,11 +81,13 @@
       </form>
 
       <p id="infobox" style="visibility:hidden;">
-        Scanned
         <span id="nr_checked">0</span>
-        accounts and found
+        accounts scanned<br />
         <span id="nr_working">0</span>
-        unique handles on domains that are part of the fediverse.
+        unique handles from working fediverse domains found<br />
+        <span id="nr_broken">0</span>
+        handles from other services (eg. mail) or unresponsive servers<br />
+        <span id="domains_waiting">0</span> domains with are still being checked <a id="retry" onclick="retryDomains()">Retry</a>
         <br />
       </p>
 
