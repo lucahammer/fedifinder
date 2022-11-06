@@ -6,20 +6,45 @@ const hbs = require("hbs");
 const url = require("url");
 const Sequelize = require("sequelize");
 const https = require("https");
-const session = require("express-session");
+const expressSession = require("express-session");
 const bodyParser = require("body-parser");
 const TwitterApi = require("twitter-api-v2").TwitterApi;
 const TwitterV2IncludesHelper =
   require("twitter-api-v2").TwitterV2IncludesHelper;
 const Op = require("sequelize").Op;
+const SessionStore = require("express-session-sequelize")(expressSession.Store);
+
+const sessions_db = new Sequelize(
+  "database",
+  process.env.DB_USER,
+  process.env.DB_PASS,
+  {
+    host: "0.0.0.0",
+    dialect: "sqlite",
+    pool: {
+      max: 5,
+      min: 0,
+      idle: 10000,
+    },
+    // Security note: the database is saved to the file `database.sqlite` on the local filesystem. It's deliberately placed in the `.data` directory
+    // which doesn't get copied if someone remixes the project.
+    storage: ".data/sessions.sqlite",
+    logging: false,
+  }
+);
+
+const sequelizeSessionStore = new SessionStore({
+  db: sessions_db,
+});
 
 const sessionOptions = {
   secret: process.env.SECRET,
+  store: sequelizeSessionStore,
   resave: true,
   saveUninitialized: false,
 };
 
-const sessionMiddleware = session(sessionOptions);
+const sessionMiddleware = expressSession(sessionOptions);
 
 passport.use(
   new Strategy(
