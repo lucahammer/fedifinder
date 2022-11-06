@@ -21,7 +21,7 @@
     "twitter-api-v2": "^1.12.9",
     "bufferutil": "^4.0.7",
     "utf-8-validate": "^5.0.10",
-    "express-session-sequelize": "^2.3.0"
+    "connect-session-sequelize": "^7.1.5"
   },
   "engines": {
     "node": "16.x"

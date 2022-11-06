@@ -6,16 +6,16 @@ const hbs = require("hbs");
 const url = require("url");
 const Sequelize = require("sequelize");
 const https = require("https");
-const expressSession = require("express-session");
+const session = require("express-session");
 const bodyParser = require("body-parser");
 const TwitterApi = require("twitter-api-v2").TwitterApi;
 const TwitterV2IncludesHelper =
   require("twitter-api-v2").TwitterV2IncludesHelper;
 const Op = require("sequelize").Op;
-const SessionStore = require("express-session-sequelize")(expressSession.Store);
+const SequelizeStore = require("connect-session-sequelize")(session.Store);
 
 const sessions_db = new Sequelize(
-  "database",
+  "sessions",
   process.env.DB_USER,
   process.env.DB_PASS,
   {
@@ -33,18 +33,18 @@ const sessions_db = new Sequelize(
   }
 );
 
-const sequelizeSessionStore = new SessionStore({
+const sequelizeSessionStore = new SequelizeStore({
   db: sessions_db,
 });
 
 const sessionOptions = {
   secret: process.env.SECRET,
   store: sequelizeSessionStore,
-  resave: true,
+  resave: false,
   saveUninitialized: false,
 };
 
-const sessionMiddleware = expressSession(sessionOptions);
+const sessionMiddleware = session(sessionOptions);
 
 passport.use(
   new Strategy(
@@ -74,13 +74,19 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(passport.session(sessionOptions));
+sessions_db.sync({ force: true });
 
 // Define routes.
 app.all("*", checkHttps);
 
 app.get("/logoff", function (req, res) {
-  req.session.destroy();
-  res.redirect("/");
+  req.session.destroy((err) => {
+    if (err) {
+      res.status(400).send("Logging out went wrong");
+    } else {
+      res.redirect("/");
+    }
+  });
 });
 
 app.get("/auth/twitter", passport.authenticate("twitter"));
@@ -89,7 +95,9 @@ app.get(
   "/login/twitter/return",
   passport.authenticate("twitter", { failureRedirect: "/" }),
   function (req, res) {
-    res.redirect("/success");
+    req.session.save(function () {
+      res.redirect("/success");
+    });
   }
 );
 
