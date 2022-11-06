@@ -74,7 +74,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(passport.session(sessionOptions));
-sessions_db.sync({ force: true });
+sessions_db.sync(); //{ force: true } for reset
 
 // Define routes.
 app.all("*", checkHttps);
@@ -120,6 +120,12 @@ app.get(process.env.DB_CLEAR, function (req, res) {
   // visit this URL to reset the DB
   setup();
   res.redirect("/");
+});
+
+app.get(process.env.DB_CLEAR + "2", async (req, res) => {
+  // visit this URL to remove timed out entries from the DB
+  let removed = await remove_domains_by_status("ETIMEDOUT");
+  res.send(`Removed ETIMEDOUT ${removed}`);
 });
 
 const server = app.listen(process.env.PORT, function () {
@@ -333,6 +339,15 @@ async function remove_domains_by_retries(retries) {
   }
 }
 
+async function remove_domains_by_status(status) {
+  try {
+    let data = await Instance.destroy({ where: { status: status } });
+    return data;
+  } catch (err) {
+    console.log(err);
+  }
+}
+
 async function update_data(domain) {
   const data = await get_nodeinfo_url(domain);
   if (data && "nodeinfo_url" in data) {
@@ -342,18 +357,15 @@ async function update_data(domain) {
       db_add(nodeinfo);
       return nodeinfo;
     }
-  } else if (
-    data &&
-    "status" in data &&
-    data.status != "ECONNREFUSED" &&
-    data.status != "ECONNRESET"
-  ) {
-    return {
+  } else if (data && "status" in data) {
+    let nodeinfo = {
       domain: domain,
       part_of_fediverse: false,
       retries: 1,
       status: data.status,
     };
+    db_add(nodeinfo);
+    return nodeinfo;
   } else {
     return { domain: domain, part_of_fediverse: false, retries: 1 };
   }
