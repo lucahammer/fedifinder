@@ -308,11 +308,11 @@ async function db_to_log() {
 }
 
 async function db_add(nodeinfo) {
-  try {
-    let data = await Instance.upsert(nodeinfo);
-    return data[0];
-  } catch (err) {
-    console.log(err);
+  let data = await Instance.findOne({ where: { domain: nodeinfo["domain"] } });
+  if (data) return data
+  else {
+    Instance.create(nodeinfo);
+    return nodeinfo
   }
 }
 
@@ -448,8 +448,14 @@ function get_nodeinfo(nodeinfo_url) {
               resolve({
                 part_of_fediverse: true,
                 software: `${nodeinfo["software"]["name"]} ${nodeinfo["software"]["version"]}`,
-                users: "users" in nodeinfo["usage"] ? nodeinfo["usage"]["users"]["total"] : 0, //todo handle unvailable counts
-                posts: "localPosts" in nodeinfo["usage"] ? nodeinfo["usage"]["localPosts"] : 0, //todo handle unavailable counts
+                users:
+                  "users" in nodeinfo["usage"]
+                    ? nodeinfo["usage"]["users"]["total"]
+                    : 0, //todo handle unvailable counts
+                posts:
+                  "localPosts" in nodeinfo["usage"]
+                    ? nodeinfo["usage"]["localPosts"]
+                    : 0, //todo handle unavailable counts
                 openRegistrations: nodeinfo["openRegistrations"],
               });
             } catch (err) {
@@ -709,22 +715,21 @@ http://det.social/@luca \
     await db_add({ domain: "test2.com", retries: 100 });
     let before_cleaning = await Instance.findAll({});
     assert(before_cleaning.length == 2);
+
     await remove_domains_by_retries(100);
     let cleaned = await Instance.findAll({});
     assert(cleaned.length == 1);
   });
 
-  it("should get new info about an instance and save to db", async () => {
-    let info = await check_instance("lucahammer.com");
-    assert(info.users == 1);
-    let data = await Instance.findOne({
-      where: { domain: "lucahammer.com" },
-    });
-    assert(data.part_of_fediverse == true);
-  });
-
   it("should get no info about a non fediverse website", async () => {
     let info = await check_instance("google.com");
     assert(info.part_of_fediverse == false);
+  });
+  
+  it("should get new info about an instance and save to db", async () => {
+    let info = await check_instance("lucahammer.com");
+    assert(info.users == 1);
+    info = await check_instance("lucahammer.com");
+    assert(info.users == 1);
   });
 }
