@@ -309,10 +309,10 @@ async function db_to_log() {
 
 async function db_add(nodeinfo) {
   let data = await Instance.findOne({ where: { domain: nodeinfo["domain"] } });
-  if (data) return data
+  if (data) return data;
   else {
     Instance.create(nodeinfo);
-    return nodeinfo
+    return nodeinfo;
   }
 }
 
@@ -725,7 +725,7 @@ http://det.social/@luca \
     let info = await check_instance("google.com");
     assert(info.part_of_fediverse == false);
   });
-  
+
   it("should get new info about an instance and save to db", async () => {
     let info = await check_instance("lucahammer.com");
     assert(info.users == 1);
