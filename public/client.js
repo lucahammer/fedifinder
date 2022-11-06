@@ -211,10 +211,12 @@ function displayAccounts() {
           "</span></li>"
       );
       $ol = $("<ol></ol>");
-      data["handles"].forEach((handle) => {
-        let acc = handle.handle + " (@" + handle.username + ")";
-        $ol.append($("<li>").text(acc).css("color", "darkred"));
-      });
+      if ("handles" in data) {
+        data["handles"].forEach((handle) => {
+          let acc = handle.handle + " (@" + handle.username + ")";
+          $ol.append($("<li>").text(acc).css("color", "darkred"));
+        });
+      }
       $domain.append($ol);
 
       $list.append($domain);
