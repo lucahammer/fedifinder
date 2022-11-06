@@ -448,8 +448,8 @@ function get_nodeinfo(nodeinfo_url) {
               resolve({
                 part_of_fediverse: true,
                 software: `${nodeinfo["software"]["name"]} ${nodeinfo["software"]["version"]}`,
-                users: nodeinfo["usage"]["users"]["total"],
-                posts: nodeinfo["usage"]["localPosts"],
+                users: "users" in nodeinfo["usage"] ? nodeinfo["usage"]["users"]["total"] : 0, //todo handle unvailable counts
+                posts: "localPosts" in nodeinfo["usage"] ? nodeinfo["usage"]["localPosts"] : 0, //todo handle unavailable counts
                 openRegistrations: nodeinfo["openRegistrations"],
               });
             } catch (err) {
