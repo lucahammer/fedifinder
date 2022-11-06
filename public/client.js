@@ -1,10 +1,10 @@
 const socket = io();
 let accounts = {};
-let user_lists = [];
 let checked_accounts = 0;
-let sent_accounts = 0;
-let received_accounts = 0;
+let user_lists = [];
+let unchecked_domains = [];
 let display_brokenList = "none";
+let displayBroken = "inline";
 
 function removeDuplicates() {
   for (const [domain, data] of Object.entries(accounts)) {
@@ -39,12 +39,17 @@ function addHandles(data) {
   });
 }
 
+function retryDomains() {
+  socket.emit("checkDomains", { domains: unchecked_domains.join(",") });
+  $("#retry").css("display", "none");
+}
+
 function checkDomains() {
   // send unchecked domains to server to get more info
   let domains = "";
   for (const [domain, data] of Object.entries(accounts)) {
     if ("part_of_fediverse" in data === false) {
-      sent_accounts += data["handles"].length;
+      unchecked_domains.push(domain);
       domains += domain + ",";
     }
   }
@@ -108,24 +113,28 @@ function skipList() {
 function showBroken() {
   $("#brokenList").css("display", "block");
   $("#displayBroken").css("display", "none");
+  display_brokenList = "block";
+  displayBroken = "none";
 }
 
 function updateCounts() {
   // calculate scanned accounts and found handles
+  $("#retry").css("display", "none");
   let counter = 0;
   let broken_counter = 0;
   for (const [domain, data] of Object.entries(accounts)) {
     if ("part_of_fediverse" in data && data["part_of_fediverse"])
       counter += data["handles"].length;
-    if ("status" in data && data["status"] != null) {
+    if ("status" in data && "handles" in data && data["status"] != null) {
       broken_counter += data["handles"].length;
       $("#broken").css("display", "block");
     }
   }
+
   $("#nr_working").text(counter);
   $("#nr_checked").text(checked_accounts);
   $("#nr_broken").text(broken_counter);
-  $("#nr_waiting").text(sent_accounts-received_accounts);
+  $("#domains_waiting").text(unchecked_domains.length);
 }
 
 function displayAccounts() {
@@ -211,16 +220,15 @@ function displayAccounts() {
     }
   }
   $("#brokenList").replaceWith($list);
-  $("#displayBroken").css("display", "inline");
+  $("#displayBroken").css("display", displayBroken);
 }
 
 socket.on("checkedDomains", function (data) {
   // add info about domains
+  unchecked_domains = unchecked_domains.filter(
+    (item) => item != data["domain"]
+  );
   accounts[data["domain"]] = Object.assign({}, accounts[data["domain"]], data);
-  try {received_accounts += accounts[data["domain"]]["handles"].length;}
-  catch(err){
-    console.log(data)
-  }
   updateCounts();
   displayAccounts();
 });
