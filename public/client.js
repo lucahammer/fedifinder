@@ -119,7 +119,7 @@ function showBroken() {
 
 function updateCounts() {
   // calculate scanned accounts and found handles
-  $("#retry").css("display", "none");
+
   let counter = 0;
   let broken_counter = 0;
   for (const [domain, data] of Object.entries(accounts)) {
@@ -129,6 +129,7 @@ function updateCounts() {
       broken_counter += data["handles"].length;
       $("#broken").css("display", "block");
     }
+    if (unchecked_domains.length > 0) $("#retry").css("display", "inline");
   }
 
   $("#nr_working").text(counter);
