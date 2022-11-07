@@ -16,6 +16,7 @@ function removeDuplicates() {
       ];
     }
   }
+  accounts.sort((a, b) => a.price - b.price);
 }
 
 function addHandles(data) {
@@ -203,6 +204,7 @@ function displayAccounts() {
   );
   for (const [domain, data] of Object.entries(accounts)) {
     if ("status" in data && data["status"] != null) {
+      //remove domains with client error: && (/4../.test(data["status"]) == false)
       $domain = $(
         "<li id='" +
           domain +
