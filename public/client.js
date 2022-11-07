@@ -8,6 +8,7 @@ let user_lists = [];
 let unchecked_domains = [];
 let display_brokenList = "none";
 let displayBroken = "inline";
+let user_handles = [];
 
 $(function () {
   // run after everything is loaded
@@ -15,16 +16,28 @@ $(function () {
   "pinnedTweet" in profile
     ? (text += " " + tweet_to_text(profile.pinnedTweet))
     : "";
-  let handles = findHandles(text);
+  user_handles = findHandles(text);
 
-  if (handles.length > 0) {
+  if (user_handles.length > 0) {
     $("#userHandles").append(
       $("<p>").text(`These handles were found in your profile @${username}`)
     );
     $("#userHandles").append($("<ul>"));
 
-    [...new Set(handles)].forEach((handle) => {
-      $("#userHandles ul").append($("<li>").text(handle));
+    [...new Set(user_handles)].forEach((handle) => {
+      let import_url = handle.split("@")[2] + "/settings/import";
+      $("#userHandles ul").append(
+        $("<li>")
+          .text(handle)
+          .append("<br>(After exporting the CSV, import it at ")
+          .append(
+            $("<a>")
+              .attr("href", "https://" + import_url)
+              .attr("target", "_blank")
+              .text(import_url)
+          )
+          .append(")")
+      );
     });
   } else {
     $("#userHandles").text(
