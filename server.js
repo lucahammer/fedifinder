@@ -90,7 +90,13 @@ app.get("/logoff", function (req, res) {
   });
 });
 
-app.get("/auth/twitter", passport.authenticate("twitter"));
+app.get("/auth/twitter", (req, res) => {
+  "user" in req
+    ? res.redirect("/success")
+    : res.redirect("/actualAuth/twitter");
+});
+
+app.get("/actualAuth/twitter", passport.authenticate("twitter"));
 
 app.get(
   "/login/twitter/return",
@@ -272,13 +278,25 @@ sequelize
       part_of_fediverse: {
         type: Sequelize.BOOLEAN,
       },
-      software: {
+      software_name: {
         type: Sequelize.STRING,
       },
-      users: {
+      software_version: {
+        type: Sequelize.STRING,
+      },
+      users_total: {
         type: Sequelize.INTEGER,
       },
-      posts: {
+      users_activeMonth: {
+        type: Sequelize.INTEGER,
+      },
+      users_activeHalfyear: {
+        type: Sequelize.INTEGER,
+      },
+      localPosts: {
+        type: Sequelize.INTEGER,
+      },
+      localComments: {
         type: Sequelize.INTEGER,
       },
       openRegistrations: {
@@ -292,7 +310,8 @@ sequelize
       },
     });
 
-    if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
+    if (/dev|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
+    else populate_db("https://fedifinder.glitch.me/api/known_instances.json");
   })
   .catch(function (err) {
     console.log("Unable to connect to the database: ", err);
@@ -379,6 +398,36 @@ async function update_data(domain) {
   }
 }
 
+async function populate_db(seed_url) {
+  //https://fedifinder.glitch.me/api/known_instances.json
+
+  https
+    .get(seed_url, (res) => {
+      let body = "";
+      if (res.statusCode != 200) {
+        console.log(res);
+      }
+      res.on("data", (d) => {
+        body += d;
+      });
+      res.on("end", () => {
+        if (body.startsWith("<") === false) {
+          try {
+            let data = JSON.parse(body);
+            data.map(async (instance) => update_data(instance.domain));
+          } catch (err) {
+            console.log(err);
+          }
+        } else console.log(false);
+      });
+    })
+    .on("error", (err) => {
+      //console.log(err);
+      console.log(err);
+      //todo: resolve unknown status
+    });
+}
+
 async function check_instance(domain) {
   // retrieve info about a domain
   let data = await Instance.findOne({ where: { domain: domain } });
@@ -388,11 +437,6 @@ async function check_instance(domain) {
     let new_data = await update_data(domain);
     return new_data;
   } else {
-    if (data["status"] === "ETIMEDOUT" && data["retries"] <= 5) {
-      // if it timed out in the past, try again; but not too often
-      return await db_update(domain, { retries: data["retries"] + 1 });
-      //update_data(domain);
-    }
     return data;
   }
 }
@@ -455,15 +499,31 @@ function get_nodeinfo(nodeinfo_url) {
               let nodeinfo = JSON.parse(body);
               resolve({
                 part_of_fediverse: true,
-                software: `${nodeinfo["software"]["name"]} ${nodeinfo["software"]["version"]}`,
-                users:
-                  "users" in nodeinfo["usage"]
+                software_name: nodeinfo["software"]["name"],
+                software_version: nodeinfo["software"]["version"],
+                users_total:
+                  "users" in nodeinfo["usage"] &&
+                  "total" in nodeinfo["usage"]["users"]
                     ? nodeinfo["usage"]["users"]["total"]
-                    : 0, //todo handle unvailable counts
-                posts:
+                    : null, //todo handle unvailable counts
+                users_activeMonth:
+                  "users" in nodeinfo["usage"] &&
+                  "activeMonth" in nodeinfo["usage"]["users"]
+                    ? nodeinfo["usage"]["users"]["activeMonth"]
+                    : null, //todo handle unvailable counts
+                users_activeHalfyear:
+                  "users" in nodeinfo["usage"] &&
+                  "activeHalfyear" in nodeinfo["usage"]["users"]
+                    ? nodeinfo["usage"]["users"]["activeHalfyear"]
+                    : null, //todo handle unvailable counts
+                localPosts:
                   "localPosts" in nodeinfo["usage"]
                     ? nodeinfo["usage"]["localPosts"]
-                    : 0, //todo handle unavailable counts
+                    : null, //todo handle unavailable counts
+                localComments:
+                  "localComments" in nodeinfo["usage"]
+                    ? nodeinfo["usage"]["localComments"]
+                    : null, //todo handle unavailable counts
                 openRegistrations: nodeinfo["openRegistrations"],
               });
             } catch (err) {
@@ -736,8 +796,8 @@ http://det.social/@luca \
 
   it("should get new info about an instance and save to db", async () => {
     let info = await check_instance("lucahammer.com");
-    assert(info.users == 1);
+    assert(info.users_total == 1);
     info = await check_instance("lucahammer.com");
-    assert(info.users == 1);
+    assert(info.users_total == 1);
   });
 }
