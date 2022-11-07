@@ -500,7 +500,6 @@ function user_to_text(user) {
 function processAccounts(data) {
   // scan accounts for handles
   data.forEach((user) => {
-    console.log(user);
     let text = user_to_text(user);
     "pinnedTweet" in user
       ? (text += " " + tweet_to_text(user.pinnedTweet))
