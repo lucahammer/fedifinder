@@ -15,7 +15,7 @@ $(function () {
   "pinnedTweet" in profile
     ? (text += " " + tweet_to_text(profile.pinnedTweet))
     : "";
-  let handles = findHandles(text)
+  let handles = findHandles(text);
 
   if (handles.length > 0) {
     $("#userHandles").append(
@@ -507,6 +507,12 @@ function processAccounts(data) {
     let urls = [];
     "entities" in user && "url" in user.entities
       ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
+      : null;
+
+    "entities" in user &&
+    "description" in user.entities &&
+    "urls" in user.entities.description
+      ? user.entities.description.urls.map((url) => urls.push(url.expanded_url))
       : null;
 
     let handles = findHandles(text);
