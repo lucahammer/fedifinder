@@ -145,7 +145,7 @@ app.get(process.env.DB_CLEAR + "_pop", async (req, res) => {
   // visit this URL to remove timed out entries from the DB
   Instance.sync({ force: true });
   console.log("Populating the database with known domains");
-  populate_db("https://fedifinder-staging.glitch.me/api/known_instances.json");
+  populate_db("https://fedifinder.glitch.me/api/known_instances.json");
   res.redirect("/success");
 });
 
@@ -179,15 +179,18 @@ function handleFromUrl(urlstring) {
 function findHandles(text) {
   // split text into string and check them for handles
 
-  // different string sperators people use
-  text = text.replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n@\.]/gu, " ").toLowerCase();
-  let words = text.split(/,|\s|“|\(|\)|'|》|\n|\r|\t|・|\||…|▲|\.\s|\s$/);
+  // different separators people use
+  text = text
+    .replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n@\.]/gu, " ")
+    .toLowerCase()
+    .normalize("NFKD");
 
+  let words = text.split(/,| |\s|“|\(|\)|'|》|\n|\r|\t|・|\||…|▲|\.\s|\s$/);
   // remove common false positives
   let unwanted_domains =
     /gmail\.com|medium\.com|tiktok\.com|youtube\.com|pronouns\.page|mail@|observablehq|twitter\.com|contact@|kontakt@|protonmail|medium\.com|traewelling\.de|press@|support@|info@|pobox|hey\.com/;
   words = words.filter((word) => !unwanted_domains.test(word));
-
+  console.log(words);
   // @username@server.tld
   let handles = words.filter((word) =>
     /^@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word)
@@ -209,7 +212,7 @@ function findHandles(text) {
       )
       .map((url) => handleFromUrl(url))
   );
-
+  console.log(handles);
   return handles;
 }
 
