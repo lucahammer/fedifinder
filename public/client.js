@@ -323,11 +323,7 @@ socket.on("userLists", function (lists) {
 
 socket.on("newAccounts", function (data) {
   // receive new data from server
-
-  processAccounts(data.accounts);
-  addHandles(accounts);
-
-  removeDuplicates();
+  data.accounts.map((user) => processAccount(user));
   checkDomains();
   $("#infobox").css("visibility", "visible");
   $("#download").css("display", "block");
@@ -510,10 +506,8 @@ function user_to_text(user) {
   return text;
 }
 
-function processAccounts(data) {
-  // scan accounts for handles
-  data.forEach((user) => {
-    let text = user_to_text(user);
+async function processAccount(user) {
+  let text = user_to_text(user);
     "pinnedTweet" in user
       ? (text += " " + tweet_to_text(user.pinnedTweet))
       : "";
@@ -537,7 +531,8 @@ function processAccounts(data) {
       description: user.description,
       urls: urls,
     });
-  });
+    addHandles(accounts);
+    removeDuplicates();
 }
 
 if (/staging|localhost|127\.0\.0\.1/.test(location.hostname)) {
