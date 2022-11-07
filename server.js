@@ -14,6 +14,10 @@ const TwitterV2IncludesHelper =
 const Op = require("sequelize").Op;
 const SequelizeStore = require("connect-session-sequelize")(session.Store);
 
+hbs.registerHelper("json", function (context) {
+  return JSON.stringify(context);
+});
+
 const sessions_db = new Sequelize(
   "sessions",
   process.env.DB_USER,
@@ -118,7 +122,7 @@ app.get(
     );
     res.render("success.hbs", {
       username: req.user.username,
-      profile: findHandles(user_to_text(req.user._json)),
+      profile: req.user._json,
     });
   }
 );
@@ -158,119 +162,6 @@ const server = app.listen(process.env.PORT, function () {
   // listen for requests
   console.log("Your app is listening on port " + server.address().port);
 });
-
-function nameFromUrl(urlstring) {
-  // returns name
-  let name = "";
-  // https://host.tld/@name host.tld/web/@name/
-  // not a proper domain host.tld/@name
-  if (urlstring.includes("@"))
-    name = urlstring
-      .split(/\/|\?/)
-      .filter((urlparts) => urlparts.includes("@"))[0];
-  // friendica: sub.domain.tld/profile/name
-  else if (urlstring.includes("/profile/"))
-    name = urlstring.split("/profile/").slice(-1)[0].replace(/\/+$/, "");
-  // diaspora: domain.tld/u/name
-  else if (urlstring.includes("/u/"))
-    name = urlstring.split("/u/").slice(-1)[0].replace(/\/+$/, "");
-  // peertube: domain.tld/u/name
-  else if (/\/c\/|\/a\//.test(urlstring))
-    name = urlstring
-      .split(/\/c\/|\/a\//)
-      .slice(-1)[0]
-      .split("/")[0];
-  else {
-    console.log(`didn't find name in ${urlstring}`);
-  }
-  return name;
-}
-
-function handleFromUrl(urlstring) {
-  // transform an URL-like string into a fediverse handle: @name@server.tld
-  let name = nameFromUrl(urlstring);
-  if (urlstring.match(/^http/i)) {
-    // proper url
-    let handleUrl = url.parse(urlstring, true);
-    return `${name}@${handleUrl.host}`;
-  } else {
-    // not a proper URL
-    let domain = urlstring.split("/")[0];
-    return `@${name}@${domain}`;
-  }
-}
-
-function findHandles(text) {
-  // split text into string and check them for handles
-
-  // different separators people use
-  text = text
-    .replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n@\.]/gu, " ")
-    .toLowerCase()
-    .normalize("NFKD");
-
-  let words = text.split(/,| |\s|“|\(|\)|'|》|\n|\r|\t|・|\||…|▲|\.\s|\s$/);
-  // remove common false positives
-  let unwanted_domains =
-    /gmail\.com|mixcloud|linktr\.ee|researchgate|about|bit\.ly|imprint|impressum|patreon|donate|blog|facebook|news|github|instagram|t\.me|medium\.com|t\.co|tiktok\.com|youtube\.com|pronouns\.page|mail@|observablehq|twitter\.com|contact@|kontakt@|protonmail|medium\.com|traewelling\.de|press@|support@|info@|pobox|hey\.com/;
-  words = words.filter((word) => !unwanted_domains.test(word));
-  words = words.filter((w) => w);
-
-  let handles = [];
-
-  words.map((word) => {
-    // @username@server.tld
-    if (/^@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word)) handles.push(word);
-    // some people don't include the initial @
-    else if (/^[a-zA-Z0-9_]+@.+\.[a-zA-Z|]+$/.test(word))
-      handles.push(`@${word}`);
-    // server.tld/@username
-    // friendica: sub.domain.tld/profile/name
-    else if (
-      /^.+\.[a-zA-Z]+.*\/(@|profile\/|\/u\/|\/c\/)[a-zA-Z0-9_]+\/*$/.test(word)
-    )
-      handles.push(handleFromUrl(word));
-
-    // experimental. domain.tld/name
-    // pleroma, snusocial
-    //else if (/^.+\.[a-zA-Z]+\/[a-zA-Z_]+\/?$/.test(word)) console.log(word);
-  });
-
-  return handles;
-}
-
-function user_to_text(user) {
-  // where handles could be: name, description, location, entities url urls expanded_url, entities description urls expanded_url
-  let text = `${user["name"]} ${user["description"]} ${user["location"]}`;
-  if ("entities" in user) {
-    if ("url" in user["entities"] && "urls" in user["entities"]["url"]) {
-      user["entities"]["url"]["urls"].map(
-        (url) => (text += ` ${url["expanded_url"]} `)
-      );
-    }
-    if (
-      "description" in user["entities"] &&
-      "urls" in user["entities"]["description"]
-    ) {
-      user["entities"]["description"]["urls"].map(
-        (url) => (text += ` ${url["expanded_url"]} `)
-      );
-    }
-  }
-  return text;
-}
-
-function tweet_to_text(tweet) {
-  // combine tweet text and expanded_urls
-  let text = tweet["text"] + " ";
-
-  if ("entities" in tweet && "urls" in tweet["entities"]) {
-    tweet["entities"]["urls"].map(
-      (url) => (text += ` ${url["expanded_url"]} `)
-    );
-  }
-  return text;
-}
 
 // WARNING: THIS IS BAD. DON'T TURN OFF TLS
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
@@ -658,35 +549,6 @@ io.sockets.on("connection", function (socket) {
     }
   }
 
-  async function processAccounts(data) {
-    // scan accounts for handles
-    let accounts = [];
-    let batch_size = 500;
-
-    try {
-      for await (const user of data) {
-        const pinnedTweet = data.includes.pinnedTweet(user);
-        let text = user_to_text(user);
-        pinnedTweet ? (text += " " + tweet_to_text(pinnedTweet)) : "";
-        let handles = findHandles(text);
-        accounts.push({
-          username: user.username,
-          handles: handles,
-        });
-
-        if (accounts.length >= batch_size) {
-          // don't wait until all accounts are loaded
-          socket.emit("newHandles", accounts);
-          accounts = [];
-        }
-      }
-      accounts.length > 0 ? socket.emit("newHandles", accounts) : void 0;
-    } catch (err) {
-      socket.emit("Error", err);
-      accounts.length > 0 ? socket.emit("newHandles", accounts) : void 0;
-    }
-  }
-
   let client = create_twitter_client(socket.request.user);
 
   socket.on("loadLists", async (username) => {
@@ -786,33 +648,6 @@ async function tests() {
       console.error(error);
     }
   };
-
-  it("should return handle based on URL string", () => {
-    assert.strictEqual(
-      handleFromUrl("https://vis.social/@luca"),
-      "@luca@vis.social"
-    );
-    assert.strictEqual(handleFromUrl("vis.social/@luca"), "@luca@vis.social");
-    assert.strictEqual(
-      handleFromUrl("http://vis.social/@luca"),
-      "@luca@vis.social"
-    );
-  });
-
-  it("should return list of handles from a text string", () => {
-    let text =
-      "Twitter was my special interest. Scientific Programmer @sfb1472 fedi\
-@luca@lucahammer.com \
-http://vis.social/web/@Luca/ \
-http://det.social/@luca \
-@pv@botsin.space";
-    assert(findHandles(text), [
-      "@pv@botsin.space",
-      "@fedi@luca@lucahammer.com",
-      "@luca@vis.social",
-      "@luca@det.social",
-    ]);
-  });
 
   it("should get the nodeinfo URL", async () => {
     let data = await get_nodeinfo_url("lucahammer.com");

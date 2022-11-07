@@ -12,6 +12,7 @@
 
     <script>
       let username = "{{username}}";
+      let profile = {{{json profile}}}
     </script>
     <script src="/socket.io.min.js"></script>
     <script src="/tinytest.js"></script>
@@ -25,23 +26,8 @@
     <header>
       <h2>Your fediverse handles</h2>
 
-      {{#if profile.length}}
-        <p>
-          These handles were found in your profile @{{username}}:
-        </p>
-
-        <ol>
-          {{#each profile}}
-            <li>{{this}}</li>
-          {{/each}}
-        </ol>
-
-      {{else}}
-        <p>
-          No handles were found on your profile @{{username}}. Please use the
-          format @name@host.tld or https://host.tld/@name
-        </p>
-      {{/if}}
+      <p id="userHandles"> 
+      </p>
 
       <h2>Fediverse handles of your Twitter contacts</h2>
     </header>

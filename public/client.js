@@ -350,14 +350,173 @@ Please reload the page.\n\n" + data
   }
 }
 
-if (location.hostname.includes("staging")) {
-  console.log("Start Tests");
+function nameFromUrl(urlstring) {
+  // returns username without @
+  let name = "";
+  // https://host.tld/@name host.tld/web/@name/
+  // not a proper domain host.tld/@name
+  if (urlstring.includes("@"))
+    name = urlstring
+      .split(/\/|\?/)
+      .filter((urlparts) => urlparts.includes("@"))[0]
+      .replace("@", "");
+  // friendica: sub.domain.tld/profile/name
+  else if (urlstring.includes("/profile/"))
+    name = urlstring.split("/profile/").slice(-1)[0].replace(/\/+$/, "");
+  // diaspora: domain.tld/u/name
+  else if (urlstring.includes("/u/"))
+    name = urlstring.split("/u/").slice(-1)[0].replace(/\/+$/, "");
+  // peertube: domain.tld/u/name
+  else if (/\/c\/|\/a\//.test(urlstring))
+    name = urlstring
+      .split(/\/c\/|\/a\//)
+      .slice(-1)[0]
+      .split("/")[0];
+  else {
+    console.log(`didn't find name in ${urlstring}`);
+  }
+  return name;
+}
+
+function handleFromUrl(urlstring) {
+  // transform an URL-like string into a fediverse handle: @name@server.tld
+  let name = nameFromUrl(urlstring);
+  if (urlstring.match(/^http/i)) {
+    // proper url
+    let handleUrl = new URL(urlstring);
+    return `@${name}@${handleUrl.host}`;
+  } else {
+    // not a proper URL
+    let domain = urlstring.split("/")[0];
+    return `@${name}@${domain}`;
+  }
+}
+
+function findHandles(text) {
+  // split text into string and check them for handles
+
+  // different separators people use
+  text = text
+    .replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n@\.]/gu, " ")
+    .toLowerCase()
+    .normalize("NFKD");
+
+  let words = text.split(/,| |\s|“|\(|\)|'|》|\n|\r|\t|・|\||…|▲|\.\s|\s$/);
+  // remove common false positives
+  let unwanted_domains =
+    /gmail\.com|mixcloud|linktr\.ee|researchgate|about|bit\.ly|imprint|impressum|patreon|donate|blog|facebook|news|github|instagram|t\.me|medium\.com|t\.co|tiktok\.com|youtube\.com|pronouns\.page|mail@|observablehq|twitter\.com|contact@|kontakt@|protonmail|medium\.com|traewelling\.de|press@|support@|info@|pobox|hey\.com/;
+  words = words.filter((word) => !unwanted_domains.test(word));
+  words = words.filter((w) => w);
+
+  let handles = [];
+
+  words.map((word) => {
+    // @username@server.tld
+    if (/^@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word)) handles.push(word);
+    // some people don't include the initial @
+    else if (/^[a-zA-Z0-9_]+@.+\.[a-zA-Z|]+$/.test(word))
+      handles.push(`@${word}`);
+    // server.tld/@username
+    // friendica: sub.domain.tld/profile/name
+    else if (
+      /^.+\.[a-zA-Z]+.*\/(@|profile\/|\/u\/|\/c\/)[a-zA-Z0-9_]+\/*$/.test(word)
+    )
+      handles.push(handleFromUrl(word));
+
+    // experimental. domain.tld/name. too many false positives
+    // pleroma, snusocial
+    //else if (/^.+\.[a-zA-Z]+\/[a-zA-Z_]+\/?$/.test(word)) console.log(word);
+  });
+
+  return handles;
+}
+
+function tweet_to_text(tweet) {
+  // combine tweet text and expanded_urls
+  let text = tweet["text"] + " ";
+
+  if ("entities" in tweet && "urls" in tweet["entities"]) {
+    tweet["entities"]["urls"].map(
+      (url) => (text += ` ${url["expanded_url"]} `)
+    );
+  }
+  return text;
+}
+
+function user_to_text(user) {
+  // where handles could be: name, description, location, entities url urls expanded_url, entities description urls expanded_url
+  let text = `${user["name"]} ${user["description"]} ${user["location"]}`;
+  if ("entities" in user) {
+    if ("url" in user["entities"] && "urls" in user["entities"]["url"]) {
+      user["entities"]["url"]["urls"].map(
+        (url) => (text += ` ${url["expanded_url"]} `)
+      );
+    }
+    if (
+      "description" in user["entities"] &&
+      "urls" in user["entities"]["description"]
+    ) {
+      user["entities"]["description"]["urls"].map(
+        (url) => (text += ` ${url["expanded_url"]} `)
+      );
+    }
+  }
+  return text;
+}
+
+async function processAccounts(data) {
+  // scan accounts for handles
+  let accounts = [];
+  let batch_size = 500;
+
+  try {
+    for await (const user of data) {
+      const pinnedTweet = data.includes.pinnedTweet(user);
+      let text = user_to_text(user);
+      pinnedTweet ? (text += " " + tweet_to_text(pinnedTweet)) : "";
+      let handles = findHandles(text);
+      accounts.push({
+        username: user.username,
+        handles: handles,
+      });
+
+      if (accounts.length >= batch_size) {
+        // don't wait until all accounts are loaded
+        socket.emit("newHandles", accounts);
+        accounts = [];
+      }
+    }
+    accounts.length > 0 ? socket.emit("newHandles", accounts) : void 0;
+  } catch (err) {
+    socket.emit("Error", err);
+    accounts.length > 0 ? socket.emit("newHandles", accounts) : void 0;
+  }
+}
+
+if (/staging|localhost|127\.0\.0\.1/.test(location.hostname)) {
+  // Happy testing
 
   tests({
-    "test tinytest": function () {
-      eq(6, 2+4);
+    tinytest: () => {
+      eq(2, 1 + 1);
     },
-    
-  
+    "return handle based on URL string": () => {
+      eq("@luca@vis.social", handleFromUrl("https://vis.social/@luca"));
+      eq("@luca@vis.social", handleFromUrl("vis.social/@luca"));
+      eq("@luca@vis.social", handleFromUrl("http://vis.social/@luca"));
+    },
+    "list of handles from a text stringt": () => {
+      let text =
+        "Twitter was my special interest. Scientific Programmer @sfb1472 fedi \
+@luca@lucahammer.com \
+http://vis.social/web/@Luca/ \
+http://det.social/@luca \
+@pv@botsin.space";
+      let handles = findHandles(text);
+      eq(true, handles.includes("@luca@lucahammer.com"));
+      eq(true, handles.includes("@luca@vis.social"));
+      eq(true, handles.includes("@luca@det.social"));
+      eq(true, handles.includes("@pv@botsin.space"));
+    },
   });
 }
