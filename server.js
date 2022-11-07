@@ -134,11 +134,19 @@ app.get("/api/known_instances.json", async (req, res) => {
   res.json(data);
 });
 
-app.get(process.env.DB_CLEAR + "2", async (req, res) => {
+app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
   // visit this URL to remove timed out entries from the DB
   let removed = await remove_domains_by_status("ETIMEDOUT");
   res.send(`Removed ETIMEDOUT ${removed}`);
-  db_to_log()
+  db_to_log();
+});
+
+app.get(process.env.DB_CLEAR + "_pop", async (req, res) => {
+  // visit this URL to remove timed out entries from the DB
+  Instance.sync({ force: true });
+  console.log("Populating the database with known domains");
+  populate_db("https://fedifinder-staging.glitch.me/api/known_instances.json");
+  res.redirect("/success");
 });
 
 const server = app.listen(process.env.PORT, function () {
@@ -312,9 +320,6 @@ sequelize
     });
 
     if (/dev|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
-    else {
-      console.log("Populating the database with known domains")
-      populate_db("https://fedifinder.glitch.me/api/known_instances.json");}
   })
   .catch(function (err) {
     console.log("Unable to connect to the database: ", err);
@@ -330,7 +335,9 @@ async function db_to_log() {
   // for debugging
   await Instance.findAll().then(function (instances) {
     instances.map((instance) => {
-      instance.status ? console.log(instance.domain + ' ' + instance.status) : null
+      instance.status
+        ? console.log(instance.domain + " " + instance.status)
+        : null;
     });
   });
 }
@@ -417,7 +424,14 @@ async function populate_db(seed_url) {
           try {
             let data = JSON.parse(body);
             data.map((instance) => {
-              check_instance(instance.domain)});
+              if ("users_total" in instance) {
+                //todo check times before adding
+                delete instance.createdAt;
+                delete instance.updatedAt;
+                console.log(instance)
+                db_add(instance);
+              } else check_instance(instance.domain);
+            });
           } catch (err) {
             console.log(err);
           }
