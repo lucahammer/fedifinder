@@ -424,6 +424,7 @@ async function populate_db(seed_url) {
           try {
             let data = JSON.parse(body);
             data.map((instance) => {
+              //todo check if data is current or something
               delete instance.createdAt;
               delete instance.updatedAt;
               return instance;
