@@ -1,4 +1,4 @@
-/* globals io, username, tests, eq */
+/* globals io, username, tests, eq profile*/
 
 const socket = io();
 let accounts = [];
@@ -8,6 +8,30 @@ let user_lists = [];
 let unchecked_domains = [];
 let display_brokenList = "none";
 let displayBroken = "inline";
+
+$(function () {
+  // run after everything is loaded
+  let text = user_to_text(profile);
+  "pinnedTweet" in profile
+    ? (text += " " + tweet_to_text(profile.pinnedTweet))
+    : "";
+  let handles = findHandles(text)
+
+  if (handles.length > 0) {
+    $("#userHandles").append(
+      $("<p>").text(`These handles were found in your profile @${username}`)
+    );
+    $("#userHandles").append($("<ul>"));
+
+    [...new Set(handles)].forEach((handle) => {
+      $("#userHandles ul").append($("<li>").text(handle));
+    });
+  } else {
+    $("#userHandles").text(
+      `No handles were found on your profile @${username}. Please use the format @name@host.tld or https://host.tld/@name`
+    );
+  }
+});
 
 function removeDuplicates() {
   for (const [domain, data] of Object.entries(domains)) {
@@ -480,7 +504,6 @@ function processAccounts(data) {
     "pinnedTweet" in user
       ? (text += " " + tweet_to_text(user.pinnedTweet))
       : "";
-    console.log(user);
     let urls = [];
     "entities" in user && "url" in user.entities
       ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
