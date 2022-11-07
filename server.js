@@ -424,14 +424,17 @@ async function populate_db(seed_url) {
           try {
             let data = JSON.parse(body);
             data.map((instance) => {
-              if ("users_total" in instance) {
-                //todo check times before adding
-                delete instance.createdAt;
-                delete instance.updatedAt;
-                console.log(instance)
-                db_add(instance);
-              } else check_instance(instance.domain);
+              delete instance.createdAt;
+              delete instance.updatedAt;
+              return instance;
             });
+            Instance.bulkCreate(data, {
+              ignoreDuplicates: true,
+            }).then(
+              data.map((instance) => {
+                check_instance(instance.domain);
+              })
+            );
           } catch (err) {
             console.log(err);
           }
