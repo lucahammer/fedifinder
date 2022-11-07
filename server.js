@@ -136,9 +136,14 @@ app.get("/api/known_instances.json", async (req, res) => {
 
 app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
   // visit this URL to remove timed out entries from the DB
-  let removed = await remove_domains_by_status("ETIMEDOUT");
-  res.send(`Removed ETIMEDOUT ${removed}`);
-  db_to_log();
+  let not_fedi = await remove_domains_by_part_of_fediverse(false);
+
+  let timeouted = await remove_domains_by_status("ETIMEDOUT");
+  res.send(
+    `Removed ${timeouted} ETIMEDOUT and ${not_fedi} not part of fediverse`
+  );
+
+  await db_to_log();
 });
 
 app.get(process.env.DB_CLEAR + "_pop", async (req, res) => {
@@ -154,24 +159,43 @@ const server = app.listen(process.env.PORT, function () {
   console.log("Your app is listening on port " + server.address().port);
 });
 
+function nameFromUrl(urlstring) {
+  // returns name
+  let name = "";
+  // https://host.tld/@name host.tld/web/@name/
+  // not a proper domain host.tld/@name
+  if (urlstring.includes("@"))
+    name = urlstring
+      .split(/\/|\?/)
+      .filter((urlparts) => urlparts.includes("@"))[0];
+  // friendica: sub.domain.tld/profile/name
+  else if (urlstring.includes("/profile/"))
+    name = urlstring.split("/profile/").slice(-1)[0].replace(/\/+$/, "");
+  // diaspora: domain.tld/u/name
+  else if (urlstring.includes("/u/"))
+    name = urlstring.split("/u/").slice(-1)[0].replace(/\/+$/, "");
+  // peertube: domain.tld/u/name
+  else if (/\/c\/|\/a\//.test(urlstring))
+    name = urlstring
+      .split(/\/c\/|\/a\//)
+      .slice(-1)[0]
+      .split("/")[0];
+  else {
+    console.log(`didn't find name in ${urlstring}`);
+  }
+  return name;
+}
+
 function handleFromUrl(urlstring) {
   // transform an URL-like string into a fediverse handle: @name@server.tld
+  let name = nameFromUrl(urlstring);
   if (urlstring.match(/^http/i)) {
+    // proper url
     let handleUrl = url.parse(urlstring, true);
-    let name = urlstring.replace(/\/+$/, "").split("/").slice(-1);
     return `${name}@${handleUrl.host}`;
   } else {
     // not a proper URL
-    // host.tld/@name host.tld/web/@name
-    let name = "";
-    let domain = "";
-    if (urlstring.includes("@")) {
-      name = urlstring.split("@").slice(-1)[0].replace(/\/+$/, "");
-    } else if (urlstring.includes("/profile/")) {
-      // friendica: sub.domain.tld/profile/name
-      name = urlstring.split("/profile/").slice(-1)[0].replace(/\/+$/, "");
-    }
-    domain = urlstring.split("/")[0];
+    let domain = urlstring.split("/")[0];
     return `@${name}@${domain}`;
   }
 }
@@ -188,31 +212,30 @@ function findHandles(text) {
   let words = text.split(/,| |\s|“|\(|\)|'|》|\n|\r|\t|・|\||…|▲|\.\s|\s$/);
   // remove common false positives
   let unwanted_domains =
-    /gmail\.com|medium\.com|tiktok\.com|youtube\.com|pronouns\.page|mail@|observablehq|twitter\.com|contact@|kontakt@|protonmail|medium\.com|traewelling\.de|press@|support@|info@|pobox|hey\.com/;
+    /gmail\.com|mixcloud|linktr\.ee|researchgate|about|bit\.ly|imprint|impressum|patreon|donate|blog|facebook|news|github|instagram|t\.me|medium\.com|t\.co|tiktok\.com|youtube\.com|pronouns\.page|mail@|observablehq|twitter\.com|contact@|kontakt@|protonmail|medium\.com|traewelling\.de|press@|support@|info@|pobox|hey\.com/;
   words = words.filter((word) => !unwanted_domains.test(word));
-  console.log(words);
-  // @username@server.tld
-  let handles = words.filter((word) =>
-    /^@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word)
-  );
+  words = words.filter((w) => w);
 
-  // some people don't include the initial @
-  handles = handles.concat(
-    words
-      .filter((word) => /^[a-zA-Z0-9_]+@.+\.[a-zA-Z|]+$/.test(word))
-      .map((maillike) => `@${maillike}`)
-  );
+  let handles = [];
 
-  // server.tld/@username
-  // friendica: sub.domain.tld/profile/name
-  handles = handles.concat(
-    words
-      .filter((word) =>
-        /^.+\.[a-zA-Z]+.*\/(@|profile\/)[a-zA-Z0-9_]+\/*$/.test(word)
-      )
-      .map((url) => handleFromUrl(url))
-  );
-  console.log(handles);
+  words.map((word) => {
+    // @username@server.tld
+    if (/^@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word)) handles.push(word);
+    // some people don't include the initial @
+    else if (/^[a-zA-Z0-9_]+@.+\.[a-zA-Z|]+$/.test(word))
+      handles.push(`@${word}`);
+    // server.tld/@username
+    // friendica: sub.domain.tld/profile/name
+    else if (
+      /^.+\.[a-zA-Z]+.*\/(@|profile\/|\/u\/|\/c\/)[a-zA-Z0-9_]+\/*$/.test(word)
+    )
+      handles.push(handleFromUrl(word));
+
+    // experimental. domain.tld/name
+    // pleroma, snusocial
+    //else if (/^.+\.[a-zA-Z]+\/[a-zA-Z_]+\/?$/.test(word)) console.log(word);
+  });
+
   return handles;
 }
 
@@ -338,9 +361,7 @@ async function db_to_log() {
   // for debugging
   await Instance.findAll().then(function (instances) {
     instances.map((instance) => {
-      instance.status
-        ? console.log(instance.domain + " " + instance.status)
-        : null;
+      console.log(instance.domain + " " + instance.status);
     });
   });
 }
@@ -374,6 +395,14 @@ async function db_update(domain, data) {
 async function remove_domains_by_retries(retries) {
   try {
     return await Instance.destroy({ where: { retries: { [Op.gt]: retries } } });
+  } catch (err) {
+    console.log(err);
+  }
+}
+
+async function remove_domains_by_part_of_fediverse(fediversy) {
+  try {
+    return await Instance.destroy({ where: { part_of_fediverse: fediversy } });
   } catch (err) {
     console.log(err);
   }
@@ -480,7 +509,7 @@ async function get_nodeinfo_url(host_domain) {
       .get(options, (res) => {
         let body = "";
         if (res.statusCode != 200) {
-          resolve(false);
+          resolve({ status: res.statusCode });
         }
         res.on("data", (d) => {
           body += d;
