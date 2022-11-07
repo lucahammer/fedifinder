@@ -500,6 +500,7 @@ function user_to_text(user) {
 function processAccounts(data) {
   // scan accounts for handles
   data.forEach((user) => {
+    console.log(user)
     let text = user_to_text(user);
     "pinnedTweet" in user
       ? (text += " " + tweet_to_text(user.pinnedTweet))
@@ -507,6 +508,10 @@ function processAccounts(data) {
     let urls = [];
     "entities" in user && "url" in user.entities
       ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
+      : null;
+    
+    "entities" in user && "description" in user.entities && "urls" in user.entities.description
+      ? user.entities.description.urls.map((url) => urls.push(url.expanded_url))
       : null;
 
     let handles = findHandles(text);
