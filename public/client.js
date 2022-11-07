@@ -147,6 +147,16 @@ function displayAccounts() {
         ? "<b>registration open</b>"
         : "registration closed";
 
+      let domain_info =
+        data.software_name +
+        " " +
+        data.software_version +
+        ", " +
+        (data.users_total
+          ? data.users_total.toLocaleString() + " users, "
+          : "") +
+        (data.localPosts ? data.localPosts.toLocaleString() + " posts, " : "") +
+        openStatus;
       $domain = $(
         "<li id='" +
           domain +
@@ -155,13 +165,7 @@ function displayAccounts() {
           "'>" +
           domain +
           "</a><br><span>" +
-          data.software +
-          ", " +
-          data.users.toLocaleString() +
-          " users, " +
-          data.posts.toLocaleString() +
-          " posts, " +
-          openStatus +
+          domain_info +
           "</span></li>"
       );
       $ol = $("<ol></ol>");
