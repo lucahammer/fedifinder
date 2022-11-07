@@ -14,6 +14,10 @@ const TwitterV2IncludesHelper =
 const Op = require("sequelize").Op;
 const SequelizeStore = require("connect-session-sequelize")(session.Store);
 
+hbs.registerHelper("json", function (context) {
+  return JSON.stringify(context);
+});
+
 const sessions_db = new Sequelize(
   "sessions",
   process.env.DB_USER,
@@ -118,7 +122,7 @@ app.get(
     );
     res.render("success.hbs", {
       username: req.user.username,
-      profile: findHandles(user_to_text(req.user._json)),
+      profile: req.user._json,
     });
   }
 );
@@ -136,16 +140,21 @@ app.get("/api/known_instances.json", async (req, res) => {
 
 app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
   // visit this URL to remove timed out entries from the DB
-  let removed = await remove_domains_by_status("ETIMEDOUT");
-  res.send(`Removed ETIMEDOUT ${removed}`);
-  db_to_log();
+  let not_fedi = await remove_domains_by_part_of_fediverse(false);
+
+  let timeouted = await remove_domains_by_status("ETIMEDOUT");
+  res.send(
+    `Removed ${timeouted} ETIMEDOUT and ${not_fedi} not part of fediverse`
+  );
+
+  await db_to_log();
 });
 
 app.get(process.env.DB_CLEAR + "_pop", async (req, res) => {
   // visit this URL to remove timed out entries from the DB
   Instance.sync({ force: true });
   console.log("Populating the database with known domains");
-  populate_db("https://fedifinder-staging.glitch.me/api/known_instances.json");
+  populate_db("https://fedifinder.glitch.me/api/known_instances.json");
   res.redirect("/success");
 });
 
@@ -153,98 +162,6 @@ const server = app.listen(process.env.PORT, function () {
   // listen for requests
   console.log("Your app is listening on port " + server.address().port);
 });
-
-function handleFromUrl(urlstring) {
-  // transform an URL-like string into a fediverse handle: @name@server.tld
-  if (urlstring.match(/^http/i)) {
-    let handleUrl = url.parse(urlstring, true);
-    let name = urlstring.replace(/\/+$/, "").split("/").slice(-1);
-    return `${name}@${handleUrl.host}`;
-  } else {
-    // not a proper URL
-    // host.tld/@name host.tld/web/@name
-    let name = "";
-    let domain = "";
-    if (urlstring.includes("@")) {
-      name = urlstring.split("@").slice(-1)[0].replace(/\/+$/, "");
-    } else if (urlstring.includes("/profile/")) {
-      // friendica: sub.domain.tld/profile/name
-      name = urlstring.split("/profile/").slice(-1)[0].replace(/\/+$/, "");
-    }
-    domain = urlstring.split("/")[0];
-    return `@${name}@${domain}`;
-  }
-}
-
-function findHandles(text) {
-  // split text into string and check them for handles
-
-  // different string sperators people use
-  text = text.replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n@\.]/gu, " ").toLowerCase();
-  let words = text.split(/,|\s|“|\(|\)|'|》|\n|\r|\t|・|\||…|▲|\.\s|\s$/);
-
-  // remove common false positives
-  let unwanted_domains =
-    /gmail\.com|medium\.com|tiktok\.com|youtube\.com|pronouns\.page|mail@|observablehq|twitter\.com|contact@|kontakt@|protonmail|medium\.com|traewelling\.de|press@|support@|info@|pobox|hey\.com/;
-  words = words.filter((word) => !unwanted_domains.test(word));
-
-  // @username@server.tld
-  let handles = words.filter((word) =>
-    /^@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word)
-  );
-
-  // some people don't include the initial @
-  handles = handles.concat(
-    words
-      .filter((word) => /^[a-zA-Z0-9_]+@.+\.[a-zA-Z|]+$/.test(word))
-      .map((maillike) => `@${maillike}`)
-  );
-
-  // server.tld/@username
-  // friendica: sub.domain.tld/profile/name
-  handles = handles.concat(
-    words
-      .filter((word) =>
-        /^.+\.[a-zA-Z]+.*\/(@|profile\/)[a-zA-Z0-9_]+\/*$/.test(word)
-      )
-      .map((url) => handleFromUrl(url))
-  );
-
-  return handles;
-}
-
-function user_to_text(user) {
-  // where handles could be: name, description, location, entities url urls expanded_url, entities description urls expanded_url
-  let text = `${user["name"]} ${user["description"]} ${user["location"]}`;
-  if ("entities" in user) {
-    if ("url" in user["entities"] && "urls" in user["entities"]["url"]) {
-      user["entities"]["url"]["urls"].map(
-        (url) => (text += ` ${url["expanded_url"]} `)
-      );
-    }
-    if (
-      "description" in user["entities"] &&
-      "urls" in user["entities"]["description"]
-    ) {
-      user["entities"]["description"]["urls"].map(
-        (url) => (text += ` ${url["expanded_url"]} `)
-      );
-    }
-  }
-  return text;
-}
-
-function tweet_to_text(tweet) {
-  // combine tweet text and expanded_urls
-  let text = tweet["text"] + " ";
-
-  if ("entities" in tweet && "urls" in tweet["entities"]) {
-    tweet["entities"]["urls"].map(
-      (url) => (text += ` ${url["expanded_url"]} `)
-    );
-  }
-  return text;
-}
 
 // WARNING: THIS IS BAD. DON'T TURN OFF TLS
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
@@ -335,9 +252,7 @@ async function db_to_log() {
   // for debugging
   await Instance.findAll().then(function (instances) {
     instances.map((instance) => {
-      instance.status
-        ? console.log(instance.domain + " " + instance.status)
-        : null;
+      console.log(instance.domain + " " + instance.status);
     });
   });
 }
@@ -371,6 +286,14 @@ async function db_update(domain, data) {
 async function remove_domains_by_retries(retries) {
   try {
     return await Instance.destroy({ where: { retries: { [Op.gt]: retries } } });
+  } catch (err) {
+    console.log(err);
+  }
+}
+
+async function remove_domains_by_part_of_fediverse(fediversy) {
+  try {
+    return await Instance.destroy({ where: { part_of_fediverse: fediversy } });
   } catch (err) {
     console.log(err);
   }
@@ -477,7 +400,7 @@ async function get_nodeinfo_url(host_domain) {
       .get(options, (res) => {
         let body = "";
         if (res.statusCode != 200) {
-          resolve(false);
+          resolve({ status: res.statusCode });
         }
         res.on("data", (d) => {
           body += d;
@@ -626,32 +549,33 @@ io.sockets.on("connection", function (socket) {
     }
   }
 
-  async function processAccounts(data) {
-    // scan accounts for handles
+  async function processRequests(type, data) {
+    // get accounts from Twitter and sent to frontend
     let accounts = [];
-    let batch_size = 500;
+    let batch_size = 1000;
 
     try {
       for await (const user of data) {
         const pinnedTweet = data.includes.pinnedTweet(user);
-        let text = user_to_text(user);
-        pinnedTweet ? (text += " " + tweet_to_text(pinnedTweet)) : "";
-        let handles = findHandles(text);
-        accounts.push({
-          username: user.username,
-          handles: handles,
-        });
+        pinnedTweet ? (user["pinnedTweet"] = pinnedTweet) : null;
+        accounts.push(user);
 
         if (accounts.length >= batch_size) {
           // don't wait until all accounts are loaded
-          socket.emit("newHandles", accounts);
+          accounts.length > 0
+            ? socket.emit("newAccounts", { type: type, accounts: accounts })
+            : null;
           accounts = [];
         }
       }
-      accounts.length > 0 ? socket.emit("newHandles", accounts) : void 0;
+      accounts.length > 0
+        ? socket.emit("newAccounts", { type: type, accounts: accounts })
+        : null;
     } catch (err) {
       socket.emit("Error", err);
-      accounts.length > 0 ? socket.emit("newHandles", accounts) : void 0;
+      accounts.length > 0
+        ? socket.emit("newAccounts", { type: type, accounts: accounts })
+        : null;
     }
   }
 
@@ -693,7 +617,7 @@ io.sockets.on("connection", function (socket) {
     }
   });
 
-  socket.on("scanList", async (list_id) => {
+  socket.on("getList", async (list_id) => {
     // get list members from Twitter
     try {
       const data = await client.v2.listMembers(list_id, {
@@ -701,13 +625,13 @@ io.sockets.on("connection", function (socket) {
         expansions: ["pinned_tweet_id"],
         "tweet.fields": ["text", "entities"],
       });
-      processAccounts(data);
+      processRequests("list", data);
     } catch (err) {
       socket.emit("Error", err);
     }
   });
 
-  socket.on("scanFollowings", async () => {
+  socket.on("getFollowings", async () => {
     // get followings from Twitter
     try {
       const data = await client.v2.following(socket.request.user.id, {
@@ -717,13 +641,13 @@ io.sockets.on("connection", function (socket) {
         expansions: ["pinned_tweet_id"],
         "tweet.fields": ["text", "entities"],
       });
-      processAccounts(data);
+      processRequests("followings", data);
     } catch (err) {
       socket.emit("Error", err);
     }
   });
 
-  socket.on("scanFollowers", async () => {
+  socket.on("getFollowers", async () => {
     // get followings from Twitter
     try {
       const data = await client.v2.followers(socket.request.user.id, {
@@ -733,7 +657,7 @@ io.sockets.on("connection", function (socket) {
         expansions: ["pinned_tweet_id"],
         "tweet.fields": ["text", "entities"],
       });
-      processAccounts(data);
+      processRequests("followers", data);
     } catch (err) {
       socket.emit("Error", err);
     }
@@ -754,33 +678,6 @@ async function tests() {
       console.error(error);
     }
   };
-
-  it("should return handle based on URL string", () => {
-    assert.strictEqual(
-      handleFromUrl("https://vis.social/@luca"),
-      "@luca@vis.social"
-    );
-    assert.strictEqual(handleFromUrl("vis.social/@luca"), "@luca@vis.social");
-    assert.strictEqual(
-      handleFromUrl("http://vis.social/@luca"),
-      "@luca@vis.social"
-    );
-  });
-
-  it("should return list of handles from a text string", () => {
-    let text =
-      "Twitter was my special interest. Scientific Programmer @sfb1472 fedi\
-@luca@lucahammer.com \
-http://vis.social/web/@Luca/ \
-http://det.social/@luca \
-@pv@botsin.space";
-    assert(findHandles(text), [
-      "@pv@botsin.space",
-      "@fedi@luca@lucahammer.com",
-      "@luca@vis.social",
-      "@luca@det.social",
-    ]);
-  });
 
   it("should get the nodeinfo URL", async () => {
     let data = await get_nodeinfo_url("lucahammer.com");
