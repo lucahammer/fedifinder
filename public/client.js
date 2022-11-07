@@ -68,7 +68,9 @@ function generateCSV() {
 
   for (const [domain, data] of Object.entries(domains)) {
     if ("part_of_fediverse" in data && data["part_of_fediverse"]) {
-      data["handles"].forEach((handle) => (csv += handle.handle + ",true\n"));
+      data["handles"].forEach(
+        (handle) => (csv += handle.handle.replace("@", "") + ",true\n")
+      );
     }
   }
 
@@ -78,20 +80,12 @@ function generateCSV() {
   link.download = "fedifinder_accounts.csv";
 }
 
-function generateAccountsCSV() {
-  let csv = "";
-  csv = "Account address,Show boosts\n";
-
-  for (const [domain, data] of Object.entries(domains)) {
-    if ("part_of_fediverse" in data && data["part_of_fediverse"]) {
-      data["handles"].forEach((handle) => (csv += handle.handle + ",true\n"));
-    }
-  }
-
-  let download = new Blob([csv], { type: "text/plain" });
-  let link = document.getElementById("downloadlink");
+function generateJSON() {
+  let json_string = JSON.stringify(accounts, null, 2);
+  let download = new Blob([json_string], { type: "application/json" });
+  let link = document.getElementById("jsonDownload");
   link.href = window.URL.createObjectURL(download);
-  link.download = "fedifinder_accounts.csv";
+  link.download = "fedifinder_accounts.json";
 }
 
 function checkListsLeft() {
@@ -408,13 +402,15 @@ function handleFromUrl(urlstring) {
 function findHandles(text) {
   // split text into string and check them for handles
 
-  // different separators people use
+  // remove weird characters and unicode font stuff
   text = text
-    .replace(/[^\p{L}\p{N}\p{P}\p{Z}^$\n@\.]/gu, " ")
+    .replace(/[^\p{L}\p{N}\p{P}\p{Z}\n@\.^$]/gu, " ")
     .toLowerCase()
     .normalize("NFKD");
 
-  let words = text.split(/,| |\s|“|\(|\)|'|》|\n|\r|\t|・|\||…|▲|\.\s|\s$/);
+  // different separators people use
+  let words = text.split(/,|\s|“|\(|\)|'|》|\n|\r|\t|・|\||…|\.\s|\s$/);
+
   // remove common false positives
   let unwanted_domains =
     /gmail\.com|mixcloud|linktr\.ee|pinboardxing\com|researchgate|about|bit\.ly|imprint|impressum|patreon|donate|blog|facebook|news|github|instagram|t\.me|medium\.com|t\.co|tiktok\.com|youtube\.com|pronouns\.page|mail@|observablehq|twitter\.com|contact@|kontakt@|protonmail|medium\.com|traewelling\.de|press@|support@|info@|pobox|hey\.com/;
@@ -484,10 +480,20 @@ function processAccounts(data) {
     "pinnedTweet" in user
       ? (text += " " + tweet_to_text(user.pinnedTweet))
       : "";
+    console.log(user);
+    let urls = [];
+    "entities" in user && "url" in user.entities
+      ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
+      : null;
+
     let handles = findHandles(text);
     accounts.push({
+      name: user.name,
       username: user.username,
       handles: handles,
+      location: user.location,
+      description: user.description,
+      urls: urls,
     });
   });
 }
