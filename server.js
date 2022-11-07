@@ -74,6 +74,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(passport.session(sessionOptions));
+app.set("json spaces", 20);
 sessions_db.sync(); //{ force: true } for reset
 
 // Define routes.
@@ -120,6 +121,11 @@ app.get(process.env.DB_CLEAR, function (req, res) {
   // visit this URL to reset the DB
   setup();
   res.redirect("/");
+});
+
+app.get("/api/known_instances.json", async (req, res) => {
+  let data = await Instance.findAll({ where: { part_of_fediverse: true } });
+  res.json(data);
 });
 
 app.get(process.env.DB_CLEAR + "2", async (req, res) => {
