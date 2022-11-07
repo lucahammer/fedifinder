@@ -138,6 +138,7 @@ app.get(process.env.DB_CLEAR + "2", async (req, res) => {
   // visit this URL to remove timed out entries from the DB
   let removed = await remove_domains_by_status("ETIMEDOUT");
   res.send(`Removed ETIMEDOUT ${removed}`);
+  db_to_log()
 });
 
 const server = app.listen(process.env.PORT, function () {
@@ -311,7 +312,9 @@ sequelize
     });
 
     if (/dev|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
-    else populate_db("https://fedifinder.glitch.me/api/known_instances.json");
+    else {
+      console.log("Populating the database with known domains")
+      populate_db("https://fedifinder.glitch.me/api/known_instances.json");}
   })
   .catch(function (err) {
     console.log("Unable to connect to the database: ", err);
@@ -326,8 +329,8 @@ async function setup() {
 async function db_to_log() {
   // for debugging
   await Instance.findAll().then(function (instances) {
-    instances.forEach(function (instance) {
-      console.log(instance);
+    instances.map((instance) => {
+      instance.status ? console.log(instance.domain + ' ' + instance.status) : null
     });
   });
 }
@@ -400,7 +403,6 @@ async function update_data(domain) {
 
 async function populate_db(seed_url) {
   //https://fedifinder.glitch.me/api/known_instances.json
-
   https
     .get(seed_url, (res) => {
       let body = "";
@@ -414,7 +416,8 @@ async function populate_db(seed_url) {
         if (body.startsWith("<") === false) {
           try {
             let data = JSON.parse(body);
-            data.map(async (instance) => update_data(instance.domain));
+            data.map((instance) => {
+              check_instance(instance.domain)});
           } catch (err) {
             console.log(err);
           }
