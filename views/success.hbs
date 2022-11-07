@@ -50,13 +50,13 @@
         <input
           id="followingsLoader"
           type="button"
-          onclick="scanFollowings();"
+          onclick="getFollowings();"
           value="Scan followings"
         />
         <input
           id="followersLoader"
           type="button"
-          onclick="scanFollowers();"
+          onclick="getFollowers();"
           value="Scan followers"
         />
         <h3>Add handles from list members</h3>
@@ -96,7 +96,7 @@
                  padding: 10px;
                  margin:10px 0;
                  font-weight: bold;"
-          download="following_accounts.csv"
+          download="fedifinder_accounts.csv"
           id="downloadlink"
           onclick="generateCSV()"
         ><svg
@@ -112,7 +112,7 @@
       c-2.787,0-5.385-2.358-5.773-5.243L8.395,62.63c-0.387-2.885,1.578-5.243,4.365-5.243h64.48
       C80.029,57.387,81.992,59.745,81.605,62.63z"
             ></path></svg>
-          Export fedifinder_following_accounts.csv</a>
+          Export fedifinder_accounts.csv</a>
         <small>You can import the CSV in the settings of your Mastodon account.
           Make sure to use "merge" to not overwrite your current followings.</small>
 
