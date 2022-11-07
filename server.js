@@ -549,6 +549,36 @@ io.sockets.on("connection", function (socket) {
     }
   }
 
+  async function processRequests(type, data) {
+    // get accounts from Twitter and sent to frontend
+    let accounts = [];
+    let batch_size = 1000;
+
+    try {
+      for await (const user of data) {
+        const pinnedTweet = data.includes.pinnedTweet(user);
+        pinnedTweet ? (user["pinnedTweet"] = pinnedTweet) : null;
+        accounts.push(user);
+
+        if (accounts.length >= batch_size) {
+          // don't wait until all accounts are loaded
+          accounts.length > 0
+            ? socket.emit("newAccounts", { type: type, accounts: accounts })
+            : null;
+          accounts = [];
+        }
+      }
+      accounts.length > 0
+        ? socket.emit("newAccounts", { type: type, accounts: accounts })
+        : null;
+    } catch (err) {
+      socket.emit("Error", err);
+      accounts.length > 0
+        ? socket.emit("newAccounts", { type: type, accounts: accounts })
+        : null;
+    }
+  }
+
   let client = create_twitter_client(socket.request.user);
 
   socket.on("loadLists", async (username) => {
@@ -587,7 +617,7 @@ io.sockets.on("connection", function (socket) {
     }
   });
 
-  socket.on("scanList", async (list_id) => {
+  socket.on("getList", async (list_id) => {
     // get list members from Twitter
     try {
       const data = await client.v2.listMembers(list_id, {
@@ -595,13 +625,13 @@ io.sockets.on("connection", function (socket) {
         expansions: ["pinned_tweet_id"],
         "tweet.fields": ["text", "entities"],
       });
-      processAccounts(data);
+      processRequests("list", data);
     } catch (err) {
       socket.emit("Error", err);
     }
   });
 
-  socket.on("scanFollowings", async () => {
+  socket.on("getFollowings", async () => {
     // get followings from Twitter
     try {
       const data = await client.v2.following(socket.request.user.id, {
@@ -611,13 +641,13 @@ io.sockets.on("connection", function (socket) {
         expansions: ["pinned_tweet_id"],
         "tweet.fields": ["text", "entities"],
       });
-      processAccounts(data);
+      processRequests("followings", data);
     } catch (err) {
       socket.emit("Error", err);
     }
   });
 
-  socket.on("scanFollowers", async () => {
+  socket.on("getFollowers", async () => {
     // get followings from Twitter
     try {
       const data = await client.v2.followers(socket.request.user.id, {
@@ -627,7 +657,7 @@ io.sockets.on("connection", function (socket) {
         expansions: ["pinned_tweet_id"],
         "tweet.fields": ["text", "entities"],
       });
-      processAccounts(data);
+      processRequests("followers", data);
     } catch (err) {
       socket.emit("Error", err);
     }

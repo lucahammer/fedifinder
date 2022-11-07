@@ -1,7 +1,8 @@
 /* globals io, username, tests, eq */
 
 const socket = io();
-let accounts = {};
+let accounts = [];
+let domains = {};
 let checked_accounts = 0;
 let user_lists = [];
 let unchecked_domains = [];
@@ -9,32 +10,31 @@ let display_brokenList = "none";
 let displayBroken = "inline";
 
 function removeDuplicates() {
-  for (const [domain, data] of Object.entries(accounts)) {
-    if ("handles" in accounts[domain]) {
-      accounts[domain]["handles"] = [
+  for (const [domain, data] of Object.entries(domains)) {
+    if ("handles" in domains[domain]) {
+      domains[domain]["handles"] = [
         ...new Map(
-          accounts[domain]["handles"].map((v) => [v.handle, v])
+          domains[domain]["handles"].map((v) => [v.handle, v])
         ).values(),
       ];
     }
   }
-  accounts.sort((a, b) => a.price - b.price);
 }
 
 function addHandles(data) {
-  // add recieved handles to accounts list
+  // add handles to domains list
 
   data.forEach((account) => {
     if (account["handles"].length > 0) {
       account["handles"].forEach((handle) => {
         let domain = handle.split("@").slice(-1)[0];
-        if (domain in accounts) {
-          accounts[domain]["handles"].push({
+        if (domain in domains) {
+          domains[domain]["handles"].push({
             username: account.username,
             handle: handle,
           });
         } else
-          accounts[domain] = {
+          domains[domain] = {
             handles: [{ username: account.username, handle: handle }],
           };
       });
@@ -49,16 +49,16 @@ function retryDomains() {
 
 function checkDomains() {
   // send unchecked domains to server to get more info
-  let domains = "";
-  for (const [domain, data] of Object.entries(accounts)) {
+  let domains_to_check = "";
+  for (const [domain, data] of Object.entries(domains)) {
     if ("part_of_fediverse" in data === false) {
       unchecked_domains.push(domain);
-      domains += domain + ",";
+      domains_to_check += domain + ",";
     }
   }
-  domains = domains.slice(0, -1);
-  if (domains.length > 0) {
-    socket.emit("checkDomains", { domains: domains });
+  domains_to_check = domains_to_check.slice(0, -1);
+  if (domains_to_check.length > 0) {
+    socket.emit("checkDomains", { domains: domains_to_check });
   }
 }
 
@@ -66,7 +66,7 @@ function generateCSV() {
   let csv = "";
   csv = "Account address,Show boosts\n";
 
-  for (const [domain, data] of Object.entries(accounts)) {
+  for (const [domain, data] of Object.entries(domains)) {
     if ("part_of_fediverse" in data && data["part_of_fediverse"]) {
       data["handles"].forEach((handle) => (csv += handle.handle + ",true\n"));
     }
@@ -75,7 +75,23 @@ function generateCSV() {
   let download = new Blob([csv], { type: "text/plain" });
   let link = document.getElementById("downloadlink");
   link.href = window.URL.createObjectURL(download);
-  link.download = "fedifinder_following_accounts.csv";
+  link.download = "fedifinder_accounts.csv";
+}
+
+function generateAccountsCSV() {
+  let csv = "";
+  csv = "Account address,Show boosts\n";
+
+  for (const [domain, data] of Object.entries(domains)) {
+    if ("part_of_fediverse" in data && data["part_of_fediverse"]) {
+      data["handles"].forEach((handle) => (csv += handle.handle + ",true\n"));
+    }
+  }
+
+  let download = new Blob([csv], { type: "text/plain" });
+  let link = document.getElementById("downloadlink");
+  link.href = window.URL.createObjectURL(download);
+  link.download = "fedifinder_accounts.csv";
 }
 
 function checkListsLeft() {
@@ -87,18 +103,18 @@ function checkListsLeft() {
 }
 
 function loadListMembers() {
-  socket.emit("scanList", $("#lists option:selected").val());
+  socket.emit("getList", $("#lists option:selected").val());
   $("#lists option:selected").remove();
   checkListsLeft();
 }
 
-function scanFollowings() {
-  socket.emit("scanFollowings");
+function getFollowings() {
+  socket.emit("getFollowings");
   $("#followingsLoader").prop("disabled", true);
 }
 
-function scanFollowers() {
-  socket.emit("scanFollowers");
+function getFollowers() {
+  socket.emit("getFollowers");
   $("#followersLoader").prop("disabled", true);
 }
 
@@ -125,7 +141,7 @@ function updateCounts() {
 
   let counter = 0;
   let broken_counter = 0;
-  for (const [domain, data] of Object.entries(accounts)) {
+  for (const [domain, data] of Object.entries(domains)) {
     if ("part_of_fediverse" in data && data["part_of_fediverse"])
       counter += data["handles"].length;
     if ("status" in data && "handles" in data && data["status"] != null) {
@@ -136,7 +152,7 @@ function updateCounts() {
   }
 
   $("#nr_working").text(counter);
-  $("#nr_checked").text(checked_accounts);
+  $("#nr_checked").text(accounts.length);
   $("#nr_broken").text(broken_counter);
   $("#domains_waiting").text(unchecked_domains.length);
 }
@@ -144,7 +160,7 @@ function updateCounts() {
 function displayAccounts() {
   // replace the list of handles
   $list = $("<ul id='urlList'></ul>");
-  for (const [domain, data] of Object.entries(accounts)) {
+  for (const [domain, data] of Object.entries(domains)) {
     if ("part_of_fediverse" in data && data["part_of_fediverse"]) {
       let openStatus = data.openRegistrations
         ? "<b>registration open</b>"
@@ -204,7 +220,7 @@ function displayAccounts() {
     "display",
     display_brokenList
   );
-  for (const [domain, data] of Object.entries(accounts)) {
+  for (const [domain, data] of Object.entries(domains)) {
     if ("status" in data && data["status"] != null) {
       //remove domains with client error: && (/4../.test(data["status"]) == false)
       $domain = $(
@@ -239,9 +255,10 @@ socket.on("checkedDomains", function (data) {
   unchecked_domains = unchecked_domains.filter(
     (item) => item != data["domain"]
   );
-  accounts[data["domain"]] = Object.assign({}, accounts[data["domain"]], data);
+  domains[data["domain"]] = Object.assign({}, domains[data["domain"]], data);
   updateCounts();
   displayAccounts();
+  unchecked_domains.length < 1 ? $("#retry").css("display", "none") : void 0;
 });
 
 socket.on("userLists", function (lists) {
@@ -273,20 +290,16 @@ socket.on("userLists", function (lists) {
   $("#choices").append($form);
 });
 
-socket.on("newHandles", function (data) {
-  // receive new handles
+socket.on("newAccounts", function (data) {
+  // receive new data from server
 
-  checked_accounts += data.length;
-  updateCounts();
+  processAccounts(data.accounts);
+  addHandles(accounts);
 
-  addHandles(data);
-
-  if (Object.keys(accounts).length > 0) {
-    removeDuplicates();
-    checkDomains();
-    $("#infobox").css("visibility", "visible");
-    $("#download").css("display", "block");
-  }
+  removeDuplicates();
+  checkDomains();
+  $("#infobox").css("visibility", "visible");
+  $("#download").css("display", "block");
 });
 
 socket.on("connect_error", (err) => handleErrors(err));
@@ -404,7 +417,7 @@ function findHandles(text) {
   let words = text.split(/,| |\s|“|\(|\)|'|》|\n|\r|\t|・|\||…|▲|\.\s|\s$/);
   // remove common false positives
   let unwanted_domains =
-    /gmail\.com|mixcloud|linktr\.ee|researchgate|about|bit\.ly|imprint|impressum|patreon|donate|blog|facebook|news|github|instagram|t\.me|medium\.com|t\.co|tiktok\.com|youtube\.com|pronouns\.page|mail@|observablehq|twitter\.com|contact@|kontakt@|protonmail|medium\.com|traewelling\.de|press@|support@|info@|pobox|hey\.com/;
+    /gmail\.com|mixcloud|linktr\.ee|pinboardxing\com|researchgate|about|bit\.ly|imprint|impressum|patreon|donate|blog|facebook|news|github|instagram|t\.me|medium\.com|t\.co|tiktok\.com|youtube\.com|pronouns\.page|mail@|observablehq|twitter\.com|contact@|kontakt@|protonmail|medium\.com|traewelling\.de|press@|support@|info@|pobox|hey\.com/;
   words = words.filter((word) => !unwanted_domains.test(word));
   words = words.filter((w) => w);
 
@@ -464,33 +477,19 @@ function user_to_text(user) {
   return text;
 }
 
-async function processAccounts(data) {
+function processAccounts(data) {
   // scan accounts for handles
-  let accounts = [];
-  let batch_size = 500;
-
-  try {
-    for await (const user of data) {
-      const pinnedTweet = data.includes.pinnedTweet(user);
-      let text = user_to_text(user);
-      pinnedTweet ? (text += " " + tweet_to_text(pinnedTweet)) : "";
-      let handles = findHandles(text);
-      accounts.push({
-        username: user.username,
-        handles: handles,
-      });
-
-      if (accounts.length >= batch_size) {
-        // don't wait until all accounts are loaded
-        socket.emit("newHandles", accounts);
-        accounts = [];
-      }
-    }
-    accounts.length > 0 ? socket.emit("newHandles", accounts) : void 0;
-  } catch (err) {
-    socket.emit("Error", err);
-    accounts.length > 0 ? socket.emit("newHandles", accounts) : void 0;
-  }
+  data.forEach((user) => {
+    let text = user_to_text(user);
+    "pinnedTweet" in user
+      ? (text += " " + tweet_to_text(user.pinnedTweet))
+      : "";
+    let handles = findHandles(text);
+    accounts.push({
+      username: user.username,
+      handles: handles,
+    });
+  });
 }
 
 if (/staging|localhost|127\.0\.0\.1/.test(location.hostname)) {
