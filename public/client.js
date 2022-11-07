@@ -1,3 +1,5 @@
+/* globals io, username, tests, eq */
+
 const socket = io();
 let accounts = {};
 let checked_accounts = 0;
@@ -346,4 +348,16 @@ Please reload the page.\n\n" + data
     $("#error").css("background-color", "orange");
     $("#error").css("padding", "5px");
   }
+}
+
+if (location.hostname.includes("staging")) {
+  console.log("Start Tests");
+
+  tests({
+    "test tinytest": function () {
+      eq(6, 2+4);
+    },
+    
+  
+  });
 }

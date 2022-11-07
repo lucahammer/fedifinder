@@ -14,6 +14,7 @@
       let username = "{{username}}";
     </script>
     <script src="/socket.io.min.js"></script>
+    <script src="/tinytest.js"></script>
     <script src="/jquery-3.6.1.min.js"></script>
     <script src="/client.js"></script>
     <style>
@@ -88,7 +89,9 @@
         unique handles from working fediverse domains found<br />
         <span id="nr_broken">0</span>
         handles from other services (eg. mail) or unresponsive servers<br />
-        <span id="domains_waiting">0</span> domains are still being checked <a id="retry" onclick="retryDomains()">Retry</a>
+        <span id="domains_waiting">0</span>
+        domains are still being checked
+        <a id="retry" onclick="retryDomains()">Retry</a>
         <br />
       </p>
 
@@ -134,10 +137,9 @@
           server for the nodeinfo file (eg.
           https://mastodon.social/.well-known/nodeinfo). If a server doesn't
           respond to such a request, it's likely that it's not part of the
-          fediverse. But it could also mean that it's currently down.
-          <span id="nr_broken">0</span>
-          handles were found from servers that did not respond. Most of them are
-          probably mail addresses. None of them are included in the export.
+          fediverse. But it could also mean that it's currently down. Most of
+          them are probably mail addresses. None of them are included in the
+          export. Please follow them manually.
           <button id="displayBroken" onclick="showBroken()">
             Display handles from unreachable servers.
           </button></small>
