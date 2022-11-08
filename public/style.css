@@ -1,6 +1,7 @@
 .link {
   text-decoration: none;
   color: inherit;
+  color: forestgreen;
 }
 p {
   line-height: 1.7em;
@@ -12,4 +13,32 @@ td {
 table {
   table-layout: auto;
   border-collapse: collapse;
+}
+
+.followbutton {
+  display: block;
+  max-width: 400px;
+  border: 0;
+  border-radius: 4px;
+  background: #2b90d9;
+  color: #ffffff;
+  font-size: 15px;
+  line-height: inherit;
+  height: auto;
+  padding: 10px;
+  text-transform: uppercase;
+  text-decoration: none;
+  text-align: center;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-weight: 500;
+  outline: 0;
+  margin: 10px;
+}
+
+.followbutton:active,
+.followbutton:hover,
+.followbutton:focus {
+  background-color: #1e83cc;
+  color: #ffffff;
 }
