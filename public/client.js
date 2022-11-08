@@ -1,7 +1,7 @@
 /* globals io, username, tests, eq profile*/
 
 const socket = io();
-let accounts = [];
+let accounts = {};
 let domains = {};
 let checked_accounts = 0;
 let user_lists = [];
@@ -58,25 +58,22 @@ function removeDuplicates() {
   }
 }
 
-function addHandles(data) {
+function addHandles(username, handles) {
   // add handles to domains list
-
-  data.forEach((account) => {
-    if (account["handles"].length > 0) {
-      account["handles"].forEach((handle) => {
-        let domain = handle.split("@").slice(-1)[0];
-        if (domain in domains) {
-          domains[domain]["handles"].push({
-            username: account.username,
-            handle: handle,
-          });
-        } else
-          domains[domain] = {
-            handles: [{ username: account.username, handle: handle }],
-          };
-      });
-    }
-  });
+  if (handles.length > 0) {
+    handles.forEach((handle) => {
+      let domain = handle.split("@").slice(-1)[0];
+      if (domain in domains) {
+        domains[domain]["handles"].push({
+          username: username,
+          handle: handle,
+        });
+      } else
+        domains[domain] = {
+          handles: [{ username: username, handle: handle }],
+        };
+    });
+  }
 }
 
 function retryDomains() {
@@ -183,7 +180,7 @@ function updateCounts() {
   }
 
   $("#nr_working").text(counter);
-  $("#nr_checked").text(accounts.length);
+  $("#nr_checked").text(checked_accounts);
   $("#nr_broken").text(broken_counter);
   $("#domains_waiting").text(unchecked_domains.length);
 }
@@ -321,12 +318,14 @@ socket.on("userLists", function (lists) {
   $("#choices").append($form);
 });
 
-socket.on("newAccounts", function (data) {
+socket.on("newAccounts", async function (data) {
   // receive new data from server
-  data.accounts.map((user) => processAccount(user));
-  checkDomains();
-  $("#infobox").css("visibility", "visible");
-  $("#download").css("display", "block");
+  if (data) {
+    data.accounts.map((user) => processAccount(data.type, user));
+    checkDomains();
+    $("#infobox").css("visibility", "visible");
+    $("#download").css("display", "block");
+  }
 });
 
 socket.on("connect_error", (err) => handleErrors(err));
@@ -506,45 +505,75 @@ function user_to_text(user) {
   return text;
 }
 
-async function processAccount(user) {
-  let urls = [];
-  let pinned_tweet = {};
-  let text = user_to_text(user);
-  if ("pinnedTweet" in user) {
-    text += " " + tweet_to_text(user.pinnedTweet);
-    pinned_tweet = user.pinnedTweet.text;
-    if (
-      "entities" in user.pinnedTweet &&
-      "urls" in user.pinnedTweet["entities"]
-    ) {
-      user.pinnedTweet["entities"]["urls"].map((url) =>
-        urls.push(url.expanded_url)
-      );
-    }
+async function processAccount(type, user) {
+  let following, follower, list;
+
+  // get list name from local user_lists
+  if ("type" in type && "list" == type.type) {
+    list = user_lists.filter((list) => list.id_str == type.list_id)[0].name;
+    type = type.type;
   }
 
-  "entities" in user && "url" in user.entities
-    ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
-    : null;
+  "type" == follower ? (follower = true) : null;
+  "type" == following ? (following = true) : null;
 
-  "entities" in user &&
-  "description" in user.entities &&
-  "urls" in user.entities.description
-    ? user.entities.description.urls.map((url) => urls.push(url.expanded_url))
-    : null;
+  if (user.username in accounts) {
+    accounts[user.username].following = accounts[user.username].following
+      ? accounts[user.username].following
+      : following;
+    accounts[user.username].follower = accounts[user.username].follower
+      ? accounts[user.username].follower
+      : follower;
+    type == "list"
+      ? accounts[user.username].lists.push(list)
+      : accounts[user.username].lists;
+  } else {
+    checked_accounts += 1;
+    let urls = [];
+    let pinned_tweet = "";
 
-  let handles = findHandles(text);
-  accounts.push({
-    name: user.name,
-    username: user.username,
-    handles: handles,
-    location: user.location,
-    description: user.description,
-    urls: urls,
-    pinned_tweet: pinned_tweet,
-  });
-  addHandles(accounts);
-  removeDuplicates();
+    if ("pinnedTweet" in user) {
+      pinned_tweet = user.pinnedTweet.text;
+      if (
+        "entities" in user.pinnedTweet &&
+        "urls" in user.pinnedTweet["entities"]
+      ) {
+        user.pinnedTweet["entities"]["urls"].map((url) =>
+          urls.push(url.expanded_url)
+        );
+      }
+    }
+
+    "entities" in user && "url" in user.entities
+      ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
+      : null;
+
+    "entities" in user &&
+    "description" in user.entities &&
+    "urls" in user.entities.description
+      ? user.entities.description.urls.map((url) => urls.push(url.expanded_url))
+      : null;
+
+    let text = `${user["name"]} ${user["description"]} ${
+      user["location"]
+    } ${pinned_tweet} ${urls.join(" ")}`;
+    let handles = findHandles(text);
+
+    accounts[user.username] = {
+      name: user.name,
+      following: following,
+      follower: follower,
+      lists: [list],
+      handles: handles,
+      location: user.location,
+      description: user.description,
+      urls: urls,
+      pinned_tweet: pinned_tweet,
+    };
+    addHandles(user.username, handles);
+    removeDuplicates();
+  }
+  updateCounts();
 }
 
 if (/staging|localhost|127\.0\.0\.1/.test(location.hostname)) {
