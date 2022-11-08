@@ -1,0 +1,15 @@
+.link {
+  text-decoration: none;
+  color: inherit;
+}
+p {
+  line-height: 1.7em;
+}
+td {
+  padding: 10px;
+  border: 2px solid lightgrey;
+}
+table {
+  table-layout: auto;
+  border-collapse: collapse;
+}
