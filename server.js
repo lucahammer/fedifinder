@@ -127,6 +127,18 @@ app.get(
   }
 );
 
+app.get(process.env.DB_CLEAR + "_sessions", async function (req, res) {
+  // visit this URL to reset the DB
+  let data = await sessions_db
+    .query("SELECT COUNT(sid) FROM sessions", {
+      raw: true,
+    })
+    .then((data) => {
+      sessions_db.sync({ force: true });
+      res.send(data);
+    });
+});
+
 app.get(process.env.DB_CLEAR, function (req, res) {
   // visit this URL to reset the DB
   setup();
