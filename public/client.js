@@ -9,6 +9,7 @@ let unchecked_domains = [];
 let display_brokenList = "none";
 let displayBroken = "inline";
 let user_handles = [];
+let displayButtons = false;
 
 $(function () {
   // run after everything is loaded
@@ -16,7 +17,7 @@ $(function () {
   "pinnedTweet" in profile
     ? (text += " " + tweet_to_text(profile.pinnedTweet))
     : "";
-  user_handles = findHandles(text);
+  user_handles = [...new Set(findHandles(text))];
 
   if (user_handles.length > 0) {
     $("#userHandles").append(
@@ -24,7 +25,7 @@ $(function () {
     );
     $("#userHandles").append($("<ul>"));
 
-    [...new Set(user_handles)].forEach((handle) => {
+    user_handles.forEach((handle) => {
       let import_url = handle.split("@")[2] + "/settings/import";
       $("#userHandles ul").append(
         $("<li>")
@@ -39,6 +40,7 @@ $(function () {
           .append(")")
       );
     });
+    $("#displayFollowButtons").css("display", "block");
   } else {
     $("#userHandles").text(
       `No handles were found on your profile @${username}. Please use the format @name@host.tld or https://host.tld/@name`
@@ -127,7 +129,11 @@ function displayAllAccounts() {
     $tr = $("<tr>");
     $tr.append($("<td>").text(username));
     for (const [key, value] of Object.entries(data)) {
-      Array.isArray(value) ? $tr.append($("<td>").text(value.join("\n"))) : (value ? $tr.append($("<td>").text(value)) : $tr.append($("<td>")))
+      Array.isArray(value)
+        ? $tr.append($("<td>").text(value.join("\n")))
+        : value
+        ? $tr.append($("<td>").text(value))
+        : $tr.append($("<td>"));
     }
     $accountTable.append($tr);
   }
@@ -198,6 +204,16 @@ function showBroken() {
   displayBroken = "none";
 }
 
+function displayFollowButtons() {
+  displayButtons ? (displayButtons = false) : (displayButtons = true);
+
+  displayButtons
+    ? $("#displayFollowButtons").text("hide follow buttons")
+    : $("#displayFollowButtons").text("show follow buttons");
+
+  displayAccounts();
+}
+
 function updateCounts() {
   // calculate scanned accounts and found handles
 
@@ -213,10 +229,24 @@ function updateCounts() {
     if (unchecked_domains.length > 0) $("#retry").css("display", "inline");
   }
 
+  counter > 0 ? $("#displayFollowButtons").css("visibility", "visible") : null;
+
   $("#nr_working").text(counter);
   $("#nr_checked").text(checked_accounts);
   $("#nr_broken").text(broken_counter);
   $("#domains_waiting").text(unchecked_domains.length);
+}
+
+function followButton(username, user_instance, target_url) {
+  // https://domain.tld/authorize_interaction?uri=https%3A%2F%domain.tld%2F%40name
+  return $("<a>")
+    .addClass("followbutton")
+    .attr("target", "_blank")
+    .attr(
+      "href",
+      "https://" + user_instance + "/authorize_interaction?uri=" + target_url
+    )
+    .text("Follow from " + username);
 }
 
 function displayAccounts() {
@@ -250,26 +280,35 @@ function displayAccounts() {
           "</span></li>"
       );
       $ol = $("<ol></ol>");
+      $li = $("<li>");
       data["handles"].forEach((handle) => {
-        $acc = $("<a>")
-          .attr(
-            "href",
-            "https://" + domain + "/@" + handle.handle.split("@")[1]
-          )
-          .text(handle["handle"])
-          .addClass("link");
-
-        $twit = $("<a>")
-          .attr("href", "https://twitter.com/" + handle.username)
-          .text("(@" + handle.username + ")")
-          .addClass("link");
-        $ol.append(
-          $("<li>")
-            .append($acc)
-            .css("color", "forestgreen")
-            .append(" ")
-            .append($twit)
+        let target_url =
+          "https://" + domain + "/@" + handle.handle.split("@")[1];
+        $li.append(
+          $("<a>")
+            .attr("href", target_url)
+            .text(handle["handle"])
+            .addClass("link")
         );
+
+        $li.append(" ");
+
+        $li.append(
+          $("<a>")
+            .attr("href", "https://twitter.com/" + handle.username)
+            .text("(@" + handle.username + ")")
+            .addClass("link")
+        );
+
+        if (displayButtons) {
+          user_handles.map((user_handle) => {
+            $li.append(
+              followButton(user_handle, user_handle.split("@")[2], target_url)
+            );
+          });
+        }
+
+        $ol.append($li);
       });
       $domain.append($ol);
 
