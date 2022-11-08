@@ -573,15 +573,17 @@ io.sockets.on("connection", function (socket) {
     try {
       for await (const user of data) {
         let urls = [];
-        let pinned_tweet = "";
+        let pinned_tweet;
 
-        if ("pinnedTweet" in user) {
-          pinned_tweet = user.pinnedTweet.text;
+        const pinnedTweetInclude = data.includes.pinnedTweet(user);
+
+        if (pinnedTweetInclude) {
+          pinned_tweet = pinnedTweetInclude.text;
           if (
-            "entities" in user.pinnedTweet &&
-            "urls" in user.pinnedTweet["entities"]
+            "entities" in pinnedTweetInclude &&
+            "urls" in pinnedTweetInclude["entities"]
           ) {
-            user.pinnedTweet["entities"]["urls"].map((url) =>
+            pinnedTweetInclude["entities"]["urls"].map((url) =>
               urls.push(url.expanded_url)
             );
           }
