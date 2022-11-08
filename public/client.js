@@ -1,4 +1,4 @@
-/* globals io, username, tests, eq profile*/
+/* globals io, username, tests, eq profile json2csv*/
 
 const socket = io();
 let accounts = {};
@@ -114,12 +114,46 @@ function generateCSV() {
   link.download = "fedifinder_accounts.csv";
 }
 
-function generateJSON() {
+function displayAllAccounts() {
+  $("#allAccounts").css("display", "block");
+  $accountTable = $("<table>");
+  $tableHead = $("<tr>");
+  $tableHead.append("<th>username</th>");
+  Object.keys(Object.values(accounts)[0]).forEach((key) =>
+    $tableHead.append($("<th>").text(key))
+  );
+  $accountTable.append($tableHead);
+  for (const [username, data] of Object.entries(accounts)) {
+    $tr = $("<tr>");
+    $tr.append($("<td>").text(username));
+    for (const [key, value] of Object.entries(data)) {
+      Array.isArray(value) ? $tr.append($("<td>").text(value.join("\n"))) : (value ? $tr.append($("<td>").text(value)) : $tr.append($("<td>")))
+    }
+    $accountTable.append($tr);
+  }
+  $("#allAccounts").append($accountTable);
+}
+
+function generateAccountsCSV() {
+  let output = [];
+  for (const [username, data] of Object.entries(accounts)) {
+    output.push({ username: username, ...data });
+  }
+  const json2csvParser = new json2csv.Parser();
+  const csv = json2csvParser.parse(output);
+
+  let download = new Blob([csv], { type: "text/plain" });
+  let link = document.getElementById("csvAccountsDownload");
+  link.href = window.URL.createObjectURL(download);
+  link.download = "accounts.csv";
+}
+
+function generateAccountsJSON() {
   let json_string = JSON.stringify(accounts, null, 2);
   let download = new Blob([json_string], { type: "application/json" });
-  let link = document.getElementById("jsonDownload");
+  let link = document.getElementById("jsonAccountsDownload");
   link.href = window.URL.createObjectURL(download);
-  link.download = "fedifinder_accounts.json";
+  link.download = "accounts.json";
 }
 
 function checkListsLeft() {
@@ -324,6 +358,7 @@ socket.on("newAccounts", async function (data) {
     data.accounts.map((user) => processAccount(data.type, user));
     checkDomains();
     $("#infobox").css("visibility", "visible");
+    $("#accountsInfo").css("visibility", "visible");
     $("#download").css("display", "block");
   }
 });
@@ -509,13 +544,12 @@ async function processAccount(type, user) {
   let following, follower, list;
 
   // get list name from local user_lists
-  if ("type" in type && "list" == type.type) {
-    list = user_lists.filter((list) => list.id_str == type.list_id)[0].name;
-    type = type.type;
-  }
+  type.type == "list"
+    ? (list = user_lists.filter((list) => list.id_str == type.list_id)[0].name)
+    : null;
 
-  "type" == follower ? (follower = true) : null;
-  "type" == following ? (following = true) : null;
+  type.type == follower ? (follower = true) : null;
+  type.type == following ? (following = true) : null;
 
   if (user.username in accounts) {
     accounts[user.username].following = accounts[user.username].following
@@ -524,7 +558,7 @@ async function processAccount(type, user) {
     accounts[user.username].follower = accounts[user.username].follower
       ? accounts[user.username].follower
       : follower;
-    type == "list"
+    type.type == "list"
       ? accounts[user.username].lists.push(list)
       : accounts[user.username].lists;
   } else {

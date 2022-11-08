@@ -138,16 +138,16 @@ app.get("/api/known_instances.json", async (req, res) => {
   res.json(data);
 });
 
-app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
+app.get(process.env.DB_CLEAR + "_cleanup", (req, res) => {
   // visit this URL to remove timed out entries from the DB
-  let not_fedi = await remove_domains_by_part_of_fediverse(false);
+  //let not_fedi = await remove_domains_by_part_of_fediverse(false);
+  let to_remove = [500,501,503,504];
+  let removed = {};
+  to_remove.forEach((status) =>
+    remove_domains_by_status(status))
+  res.send(`Removed ${JSON.stringify(to_remove, null, 4)}`);
 
-  let timeouted = await remove_domains_by_status("ETIMEDOUT");
-  res.send(
-    `Removed ${timeouted} ETIMEDOUT and ${not_fedi} not part of fediverse`
-  );
-
-  await db_to_log();
+  //db_to_log();
 });
 
 app.get(process.env.DB_CLEAR + "_pop", async (req, res) => {
@@ -302,6 +302,7 @@ async function remove_domains_by_part_of_fediverse(fediversy) {
 async function remove_domains_by_status(status) {
   try {
     let data = await Instance.destroy({ where: { status: status } });
+    console.log(`${status} removed: ${data}`)
     return data;
   } catch (err) {
     console.log(err);
@@ -641,7 +642,7 @@ io.sockets.on("connection", function (socket) {
         expansions: ["pinned_tweet_id"],
         "tweet.fields": ["text", "entities"],
       });
-      processRequests("followings", data);
+      processRequests({ type: "followings" }, data);
     } catch (err) {
       socket.emit("Error", err);
     }
@@ -657,7 +658,7 @@ io.sockets.on("connection", function (socket) {
         expansions: ["pinned_tweet_id"],
         "tweet.fields": ["text", "entities"],
       });
-      processRequests("followers", data);
+      processRequests({ type: "followers" }, data);
     } catch (err) {
       socket.emit("Error", err);
     }
