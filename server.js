@@ -625,7 +625,7 @@ io.sockets.on("connection", function (socket) {
         expansions: ["pinned_tweet_id"],
         "tweet.fields": ["text", "entities"],
       });
-      processRequests("list", data);
+      processRequests({ type: "list", list_id: list_id }, data);
     } catch (err) {
       socket.emit("Error", err);
     }
