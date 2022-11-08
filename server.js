@@ -141,10 +141,9 @@ app.get("/api/known_instances.json", async (req, res) => {
 app.get(process.env.DB_CLEAR + "_cleanup", (req, res) => {
   // visit this URL to remove timed out entries from the DB
   //let not_fedi = await remove_domains_by_part_of_fediverse(false);
-  let to_remove = [500,501,503,504];
+  let to_remove = [500, 501, 503, 504];
   let removed = {};
-  to_remove.forEach((status) =>
-    remove_domains_by_status(status))
+  to_remove.forEach((status) => remove_domains_by_status(status));
   res.send(`Removed ${JSON.stringify(to_remove, null, 4)}`);
 
   //db_to_log();
@@ -302,7 +301,7 @@ async function remove_domains_by_part_of_fediverse(fediversy) {
 async function remove_domains_by_status(status) {
   try {
     let data = await Instance.destroy({ where: { status: status } });
-    console.log(`${status} removed: ${data}`)
+    console.log(`${status} removed: ${data}`);
     return data;
   } catch (err) {
     console.log(err);
@@ -401,7 +400,11 @@ async function get_nodeinfo_url(host_domain) {
       .get(options, (res) => {
         let body = "";
         if (res.statusCode != 200) {
-          resolve({ status: res.statusCode });
+          if (res.statusCode == 302) {
+            get_nodeinfo_url(res.headers.location).then((data) =>
+              resolve(data)
+            );
+          } else resolve({ status: res.statusCode });
         }
         res.on("data", (d) => {
           body += d;
