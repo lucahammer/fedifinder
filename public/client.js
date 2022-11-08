@@ -280,8 +280,9 @@ function displayAccounts() {
           "</span></li>"
       );
       $ol = $("<ol></ol>");
-      $li = $("<li>");
+
       data["handles"].forEach((handle) => {
+        $li = $("<li>");
         let target_url =
           "https://" + domain + "/@" + handle.handle.split("@")[1];
         $li.append(
@@ -299,6 +300,8 @@ function displayAccounts() {
             .text("(@" + handle.username + ")")
             .addClass("link")
         );
+
+        $li.append("<br>");
 
         if (displayButtons) {
           user_handles.map((user_handle) => {
@@ -393,6 +396,7 @@ socket.on("userLists", function (lists) {
 
 socket.on("newAccounts", async function (data) {
   // receive new data from server
+  console.log(data);
   if (data) {
     data.accounts.map((user) => processAccount(data.type, user));
     checkDomains();
@@ -602,34 +606,11 @@ async function processAccount(type, user) {
       : accounts[user.username].lists;
   } else {
     checked_accounts += 1;
-    let urls = [];
-    let pinned_tweet = "";
 
-    if ("pinnedTweet" in user) {
-      pinned_tweet = user.pinnedTweet.text;
-      if (
-        "entities" in user.pinnedTweet &&
-        "urls" in user.pinnedTweet["entities"]
-      ) {
-        user.pinnedTweet["entities"]["urls"].map((url) =>
-          urls.push(url.expanded_url)
-        );
-      }
-    }
+    let text = `${user["name"]} ${user["description"]} ${user["location"]} ${
+      user["pinned_tweet"]
+    } ${user["urls"].join(" ")}`;
 
-    "entities" in user && "url" in user.entities
-      ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
-      : null;
-
-    "entities" in user &&
-    "description" in user.entities &&
-    "urls" in user.entities.description
-      ? user.entities.description.urls.map((url) => urls.push(url.expanded_url))
-      : null;
-
-    let text = `${user["name"]} ${user["description"]} ${
-      user["location"]
-    } ${pinned_tweet} ${urls.join(" ")}`;
     let handles = findHandles(text);
 
     accounts[user.username] = {
@@ -640,8 +621,8 @@ async function processAccount(type, user) {
       handles: handles,
       location: user.location,
       description: user.description,
-      urls: urls,
-      pinned_tweet: pinned_tweet,
+      urls: user.urls,
+      pinned_tweet: user.pinned_tweet,
     };
     addHandles(user.username, handles);
     removeDuplicates();

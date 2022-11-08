@@ -566,15 +566,47 @@ io.sockets.on("connection", function (socket) {
   }
 
   async function processRequests(type, data) {
-    // get accounts from Twitter and sent to frontend
+    // get accounts from Twitter and sent relevant parts to frontend
     let accounts = [];
     let batch_size = 1000;
 
     try {
       for await (const user of data) {
-        const pinnedTweet = data.includes.pinnedTweet(user);
-        pinnedTweet ? (user["pinnedTweet"] = pinnedTweet) : null;
-        accounts.push(user);
+        let urls = [];
+        let pinned_tweet = "";
+
+        if ("pinnedTweet" in user) {
+          pinned_tweet = user.pinnedTweet.text;
+          if (
+            "entities" in user.pinnedTweet &&
+            "urls" in user.pinnedTweet["entities"]
+          ) {
+            user.pinnedTweet["entities"]["urls"].map((url) =>
+              urls.push(url.expanded_url)
+            );
+          }
+        }
+
+        "entities" in user && "url" in user.entities
+          ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
+          : null;
+
+        "entities" in user &&
+        "description" in user.entities &&
+        "urls" in user.entities.description
+          ? user.entities.description.urls.map((url) =>
+              urls.push(url.expanded_url)
+            )
+          : null;
+
+        accounts.push({
+          username: user.username,
+          name: user.name,
+          location: user.location,
+          description: user.description,
+          urls: urls,
+          pinned_tweet: pinned_tweet,
+        });
 
         if (accounts.length >= batch_size) {
           // don't wait until all accounts are loaded
