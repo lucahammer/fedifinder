@@ -396,7 +396,6 @@ socket.on("userLists", function (lists) {
 
 socket.on("newAccounts", async function (data) {
   // receive new data from server
-  console.log(data);
   if (data) {
     data.accounts.map((user) => processAccount(data.type, user));
     checkDomains();
