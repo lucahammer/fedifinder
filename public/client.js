@@ -507,32 +507,44 @@ function user_to_text(user) {
 }
 
 async function processAccount(user) {
+  let urls = [];
+  let pinned_tweet = {};
   let text = user_to_text(user);
-    "pinnedTweet" in user
-      ? (text += " " + tweet_to_text(user.pinnedTweet))
-      : "";
-    let urls = [];
-    "entities" in user && "url" in user.entities
-      ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
-      : null;
+  if ("pinnedTweet" in user) {
+    text += " " + tweet_to_text(user.pinnedTweet);
+    pinned_tweet = user.pinnedTweet.text;
+    if (
+      "entities" in user.pinnedTweet &&
+      "urls" in user.pinnedTweet["entities"]
+    ) {
+      user.pinnedTweet["entities"]["urls"].map((url) =>
+        urls.push(url.expanded_url)
+      );
+    }
+  }
 
-    "entities" in user &&
-    "description" in user.entities &&
-    "urls" in user.entities.description
-      ? user.entities.description.urls.map((url) => urls.push(url.expanded_url))
-      : null;
+  "entities" in user && "url" in user.entities
+    ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
+    : null;
 
-    let handles = findHandles(text);
-    accounts.push({
-      name: user.name,
-      username: user.username,
-      handles: handles,
-      location: user.location,
-      description: user.description,
-      urls: urls,
-    });
-    addHandles(accounts);
-    removeDuplicates();
+  "entities" in user &&
+  "description" in user.entities &&
+  "urls" in user.entities.description
+    ? user.entities.description.urls.map((url) => urls.push(url.expanded_url))
+    : null;
+
+  let handles = findHandles(text);
+  accounts.push({
+    name: user.name,
+    username: user.username,
+    handles: handles,
+    location: user.location,
+    description: user.description,
+    urls: urls,
+    pinned_tweet: pinned_tweet,
+  });
+  addHandles(accounts);
+  removeDuplicates();
 }
 
 if (/staging|localhost|127\.0\.0\.1/.test(location.hostname)) {
