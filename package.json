@@ -22,7 +22,9 @@
     "bufferutil": "^4.0.7",
     "utf-8-validate": "^5.0.10",
     "connect-session-sequelize": "^7.1.5",
-    "webfinger.js": "^2.7.1"
+    "webfinger.js": "^2.7.1",
+    "better-sqlite3": "^7.6.2",
+    "better-sqlite3-session-store": "^0.1.0"
   },
   "engines": {
     "node": "16.x"
