@@ -13,6 +13,14 @@ const TwitterV2IncludesHelper =
   require("twitter-api-v2").TwitterV2IncludesHelper;
 const Op = require("sequelize").Op;
 const SequelizeStore = require("connect-session-sequelize")(session.Store);
+const WebFinger = require("webfinger.js");
+
+const webfinger = new WebFinger({
+  webfist_fallback: false,
+  tls_only: true,
+  uri_fallback: true,
+  request_timeout: 10000,
+});
 
 hbs.registerHelper("json", function (context) {
   return JSON.stringify(context);
@@ -139,7 +147,7 @@ app.get(process.env.DB_CLEAR + "_sessions", async function (req, res) {
     });
 });
 
-app.get(process.env.DB_CLEAR, function (req, res) {
+app.get(process.env.DB_CLEAR + "_all", function (req, res) {
   // visit this URL to reset the DB
   setup();
   res.redirect("/");
@@ -150,13 +158,23 @@ app.get("/api/known_instances.json", async (req, res) => {
   res.json(data);
 });
 
-app.get(process.env.DB_CLEAR + "_cleanup", (req, res) => {
+app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
   // visit this URL to remove timed out entries from the DB
-  //let not_fedi = await remove_domains_by_part_of_fediverse(false);
-  let to_remove = [500, 501, 503, 504, 301, 302];
-  let removed = {};
+  let not_fedi = await remove_domains_by_part_of_fediverse(false);
+
+  let to_remove = [
+    500,
+    501,
+    503,
+    504,
+    301,
+    302,
+    "ECONNRESET",
+    "ETIMEDOUT",
+    "ENOTFOUND",
+  ];
   to_remove.forEach((status) => remove_domains_by_status(status));
-  res.send(`Removed ${JSON.stringify(to_remove, null, 4)}`);
+  res.send(`Removed ${not_fedi} ${JSON.stringify(to_remove, null, 4)}`);
 
   //db_to_log();
 });
@@ -165,8 +183,21 @@ app.get(process.env.DB_CLEAR + "_pop", async (req, res) => {
   // visit this URL to remove timed out entries from the DB
   Instance.sync({ force: true });
   console.log("Populating the database with known domains");
-  populate_db("https://fedifinder.glitch.me/api/known_instances.json");
+  populate_db("https://fedifinder-staging.glitch.me/api/known_instances.json");
   res.redirect("/success");
+});
+
+app.get(process.env.DB_CLEAR + "_popfresh", async (req, res) => {
+  // visit this URL to remove timed out entries from the DB
+  let source_url = "https://fedifinder.glitch.me/api/known_instances.json";
+  console.log(
+    "Populating the database with new data for known domains from " + source_url
+  );
+  ("https://fedifinder.glitch.me/api/known_instances.json");
+  populate_db(source_url, true);
+  res.send(
+    "Started to populate the database with new records from " + source_url
+  );
 });
 
 const server = app.listen(process.env.PORT, function () {
@@ -212,6 +243,9 @@ sequelize
         primaryKey: true,
         unique: true,
       },
+      local_domain: {
+        type: Sequelize.STRING,
+      },
       part_of_fediverse: {
         type: Sequelize.BOOLEAN,
       },
@@ -247,7 +281,7 @@ sequelize
       },
     });
 
-    if (/dev|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
+    if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
   })
   .catch(function (err) {
     console.log("Unable to connect to the database: ", err);
@@ -320,21 +354,33 @@ async function remove_domains_by_status(status) {
   }
 }
 
-async function update_data(domain) {
-  const data = await get_nodeinfo_url(domain);
-  if (data && "nodeinfo_url" in data) {
-    let nodeinfo = await get_nodeinfo(data.nodeinfo_url);
+async function update_data(domain, handle = null) {
+  let local_domain, wellknown, nodeinfo;
+  if (handle) {
+    // get local domain
+    let profile_url = await url_from_handle(handle);
+    if (profile_url) {
+      local_domain = profile_url.split("//")[1].split("/")[0];
+      wellknown = await get_nodeinfo_url(local_domain);
+    }
+  }
+  if (wellknown == null) wellknown = await get_nodeinfo_url(domain);
+
+  if (wellknown && "nodeinfo_url" in wellknown) {
+    let nodeinfo = await get_nodeinfo(wellknown.nodeinfo_url);
     if (nodeinfo) {
+      if (local_domain) nodeinfo["local_domain"] = local_domain;
       nodeinfo["domain"] = domain;
       db_add(nodeinfo);
       return nodeinfo;
     }
-  } else if (data && "status" in data) {
+  } else if (wellknown && "status" in wellknown) {
     let nodeinfo = {
       domain: domain,
       part_of_fediverse: false,
       retries: 1,
-      status: data.status,
+      status: wellknown.status,
+      local_domain: local_domain,
     };
     db_add(nodeinfo);
     return nodeinfo;
@@ -343,7 +389,7 @@ async function update_data(domain) {
   }
 }
 
-async function populate_db(seed_url) {
+async function populate_db(seed_url, refresh = false) {
   //https://fedifinder.glitch.me/api/known_instances.json
   https
     .get(seed_url, (res) => {
@@ -358,43 +404,66 @@ async function populate_db(seed_url) {
         if (body.startsWith("<") === false) {
           try {
             let data = JSON.parse(body);
-            data.map((instance) => {
-              //todo check if data is current or something
-              delete instance.createdAt;
-              delete instance.updatedAt;
-              return instance;
-            });
-            Instance.bulkCreate(data, {
-              ignoreDuplicates: true,
-            }).then(
-              data.map((instance) => {
+            if (refresh) {
+              data.reverse();
+              data.forEach((instance) => {
+                //update_data
                 check_instance(instance.domain);
-              })
-            );
+              });
+            } else {
+              Instance.bulkCreate(data, {
+                ignoreDuplicates: true,
+              }).then(
+                console.log("DB successfully populated from " + seed_url)
+              );
+            }
           } catch (err) {
             console.log(err);
           }
-        } else console.log(false);
+        }
       });
     })
     .on("error", (err) => {
-      //console.log(err);
       console.log(err);
       //todo: resolve unknown status
     });
 }
 
-async function check_instance(domain) {
+async function check_instance(domain, handle = null) {
   // retrieve info about a domain
   let data = await Instance.findOne({ where: { domain: domain } });
-
-  if (data === null) {
-    // no cached info -> get new info
-    let new_data = await update_data(domain);
-    return new_data;
-  } else {
+  if (data) {
     return data;
+  } else {
+    // no cached info -> get new info
+    let new_data = await update_data(domain, handle);
+    return new_data;
   }
+}
+
+function get_webfinger(handle) {
+  // get webfinger data for a handle
+  return new Promise(function (resolve) {
+    webfinger.lookup(handle, function (err, info) {
+      if (err) {
+        //console.log("error: ", err.message);
+        resolve(null);
+      } else {
+        resolve(info);
+      }
+    });
+  }).catch((err) => {
+    //console.log(err);
+  });
+}
+
+async function url_from_handle(handle) {
+  // checks if webfinger exists for a handle and returns the first href aka webadress
+  handle = handle.replace(/^@/, "");
+  let data = await get_webfinger(handle);
+  if (data) {
+    return data["object"]["links"][0]["href"];
+  } else return false;
 }
 
 async function get_nodeinfo_url(host_domain, redirect_count = 0) {
@@ -433,9 +502,9 @@ async function get_nodeinfo_url(host_domain, redirect_count = 0) {
             try {
               resolve({ nodeinfo_url: JSON.parse(body)["links"][0]["href"] });
             } catch (err) {
-              resolve(false);
+              resolve(null);
             }
-          } else resolve(false);
+          } else resolve(null);
         });
       })
       .on("error", (err) => {
@@ -444,7 +513,7 @@ async function get_nodeinfo_url(host_domain, redirect_count = 0) {
         //todo: resolve unknown status
       });
   }).catch((err) => {
-    //console.log(err)
+    console.log(err);
   });
 }
 
@@ -452,7 +521,7 @@ function get_nodeinfo(nodeinfo_url) {
   // get fresh nodeinfo and save to db
   return new Promise((resolve) => {
     https
-      .get(nodeinfo_url, { timeout: 5000 }, (res) => {
+      .get(nodeinfo_url, { timeout: 10000 }, (res) => {
         let body = "";
         if (res.statusCode != 200) {
           resolve({ part_of_fediverse: false });
@@ -538,10 +607,9 @@ io.use((socket, next) => {
 
 io.sockets.on("connection", function (socket) {
   socket.on("checkDomains", function (data) {
-    let domains = data.domains.split(",");
     Promise.all(
-      domains.map((domain) =>
-        check_instance(domain)
+      data.domains.map((domain) =>
+        check_instance(domain.domain, domain.handle)
           .catch((err) => console.log(err))
           .then((data) => {
             socket.emit("checkedDomains", data);
@@ -741,10 +809,9 @@ async function tests() {
     assert(data.nodeinfo_url == "https://lucahammer.com/wp-json/nodeinfo/2.1");
   });
 
-  it("remove data from the db, add an entry, update the entry, remove entries with many retries", async () => {
-    await setup();
-    let empty = await Instance.findAll({ where: {} });
-    assert(empty.length == 0);
+  it("should add an entry, update the entry, remove that entry based on retries", async () => {
+    //let empty = await Instance.findAll({ where: {} });
+    //assert(empty.length == 0);
 
     let added_instance = await db_add({ domain: "test.com", retries: 100 });
     assert(added_instance.domain == "test.com");
@@ -755,13 +822,11 @@ async function tests() {
     });
     assert(updated_instance.retries, 101);
 
-    await db_add({ domain: "test2.com", retries: 100 });
-    let before_cleaning = await Instance.findAll({});
-    assert(before_cleaning.length == 2);
-
     await remove_domains_by_retries(100);
-    let cleaned = await Instance.findAll({});
-    assert(cleaned.length == 1);
+    let cleaned = await Instance.findAll({
+      where: { domain: "test.com" },
+    });
+    assert(cleaned.length == 0);
   });
 
   it("should get no info about a non fediverse website", async () => {
@@ -774,5 +839,14 @@ async function tests() {
     assert(info.users_total == 1);
     info = await check_instance("lucahammer.com");
     assert(info.users_total == 1);
+  });
+
+  it("get url from handle (webfinger)", async () => {
+    let url = await url_from_handle("@luca@vis.social");
+    assert("https://vis.social/@Luca" == url);
+    url = await url_from_handle("@luca@vis.social");
+    assert("https://vis.social/@Luca" == url);
+    url = await url_from_handle("luca@lucahammer.com");
+    assert("https://lucahammer.com/author/luca" == url);
   });
 }
