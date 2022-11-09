@@ -42,3 +42,11 @@ table {
   background-color: #1e83cc;
   color: #ffffff;
 }
+ol > li > a:last-of-type {
+  margin-bottom: 30px;
+}
+
+#urlList {
+  list-style: none;
+  padding-left: 0;
+}

@@ -9,7 +9,7 @@ let unchecked_domains = [];
 let display_brokenList = "none";
 let displayBroken = "inline";
 let user_handles = [];
-let displayButtons = false;
+let displayButtons = true;
 
 $(function () {
   // run after everything is loaded
@@ -248,7 +248,7 @@ function followButton(username, user_instance, target_url) {
       "href",
       "https://" + user_instance + "/authorize_interaction?uri=" + target_url
     )
-    .text("Follow from " + username);
+    .text("Follow @" + target_url.split("@")[1] + " from " + username);
 }
 
 function displayAccounts() {
@@ -259,6 +259,8 @@ function displayAccounts() {
       let openStatus = data.openRegistrations
         ? "<b>registration open</b>"
         : "registration closed";
+
+      let local_domain = data.local_domain ? data.local_domain : domain;
 
       let domain_info =
         data.software_name +
@@ -272,12 +274,12 @@ function displayAccounts() {
         openStatus;
       $domain = $(
         "<li id='" +
-          domain +
-          "'><a target='_blank' href='https://" +
-          domain +
+          local_domain +
+          "'><h3 style='margin-bottom:0'><a target='_blank' href='https://" +
+          local_domain +
           "'>" +
-          domain +
-          "</a><br><span>" +
+          local_domain +
+          "</a></h3><span>" +
           domain_info +
           "</span></li>"
       );
@@ -286,7 +288,7 @@ function displayAccounts() {
       data["handles"].forEach((handle) => {
         $li = $("<li>");
         let target_url =
-          "https://" + domain + "/@" + handle.handle.split("@")[1];
+          "https://" + local_domain + "/@" + handle.handle.split("@")[1];
         $li.append(
           $("<a>")
             .attr("href", target_url)
@@ -294,16 +296,16 @@ function displayAccounts() {
             .addClass("link")
         );
 
-        $li.append(" ");
+        $li.append(" (");
 
         $li.append(
           $("<a>")
             .attr("href", "https://twitter.com/" + handle.username)
-            .text("(@" + handle.username + ")")
+            .text("@" + handle.username)
             .addClass("link")
         );
 
-        $li.append("<br>");
+        $li.append(")<br>");
 
         if (displayButtons) {
           user_handles.map((user_handle) => {
