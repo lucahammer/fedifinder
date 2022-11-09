@@ -147,7 +147,7 @@ app.get(process.env.DB_CLEAR + "_sessions", async function (req, res) {
     });
 });
 
-app.get(process.env.DB_CLEAR, function (req, res) {
+app.get(process.env.DB_CLEAR + "_all", function (req, res) {
   // visit this URL to reset the DB
   setup();
   res.redirect("/");
@@ -158,13 +158,23 @@ app.get("/api/known_instances.json", async (req, res) => {
   res.json(data);
 });
 
-app.get(process.env.DB_CLEAR + "_cleanup", (req, res) => {
+app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
   // visit this URL to remove timed out entries from the DB
-  //let not_fedi = await remove_domains_by_part_of_fediverse(false);
-  let to_remove = [500, 501, 503, 504, 301, 302];
-  let removed = {};
+  let not_fedi = await remove_domains_by_part_of_fediverse(false);
+
+  let to_remove = [
+    500,
+    501,
+    503,
+    504,
+    301,
+    302,
+    "ECONNRESET",
+    "ETIMEDOUT",
+    "ENOTFOUND",
+  ];
   to_remove.forEach((status) => remove_domains_by_status(status));
-  res.send(`Removed ${JSON.stringify(to_remove, null, 4)}`);
+  res.send(`Removed ${not_fedi} ${JSON.stringify(to_remove, null, 4)}`);
 
   //db_to_log();
 });
@@ -173,8 +183,21 @@ app.get(process.env.DB_CLEAR + "_pop", async (req, res) => {
   // visit this URL to remove timed out entries from the DB
   Instance.sync({ force: true });
   console.log("Populating the database with known domains");
-  populate_db("https://fedifinder.glitch.me/api/known_instances.json");
+  populate_db("https://fedifinder-staging.glitch.me/api/known_instances.json");
   res.redirect("/success");
+});
+
+app.get(process.env.DB_CLEAR + "_popfresh", async (req, res) => {
+  // visit this URL to remove timed out entries from the DB
+  let source_url = "https://fedifinder.glitch.me/api/known_instances.json";
+  console.log(
+    "Populating the database with new data for known domains from " + source_url
+  );
+  ("https://fedifinder.glitch.me/api/known_instances.json");
+  populate_db(source_url, true);
+  res.send(
+    "Started to populate the database with new records from " + source_url
+  );
 });
 
 const server = app.listen(process.env.PORT, function () {
@@ -332,34 +355,32 @@ async function remove_domains_by_status(status) {
 }
 
 async function update_data(domain, handle = null) {
-  const data = await get_nodeinfo_url(domain);
-  if (data && "nodeinfo_url" in data) {
-    let nodeinfo = await get_nodeinfo(data.nodeinfo_url);
+  let local_domain, wellknown, nodeinfo;
+  if (handle) {
+    // get local domain
+    let profile_url = await url_from_handle(handle);
+    if (profile_url) {
+      local_domain = profile_url.split("//")[1].split("/")[0];
+      wellknown = await get_nodeinfo_url(local_domain);
+    }
+  }
+  if (wellknown == null) wellknown = await get_nodeinfo_url(domain);
+
+  if (wellknown && "nodeinfo_url" in wellknown) {
+    let nodeinfo = await get_nodeinfo(wellknown.nodeinfo_url);
     if (nodeinfo) {
+      if (local_domain) nodeinfo["local_domain"] = local_domain;
       nodeinfo["domain"] = domain;
       db_add(nodeinfo);
       return nodeinfo;
-    } else if (handle) {
-      // fallback to webfinger if domaincheck fails
-      let profile_url = await url_from_handle(handle);
-      const data = await get_nodeinfo_url(
-        profile_url.split("//")[1].split("/")[0]
-      );
-      if (data && "nodeinfo_url" in data) {
-        let nodeinfo = await get_nodeinfo(data.nodeinfo_url);
-        if (nodeinfo) {
-          nodeinfo["domain"] = domain;
-          db_add(nodeinfo);
-          return nodeinfo;
-        }
-      }
     }
-  } else if (data && "status" in data) {
+  } else if (wellknown && "status" in wellknown) {
     let nodeinfo = {
       domain: domain,
       part_of_fediverse: false,
       retries: 1,
-      status: data.status,
+      status: wellknown.status,
+      local_domain: local_domain,
     };
     db_add(nodeinfo);
     return nodeinfo;
@@ -368,7 +389,7 @@ async function update_data(domain, handle = null) {
   }
 }
 
-async function populate_db(seed_url) {
+async function populate_db(seed_url, refresh = false) {
   //https://fedifinder.glitch.me/api/known_instances.json
   https
     .get(seed_url, (res) => {
@@ -383,25 +404,26 @@ async function populate_db(seed_url) {
         if (body.startsWith("<") === false) {
           try {
             let data = JSON.parse(body);
-            data.map((instance) => {
-              //todo check if data is current or something
-              return instance;
-            });
-            Instance.bulkCreate(data, {
-              ignoreDuplicates: true,
-            }).then(
-              data.map((instance) => {
+            if (refresh) {
+              data.reverse();
+              data.forEach((instance) => {
+                //update_data
                 check_instance(instance.domain);
-              })
-            );
+              });
+            } else {
+              Instance.bulkCreate(data, {
+                ignoreDuplicates: true,
+              }).then(
+                console.log("DB successfully populated from " + seed_url)
+              );
+            }
           } catch (err) {
             console.log(err);
           }
-        } else console.log(false);
+        }
       });
     })
     .on("error", (err) => {
-      //console.log(err);
       console.log(err);
       //todo: resolve unknown status
     });
@@ -424,14 +446,14 @@ function get_webfinger(handle) {
   return new Promise(function (resolve) {
     webfinger.lookup(handle, function (err, info) {
       if (err) {
-        console.log("error: ", err.message);
-        resolve(false);
+        //console.log("error: ", err.message);
+        resolve(null);
       } else {
         resolve(info);
       }
     });
   }).catch((err) => {
-    console.log(err);
+    //console.log(err);
   });
 }
 
@@ -480,9 +502,9 @@ async function get_nodeinfo_url(host_domain, redirect_count = 0) {
             try {
               resolve({ nodeinfo_url: JSON.parse(body)["links"][0]["href"] });
             } catch (err) {
-              resolve(false);
+              resolve(null);
             }
-          } else resolve(false);
+          } else resolve(null);
         });
       })
       .on("error", (err) => {
@@ -491,7 +513,7 @@ async function get_nodeinfo_url(host_domain, redirect_count = 0) {
         //todo: resolve unknown status
       });
   }).catch((err) => {
-    //console.log(err)
+    console.log(err);
   });
 }
 
@@ -499,7 +521,7 @@ function get_nodeinfo(nodeinfo_url) {
   // get fresh nodeinfo and save to db
   return new Promise((resolve) => {
     https
-      .get(nodeinfo_url, { timeout: 5000 }, (res) => {
+      .get(nodeinfo_url, { timeout: 10000 }, (res) => {
         let body = "";
         if (res.statusCode != 200) {
           resolve({ part_of_fediverse: false });
@@ -787,8 +809,7 @@ async function tests() {
     assert(data.nodeinfo_url == "https://lucahammer.com/wp-json/nodeinfo/2.1");
   });
 
-  it("remove data from the db, add an entry, update the entry, remove entries with many retries", async () => {
-    //await setup();
+  it("should add an entry, update the entry, remove that entry based on retries", async () => {
     //let empty = await Instance.findAll({ where: {} });
     //assert(empty.length == 0);
 
@@ -820,9 +841,10 @@ async function tests() {
     assert(info.users_total == 1);
   });
 
-  await url_from_handle("luca@vis.social");
   it("get url from handle (webfinger)", async () => {
     let url = await url_from_handle("@luca@vis.social");
+    assert("https://vis.social/@Luca" == url);
+    url = await url_from_handle("@luca@vis.social");
     assert("https://vis.social/@Luca" == url);
     url = await url_from_handle("luca@lucahammer.com");
     assert("https://lucahammer.com/author/luca" == url);
