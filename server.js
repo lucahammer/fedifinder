@@ -4,17 +4,16 @@ const passport = require("passport");
 const Strategy = require("passport-twitter").Strategy;
 const hbs = require("hbs");
 const url = require("url");
-const Sequelize = require("sequelize");
 const https = require("https");
 const session = require("express-session");
 const bodyParser = require("body-parser");
 const TwitterApi = require("twitter-api-v2").TwitterApi;
 const TwitterV2IncludesHelper =
   require("twitter-api-v2").TwitterV2IncludesHelper;
-const Op = require("sequelize").Op;
 const WebFinger = require("webfinger.js");
 const sqlite = require("better-sqlite3");
 const SqliteStore = require("better-sqlite3-session-store")(session);
+const DB = require("better-sqlite3-helper");
 
 const webfinger = new WebFinger({
   webfist_fallback: false,
@@ -134,18 +133,22 @@ app.get(process.env.DB_CLEAR + "_sessions", async function (req, res) {
 
 app.get(process.env.DB_CLEAR + "_all", function (req, res) {
   // visit this URL to reset the DB
-  setup();
+  DB().run("DELETE from domains");
   res.redirect("/");
 });
 
-app.get("/api/known_instances.json", async (req, res) => {
-  let data = await Instance.findAll({ where: { part_of_fediverse: true } });
+app.get("/api/known_instances.json", (req, res) => {
+  let data = DB().query("SELECT * FROM domains");
+  data.forEach((data) => {
+    data["openRegistrations"] = data["openRegistrations"] ? true : false;
+    data["part_of_fediverse"] = data["part_of_fediverse"] ? true : false;
+  });
   res.json(data);
 });
 
 app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
   // visit this URL to remove timed out entries from the DB
-  //let not_fedi = await remove_domains_by_part_of_fediverse(false);
+  //let not_fedi = await remove_domains_by_part_of_fediverse(0);
 
   let to_remove = [
     500,
@@ -165,10 +168,10 @@ app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
 });
 
 app.get(process.env.DB_CLEAR + "_pop", async (req, res) => {
-  // visit this URL to remove timed out entries from the DB
-  Instance.sync({ force: true });
+  // delete all records from the database and repopulate it with data from remote server
+  DB().run("DELETE from domains");
   console.log("Populating the database with known domains");
-  populate_db("https://fedifinder-staging.glitch.me/api/known_instances.json");
+  populate_db("https://fedifinder.glitch.me/api/known_instances.json");
   res.redirect("/success");
 });
 
@@ -193,145 +196,63 @@ const server = app.listen(process.env.PORT, function () {
 // WARNING: THIS IS BAD. DON'T TURN OFF TLS
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-let Instance;
-
 // setup a new database
 // using database credentials set in .env
-let sequelize = new Sequelize(
-  "database",
-  process.env.DB_USER,
-  process.env.DB_PASS,
-  {
-    host: "0.0.0.0",
-    dialect: "sqlite",
-    pool: {
-      max: 5,
-      min: 0,
-      idle: 10000,
-    },
-    // Security note: the database is saved to the file `database.sqlite` on the local filesystem. It's deliberately placed in the `.data` directory
-    // which doesn't get copied if someone remixes the project.
-    storage: ".data/database.sqlite",
-    logging: false,
-  }
-);
 
-// authenticate with the database
-sequelize
-  .authenticate()
-  .then(function (err) {
-    console.log("Connection has been established successfully.");
-    // define a new table 'instances'
-    Instance = sequelize.define("instances", {
-      domain: {
-        type: Sequelize.STRING,
-        primaryKey: true,
-        unique: true,
-      },
-      local_domain: {
-        type: Sequelize.STRING,
-      },
-      part_of_fediverse: {
-        type: Sequelize.BOOLEAN,
-      },
-      software_name: {
-        type: Sequelize.STRING,
-      },
-      software_version: {
-        type: Sequelize.STRING,
-      },
-      users_total: {
-        type: Sequelize.INTEGER,
-      },
-      users_activeMonth: {
-        type: Sequelize.INTEGER,
-      },
-      users_activeHalfyear: {
-        type: Sequelize.INTEGER,
-      },
-      localPosts: {
-        type: Sequelize.INTEGER,
-      },
-      localComments: {
-        type: Sequelize.INTEGER,
-      },
-      openRegistrations: {
-        type: Sequelize.BOOLEAN,
-      },
-      status: {
-        type: Sequelize.STRING,
-      },
-      retries: {
-        type: Sequelize.INTEGER,
-      },
-    });
+DB({
+  path: "./data/better-sqlite3.db",
+  readonly: false,
+  fileMustExist: true,
+  WAL: true,
+  migrate: {
+    force: false,
+    table: "migration",
+    migrationsPath: __dirname + "/migrations",
+  },
+});
 
-    if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
-  })
-  .catch(function (err) {
-    console.log("Unable to connect to the database: ", err);
-  });
-
-async function setup() {
-  // removes all entries from the database by dropping and recreating all tables
-  let data = await Instance.sync({ force: true });
-  return data;
-}
-
-async function db_to_log() {
+function db_to_log() {
   // for debugging
-  await Instance.findAll().then(function (instances) {
-    instances.map((instance) => {
-      console.log(instance.domain + " " + instance.status);
-    });
+  let instances = DB().query("SELECT * FROM domains");
+  console.log(instances);
+  instances.forEach((instance) => {
+    console.log(instance.domain + " " + instance.status);
   });
 }
 
-async function db_add(nodeinfo) {
-  let data = await Instance.findOne({ where: { domain: nodeinfo["domain"] } });
+function db_add(nodeinfo) {
+  let domain = nodeinfo["domain"];
+  let data = DB().queryFirstRow("SELECT * FROM domains WHERE domain=?", domain);
   if (data) return data;
   else {
     try {
-      await Instance.create(nodeinfo);
-    } catch (err) {}
+      let added = DB().insert("domains", nodeinfo);
+    } catch (err) {
+      console.log(err);
+    }
     return nodeinfo;
   }
 }
 
-async function db_remove(domain) {
+function db_remove(domain) {
   try {
-    return await Instance.destroy({ where: { domain: domain } });
-  } catch (err) {
-    console.log(err);
-  }
-}
-async function db_update(domain, data) {
-  try {
-    return await Instance.update(data, { where: { domain: domain } });
+    DB().delete("domains", { domain: domain });
   } catch (err) {
     console.log(err);
   }
 }
 
-async function remove_domains_by_retries(retries) {
+function remove_domains_by_part_of_fediverse(fediversy) {
   try {
-    return await Instance.destroy({ where: { retries: { [Op.gt]: retries } } });
+    DB().delete("domains", { part_of_fediverse: fediversy });
   } catch (err) {
     console.log(err);
   }
 }
 
-async function remove_domains_by_part_of_fediverse(fediversy) {
+function remove_domains_by_status(status) {
   try {
-    return await Instance.destroy({ where: { part_of_fediverse: fediversy } });
-  } catch (err) {
-    console.log(err);
-  }
-}
-
-async function remove_domains_by_status(status) {
-  try {
-    let data = await Instance.destroy({ where: { status: status } });
+    let data = DB().delete("domains", { status: status });
     console.log(`${status} removed: ${data}`);
     return data;
   } catch (err) {
@@ -362,7 +283,7 @@ async function update_data(domain, handle = null) {
   } else if (wellknown && "status" in wellknown) {
     let nodeinfo = {
       domain: domain,
-      part_of_fediverse: false,
+      part_of_fediverse: 0,
       retries: 1,
       status: wellknown.status,
       local_domain: local_domain,
@@ -370,7 +291,7 @@ async function update_data(domain, handle = null) {
     db_add(nodeinfo);
     return nodeinfo;
   }
-  return { domain: domain, part_of_fediverse: false, retries: 1 };
+  return { domain: domain, part_of_fediverse: 0, retries: 1 };
 }
 
 async function populate_db(seed_url, refresh = false) {
@@ -389,16 +310,24 @@ async function populate_db(seed_url, refresh = false) {
           try {
             let data = JSON.parse(body);
             if (refresh) {
-              data.reverse();
               data.forEach((instance) => {
                 //update_data
                 check_instance(instance.domain);
               });
             } else {
-              Instance.bulkCreate(data, {
-                ignoreDuplicates: true,
-              }).then(
-                console.log("DB successfully populated from " + seed_url)
+              data.forEach((item) => {
+                delete item.createdAt;
+                delete item.updatedAt;
+                delete item.localComments;
+                item.part_of_fediverse = item.part_of_fediverse ? 1 : 0;
+                item.openRegistrations = item.openRegistrations ? 1 : 0;
+              });
+              let count = DB().insert("domains", data);
+              console.log(
+                "DB successfully populated " +
+                  count +
+                  " entries from " +
+                  seed_url
               );
             }
           } catch (err) {
@@ -415,7 +344,10 @@ async function populate_db(seed_url, refresh = false) {
 
 async function check_instance(domain, handle = null) {
   // retrieve info about a domain
-  let data = await Instance.findOne({ where: { domain: domain } });
+  let data = await DB().queryFirstRow(
+    "SELECT * FROM domains WHERE domain=?",
+    domain
+  );
   if (data) {
     return data;
   } else {
@@ -486,6 +418,7 @@ async function get_nodeinfo_url(host_domain, redirect_count = 0) {
             try {
               resolve({ nodeinfo_url: JSON.parse(body)["links"][0]["href"] });
             } catch (err) {
+              //console.log(err)
               resolve(null);
             }
           } else resolve(null);
@@ -508,7 +441,7 @@ function get_nodeinfo(nodeinfo_url) {
       .get(nodeinfo_url, { timeout: 5000 }, (res) => {
         let body = "";
         if (res.statusCode != 200) {
-          resolve({ part_of_fediverse: false });
+          resolve({ part_of_fediverse: 0 });
         }
         res.on("data", (d) => {
           body += d;
@@ -518,7 +451,7 @@ function get_nodeinfo(nodeinfo_url) {
             try {
               let nodeinfo = JSON.parse(body);
               resolve({
-                part_of_fediverse: true,
+                part_of_fediverse: 1,
                 software_name: nodeinfo["software"]["name"],
                 software_version: nodeinfo["software"]["version"],
                 users_total:
@@ -540,11 +473,7 @@ function get_nodeinfo(nodeinfo_url) {
                   "localPosts" in nodeinfo["usage"]
                     ? nodeinfo["usage"]["localPosts"]
                     : null, //todo handle unavailable counts
-                localComments:
-                  "localComments" in nodeinfo["usage"]
-                    ? nodeinfo["usage"]["localComments"]
-                    : null, //todo handle unavailable counts
-                openRegistrations: nodeinfo["openRegistrations"],
+                openRegistrations: nodeinfo["openRegistrations"] ? 1 : 0,
               });
             } catch (err) {
               console.log(nodeinfo_url);
@@ -774,9 +703,8 @@ io.sockets.on("connection", function (socket) {
 });
 
 async function tests() {
-  console.log("Start Tests");
+  console.log("Start tests");
   const assert = require("assert").strict;
-  //Instance.sync({force:true})
 
   const it = (description, function_to_test) => {
     try {
@@ -794,28 +722,26 @@ async function tests() {
   });
 
   it("should add an entry, update the entry, remove that entry based on retries", async () => {
-    //let empty = await Instance.findAll({ where: {} });
-    //assert(empty.length == 0);
-
-    let added_instance = await db_add({ domain: "test.com", retries: 100 });
+    let added_instance = db_add({ domain: "test.com", retries: 100 });
     assert(added_instance.domain == "test.com");
 
-    await db_update("test.com", { retries: (added_instance["retries"] += 1) });
-    let updated_instance = await Instance.findOne({
-      where: { domain: "test.com" },
-    });
-    assert(updated_instance.retries, 101);
+    let test_domain = DB().queryFirstRow(
+      "SELECT * FROM domains WHERE domain=?",
+      "test.com"
+    );
+    assert(test_domain.domain == "test.com");
 
-    await remove_domains_by_retries(100);
-    let cleaned = await Instance.findAll({
-      where: { domain: "test.com" },
-    });
-    assert(cleaned.length == 0);
+    db_remove("test.com");
+    let cleaned = DB().queryFirstRow(
+      "SELECT * FROM domains WHERE domain=?",
+      "test.com"
+    );
+    assert(cleaned == undefined);
   });
 
   it("should get no info about a non fediverse website", async () => {
     let info = await check_instance("google.com");
-    assert(info.part_of_fediverse == false);
+    assert(info.part_of_fediverse == 0);
   });
 
   it("should get new info about an instance and save to db", async () => {
@@ -834,3 +760,4 @@ async function tests() {
     assert("https://lucahammer.com/author/luca" == url);
   });
 }
+if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
