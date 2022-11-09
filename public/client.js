@@ -79,7 +79,13 @@ function addHandles(username, handles) {
 }
 
 function retryDomains() {
-  socket.emit("checkDomains", { domains: unchecked_domains.join(",") });
+  let to_check = [];
+  unchecked_domains.forEach((domain) =>
+    to_check.push({
+      domain: domain,
+    })
+  );
+  socket.emit("checkDomains", { domains: to_check });
   $("#retry").css("display", "none");
 }
 
