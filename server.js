@@ -220,6 +220,9 @@ sequelize
         primaryKey: true,
         unique: true,
       },
+      local_domain: {
+        type: Sequelize.STRING,
+      },
       part_of_fediverse: {
         type: Sequelize.BOOLEAN,
       },
@@ -328,7 +331,7 @@ async function remove_domains_by_status(status) {
   }
 }
 
-async function update_data(domain) {
+async function update_data(domain, handle = null) {
   const data = await get_nodeinfo_url(domain);
   if (data && "nodeinfo_url" in data) {
     let nodeinfo = await get_nodeinfo(data.nodeinfo_url);
@@ -336,6 +339,20 @@ async function update_data(domain) {
       nodeinfo["domain"] = domain;
       db_add(nodeinfo);
       return nodeinfo;
+    } else if (handle) {
+      // fallback to webfinger if domaincheck fails
+      let profile_url = await url_from_handle(handle);
+      const data = await get_nodeinfo_url(
+        profile_url.split("//")[1].split("/")[0]
+      );
+      if (data && "nodeinfo_url" in data) {
+        let nodeinfo = await get_nodeinfo(data.nodeinfo_url);
+        if (nodeinfo) {
+          nodeinfo["domain"] = domain;
+          db_add(nodeinfo);
+          return nodeinfo;
+        }
+      }
     }
   } else if (data && "status" in data) {
     let nodeinfo = {
@@ -368,8 +385,6 @@ async function populate_db(seed_url) {
             let data = JSON.parse(body);
             data.map((instance) => {
               //todo check if data is current or something
-              delete instance.createdAt;
-              delete instance.updatedAt;
               return instance;
             });
             Instance.bulkCreate(data, {
@@ -392,16 +407,15 @@ async function populate_db(seed_url) {
     });
 }
 
-async function check_instance(domain) {
+async function check_instance(domain, handle = null) {
   // retrieve info about a domain
   let data = await Instance.findOne({ where: { domain: domain } });
-
-  if (data === null) {
-    // no cached info -> get new info
-    let new_data = await update_data(domain);
-    return new_data;
-  } else {
+  if (data) {
     return data;
+  } else {
+    // no cached info -> get new info
+    let new_data = await update_data(domain, handle);
+    return new_data;
   }
 }
 
@@ -423,6 +437,7 @@ function get_webfinger(handle) {
 
 async function url_from_handle(handle) {
   // checks if webfinger exists for a handle and returns the first href aka webadress
+  handle = handle.replace(/^@/, "");
   let data = await get_webfinger(handle);
   if (data) {
     return data["object"]["links"][0]["href"];
@@ -570,10 +585,9 @@ io.use((socket, next) => {
 
 io.sockets.on("connection", function (socket) {
   socket.on("checkDomains", function (data) {
-    let domains = data.domains.split(",");
     Promise.all(
-      domains.map((domain) =>
-        check_instance(domain)
+      data.domains.map((domain) =>
+        check_instance(domain.domain, domain.handle)
           .catch((err) => console.log(err))
           .then((data) => {
             socket.emit("checkedDomains", data);
@@ -807,8 +821,8 @@ async function tests() {
   });
 
   await url_from_handle("luca@vis.social");
-  it("should check webfinger", async () => {
-    let url = await url_from_handle("luca@vis.social");
+  it("get url from handle (webfinger)", async () => {
+    let url = await url_from_handle("@luca@vis.social");
     assert("https://vis.social/@Luca" == url);
     url = await url_from_handle("luca@lucahammer.com");
     assert("https://lucahammer.com/author/luca" == url);
