@@ -19,7 +19,7 @@ const webfinger = new WebFinger({
   webfist_fallback: false,
   tls_only: true,
   uri_fallback: true,
-  request_timeout: 10000,
+  request_timeout: 5000,
 });
 
 hbs.registerHelper("json", function (context) {
@@ -384,9 +384,8 @@ async function update_data(domain, handle = null) {
     };
     db_add(nodeinfo);
     return nodeinfo;
-  } else {
-    return { domain: domain, part_of_fediverse: false, retries: 1 };
   }
+  return { domain: domain, part_of_fediverse: false, retries: 1 };
 }
 
 async function populate_db(seed_url, refresh = false) {
@@ -521,7 +520,7 @@ function get_nodeinfo(nodeinfo_url) {
   // get fresh nodeinfo and save to db
   return new Promise((resolve) => {
     https
-      .get(nodeinfo_url, { timeout: 10000 }, (res) => {
+      .get(nodeinfo_url, { timeout: 5000 }, (res) => {
         let body = "";
         if (res.statusCode != 200) {
           resolve({ part_of_fediverse: false });
@@ -609,7 +608,7 @@ io.sockets.on("connection", function (socket) {
   socket.on("checkDomains", function (data) {
     Promise.all(
       data.domains.map((domain) =>
-        check_instance(domain.domain, domain.handle)
+        check_instance(domain.domain, domain.handle ?? null)
           .catch((err) => console.log(err))
           .then((data) => {
             socket.emit("checkedDomains", data);
