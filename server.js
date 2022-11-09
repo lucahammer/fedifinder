@@ -13,6 +13,14 @@ const TwitterV2IncludesHelper =
   require("twitter-api-v2").TwitterV2IncludesHelper;
 const Op = require("sequelize").Op;
 const SequelizeStore = require("connect-session-sequelize")(session.Store);
+const WebFinger = require("webfinger.js");
+
+const webfinger = new WebFinger({
+  webfist_fallback: false,
+  tls_only: true,
+  uri_fallback: true,
+  request_timeout: 10000,
+});
 
 hbs.registerHelper("json", function (context) {
   return JSON.stringify(context);
@@ -247,7 +255,7 @@ sequelize
       },
     });
 
-    if (/dev|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
+    if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
   })
   .catch(function (err) {
     console.log("Unable to connect to the database: ", err);
@@ -395,6 +403,30 @@ async function check_instance(domain) {
   } else {
     return data;
   }
+}
+
+function get_webfinger(handle) {
+  // get webfinger data for a handle
+  return new Promise(function (resolve) {
+    webfinger.lookup(handle, function (err, info) {
+      if (err) {
+        console.log("error: ", err.message);
+        resolve(false);
+      } else {
+        resolve(info);
+      }
+    });
+  }).catch((err) => {
+    console.log(err);
+  });
+}
+
+async function url_from_handle(handle) {
+  // checks if webfinger exists for a handle and returns the first href aka webadress
+  let data = await get_webfinger(handle);
+  if (data) {
+    return data["object"]["links"][0]["href"];
+  } else return false;
 }
 
 async function get_nodeinfo_url(host_domain, redirect_count = 0) {
@@ -742,9 +774,9 @@ async function tests() {
   });
 
   it("remove data from the db, add an entry, update the entry, remove entries with many retries", async () => {
-    await setup();
-    let empty = await Instance.findAll({ where: {} });
-    assert(empty.length == 0);
+    //await setup();
+    //let empty = await Instance.findAll({ where: {} });
+    //assert(empty.length == 0);
 
     let added_instance = await db_add({ domain: "test.com", retries: 100 });
     assert(added_instance.domain == "test.com");
@@ -755,13 +787,11 @@ async function tests() {
     });
     assert(updated_instance.retries, 101);
 
-    await db_add({ domain: "test2.com", retries: 100 });
-    let before_cleaning = await Instance.findAll({});
-    assert(before_cleaning.length == 2);
-
     await remove_domains_by_retries(100);
-    let cleaned = await Instance.findAll({});
-    assert(cleaned.length == 1);
+    let cleaned = await Instance.findAll({
+      where: { domain: "test.com" },
+    });
+    assert(cleaned.length == 0);
   });
 
   it("should get no info about a non fediverse website", async () => {
@@ -774,5 +804,13 @@ async function tests() {
     assert(info.users_total == 1);
     info = await check_instance("lucahammer.com");
     assert(info.users_total == 1);
+  });
+
+  await url_from_handle("luca@vis.social");
+  it("should check webfinger", async () => {
+    let url = await url_from_handle("luca@vis.social");
+    assert("https://vis.social/@Luca" == url);
+    url = await url_from_handle("luca@lucahammer.com");
+    assert("https://lucahammer.com/author/luca" == url);
   });
 }

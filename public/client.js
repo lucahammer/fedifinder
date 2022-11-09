@@ -9,7 +9,7 @@ let unchecked_domains = [];
 let display_brokenList = "none";
 let displayBroken = "inline";
 let user_handles = [];
-let displayButtons = true;
+let displayButtons = false;
 
 $(function () {
   // run after everything is loaded
@@ -246,7 +246,7 @@ function followButton(username, user_instance, target_url) {
       "href",
       "https://" + user_instance + "/authorize_interaction?uri=" + target_url
     )
-    .text("Follow @" + target_url.split("@")[1] + " from " + username);
+    .text("Follow from " + username);
 }
 
 function displayAccounts() {
@@ -271,11 +271,11 @@ function displayAccounts() {
       $domain = $(
         "<li id='" +
           domain +
-          "'><h3 style='margin-bottom:0'><a target='_blank' href='https://" +
+          "'><a target='_blank' href='https://" +
           domain +
           "'>" +
           domain +
-          "</a></h3><span>" +
+          "</a><br><span>" +
           domain_info +
           "</span></li>"
       );
