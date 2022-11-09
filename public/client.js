@@ -85,14 +85,16 @@ function retryDomains() {
 
 function checkDomains() {
   // send unchecked domains to server to get more info
-  let domains_to_check = "";
+  let domains_to_check = [];
   for (const [domain, data] of Object.entries(domains)) {
     if ("part_of_fediverse" in data === false) {
       unchecked_domains.push(domain);
-      domains_to_check += domain + ",";
+      domains_to_check.push({
+        domain: domain,
+        handle: data["handles"][0]["handle"],
+      });
     }
   }
-  domains_to_check = domains_to_check.slice(0, -1);
   if (domains_to_check.length > 0) {
     socket.emit("checkDomains", { domains: domains_to_check });
   }
