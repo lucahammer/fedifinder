@@ -12,8 +12,9 @@ const TwitterApi = require("twitter-api-v2").TwitterApi;
 const TwitterV2IncludesHelper =
   require("twitter-api-v2").TwitterV2IncludesHelper;
 const Op = require("sequelize").Op;
-const SequelizeStore = require("connect-session-sequelize")(session.Store);
 const WebFinger = require("webfinger.js");
+const sqlite = require("better-sqlite3");
+const SqliteStore = require("better-sqlite3-session-store")(session);
 
 const webfinger = new WebFinger({
   webfist_fallback: false,
@@ -26,32 +27,17 @@ hbs.registerHelper("json", function (context) {
   return JSON.stringify(context);
 });
 
-const sessions_db = new Sequelize(
-  "sessions",
-  process.env.DB_USER,
-  process.env.DB_PASS,
-  {
-    host: "0.0.0.0",
-    dialect: "sqlite",
-    pool: {
-      max: 5,
-      min: 0,
-      idle: 10000,
-    },
-    // Security note: the database is saved to the file `database.sqlite` on the local filesystem. It's deliberately placed in the `.data` directory
-    // which doesn't get copied if someone remixes the project.
-    storage: ".data/sessions.sqlite",
-    logging: false,
-  }
-);
-
-const sequelizeSessionStore = new SequelizeStore({
-  db: sessions_db,
-});
+const sessions_db = new sqlite(".data/bettersessions.sqlite");
 
 const sessionOptions = {
   secret: process.env.SECRET,
-  store: sequelizeSessionStore,
+  store: new SqliteStore({
+    client: sessions_db,
+    expired: {
+      clear: true,
+      intervalMs: 900000, //ms = 15min
+    },
+  }),
   resave: false,
   saveUninitialized: false,
 };
@@ -87,7 +73,6 @@ app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(passport.session(sessionOptions));
 app.set("json spaces", 20);
-sessions_db.sync(); //{ force: true } for reset
 
 // Define routes.
 app.all("*", checkHttps);
@@ -160,7 +145,7 @@ app.get("/api/known_instances.json", async (req, res) => {
 
 app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
   // visit this URL to remove timed out entries from the DB
-  let not_fedi = await remove_domains_by_part_of_fediverse(false);
+  //let not_fedi = await remove_domains_by_part_of_fediverse(false);
 
   let to_remove = [
     500,
@@ -174,7 +159,7 @@ app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
     "ENOTFOUND",
   ];
   to_remove.forEach((status) => remove_domains_by_status(status));
-  res.send(`Removed ${not_fedi} ${JSON.stringify(to_remove, null, 4)}`);
+  res.send(`Removed ${JSON.stringify(to_remove, null, 4)}`);
 
   //db_to_log();
 });
