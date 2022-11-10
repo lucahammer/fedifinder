@@ -550,7 +550,7 @@ function findHandles(text) {
     .normalize("NFKD");
 
   // different separators people use
-  let words = text.split(/,|\s|“|\(|\)|'|》|\n|\r|\t|・|\||…|\.\s|\s$/);
+  let words = text.split(/,|\s|“|#|\(|\)|'|》|\n|\r|\t|・|\||…|\.\s|\s$/);
 
   // remove common false positives
   let unwanted_domains =
@@ -561,6 +561,7 @@ function findHandles(text) {
   let handles = [];
 
   words.map((word) => {
+    word.includes("agturcz") ? console.log(word) : null
     // @username@server.tld
     if (/^@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word)) handles.push(word);
     // some people don't include the initial @
