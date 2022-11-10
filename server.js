@@ -27,7 +27,6 @@ hbs.registerHelper("json", function (context) {
 });
 
 const sessions_db = new sqlite(".data/bettersessions.sqlite");
-
 const sessionOptions = {
   secret: process.env.SECRET,
   store: new SqliteStore({
@@ -138,7 +137,7 @@ app.get(process.env.DB_CLEAR + "_all", function (req, res) {
 });
 
 app.get("/api/known_instances.json", (req, res) => {
-  let data = DB().query("SELECT * FROM domains");
+  let data = DB().query("SELECT * FROM domains WHERE openRegistrations = 1");
   data.forEach((data) => {
     data["openRegistrations"] = data["openRegistrations"] ? true : false;
     data["part_of_fediverse"] = data["part_of_fediverse"] ? true : false;
@@ -177,7 +176,7 @@ app.get(process.env.DB_CLEAR + "_pop", async (req, res) => {
 
 app.get(process.env.DB_CLEAR + "_popfresh", async (req, res) => {
   // visit this URL to remove timed out entries from the DB
-  let source_url = "https://fedifinder.glitch.me/api/known_instances.json";
+  let source_url = "https://fedifinder-backup.glitch.me/api/known_instances.json";
   console.log(
     "Populating the database with new data for known domains from " + source_url
   );
@@ -198,11 +197,10 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 // setup a new database
 // using database credentials set in .env
-
 DB({
-  path: "./data/better-sqlite3.db",
+  path: ".data/better-sqlite3.db",
   readonly: false,
-  fileMustExist: true,
+  fileMustExist: false,
   WAL: true,
   migrate: {
     force: false,
