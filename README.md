@@ -28,24 +28,24 @@ The easiest way to run your own version of fedifinder is to use the remix option
    - SECRET (Any string. Is only used for the sessions.)
      ![.env file](https://cdn.glitch.global/e1cbae25-ccee-4849-a338-8c4c2be555a6/env-variables.png?v=1668102084373)
 6. The server should automatically start the app. And restart it whenever you change something in the server.js.
-   Status, Logs and Terminal are at the bottom.
+   Status, Logs, and Terminal are at the bottom.
 7. Optional: You can send code to Github (commit) by clicking Tools at the bottom of the screen, then export.
-8. Optional: If there are new things in the main version (branch), you can use the same menu, select import from Github and enter lucahammer/fedifinder.
+8. Optional: If there are new things in the main version (branch), you can use the same menu, select Import from Github and enter lucahammer/fedifinder.
    This will overwrite your own changes, but you will be able to get them back by using the Rewind option the same menu.
 9. Optional: If you improved fedifinder, please submit a pull request on Github, so the changes can be added to the main branch. If you need inspiration,
-   what do work on, look into the [Github Issues](https://github.com/lucahammer/fedifinder/issues)
+   on what do work on, look into the [Github Issues](https://github.com/lucahammer/fedifinder/issues)
 
-You should be able to run it anywhere were you got node.js, but I haven't tested it. You will need PROJECT_DOMAIN and PORT
-as .env variables in addition ot the four from step 5.
+You should be able to run it anywhere where you got node.js, but I haven't tested it. You will need PROJECT_DOMAIN and PORT
+as .env variables in addition of the four from step 5.
 
 Take a look at the [Code of Conduct](https://github.com/lucahammer/fedifinder/code_of_conduct.md) and get in contact with [@luca@vis.social](https://vis.social/@luca)
 if something or someone makes you uncomfortable.
 
 # Background
 
-Fedifinder is based on [opml.glitch.me](https://opml.glitch.me/). A tiny tool, I built in [2008](https://twitter.com/luca/status/1029354370620694530).
+Fedifinder is based on [opml.glitch.me](https://opml.glitch.me/). A tiny tool which I built in [2008](https://twitter.com/luca/status/1029354370620694530).
 It enables people to export the RSS feeds of the websites of the accounts they follow on Twitter as an OPML file to import it into a RSS reader. Twitter was
-my special interest and I am devastated by Musks decisions. I adapted Fedifinder on a weekend and have since tried to keep up with issues and requests.
+my special interest and I am devastated by Musk's decisions. I adapted Fedifinder on a weekend and have since tried to keep up with issues and requests.
 
 Consent is probably the only principle of fedifinder. It should only find, what people have made public themselves.
 
