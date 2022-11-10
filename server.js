@@ -213,14 +213,38 @@ app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
     504,
     301,
     302,
-    "ECONNRESET",
+    //"ECONNRESET",
     "ETIMEDOUT",
-    "ENOTFOUND",
+    //"ENOTFOUND",
   ];
   to_remove.forEach((status) => remove_domains_by_status(status));
   res.send(`Removed ${JSON.stringify(to_remove, null, 4)}`);
 
   //db_to_log();
+});
+
+app.get("/api/check", async (req, res) => {
+  // force update a single domain
+  let domain = req.query.domain
+    ? req.query.domain.toLowerCase().match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)[0]
+    : null;
+
+  let handle = req.query.handle
+    ? req.query.handle
+        .toLowerCase()
+        .match(/^@?[a-zA-Z0-9\_\]+@[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)[0]
+    : null;
+
+  domain = domain ? domain : handle.split("@").slice(-1)[0];
+
+  if ("force" in req.query) {
+    try {
+      let info = await update_data(domain, handle, true);
+      res.send(info);
+    } catch (err) {
+      res.send(err);
+    }
+  } else res.send(await check_instance(domain, handle));
 });
 
 app.get(process.env.DB_CLEAR + "_pop", async (req, res) => {
@@ -291,17 +315,24 @@ function db_to_log() {
   });
 }
 
-function db_add(nodeinfo) {
+function db_add(nodeinfo, force = false) {
   let domain = nodeinfo["domain"];
-  let data = DB().queryFirstRow("SELECT * FROM domains WHERE domain=?", domain);
-  if (data) return data;
-  else {
-    try {
-      let added = DB().insert("domains", nodeinfo);
-    } catch (err) {
-      console.log(err);
+  if (force) {
+    DB().replace("domains", { domain: domain }, nodeinfo);
+  } else {
+    let data = DB().queryFirstRow(
+      "SELECT * FROM domains WHERE domain=?",
+      domain
+    );
+    if (data) return data;
+    else {
+      try {
+        let added = DB().insert("domains", nodeinfo);
+      } catch (err) {
+        console.log(err);
+      }
+      return nodeinfo;
     }
-    return nodeinfo;
   }
 }
 
@@ -331,7 +362,7 @@ function remove_domains_by_status(status) {
   }
 }
 
-async function update_data(domain, handle = null) {
+async function update_data(domain, handle = null, force = false) {
   let local_domain, wellknown, nodeinfo;
   if (handle) {
     // get local domain
@@ -348,7 +379,7 @@ async function update_data(domain, handle = null) {
     if (nodeinfo) {
       if (local_domain) nodeinfo["local_domain"] = local_domain;
       nodeinfo["domain"] = domain;
-      db_add(nodeinfo);
+      db_add(nodeinfo, force);
       return nodeinfo;
     }
   } else if (wellknown && "status" in wellknown) {
@@ -359,7 +390,7 @@ async function update_data(domain, handle = null) {
       status: wellknown.status,
       local_domain: local_domain,
     };
-    db_add(nodeinfo);
+    db_add(nodeinfo, force);
     return nodeinfo;
   }
   return { domain: domain, part_of_fediverse: 0, retries: 1 };
