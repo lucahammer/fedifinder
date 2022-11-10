@@ -85,6 +85,21 @@
       <a href="https://freiheitsrechte.org/en/unterstuetzen">GFF</a>.
     </p>
 
+    <h2>Security incident</h2>
+    <p>
+      <del
+        >On 2022-11-9 the sessions database was accidentially added to the code
+        repository and exposed from around 23:00 to 23:30 CET. The sessions
+        database contains user info and Twitter tokens. Because the Twitter app
+        tokens are stored separatly, there was no risk that an attacker could
+        access the API with them. As an additonal security measurement the app
+        tokens were revoked and regenerated. If you logged yourself out, your
+        tokens weren't in the sessions database. If you have any questions,
+        please send me a message in the fediverse: @luca@vis.social.</del
+      ><br>
+      Update: It was the sessions database from the staging server, not the
+      production server. I only exposed my own data.
+    </p>
     <script
       src="https://button.glitch.me/button.js"
       data-style="glitch"
