@@ -204,7 +204,8 @@ app.get("/api/known_instances.json", (req, res) => {
 
 app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
   // visit this URL to remove timed out entries from the DB
-  //let not_fedi = await remove_domains_by_part_of_fediverse(0);
+  console.log(await remove_domains_by_part_of_fediverse(null));
+  console.log(await remove_domains_by_part_of_fediverse(0));
 
   let to_remove = [
     500,
@@ -213,14 +214,42 @@ app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
     504,
     301,
     302,
-    "ECONNRESET",
+    //"ECONNRESET",
     "ETIMEDOUT",
-    "ENOTFOUND",
+    //"ENOTFOUND",
   ];
   to_remove.forEach((status) => remove_domains_by_status(status));
   res.send(`Removed ${JSON.stringify(to_remove, null, 4)}`);
 
   //db_to_log();
+});
+
+app.get("/api/check", async (req, res) => {
+  // force update a single domain
+  let domain = req.query.domain
+    ? req.query.domain.toLowerCase().match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)
+    : null;
+  domain = domain ? domain[0]:null
+
+  let handle = req.query.handle
+    ? req.query.handle
+        .toLowerCase()
+        .match(/^@?[a-zA-Z0-9_]+@[a-zA-Z0-9\-\.]+\.[a-zA-Z]+$/)
+    : null;
+  handle = handle ? handle[0]:null
+  
+  domain = domain ? domain : handle ? handle.split("@").slice(-1)[0] : null;
+
+  if (domain) {
+    if ("force" in req.query) {
+      try {
+        let info = await update_data(domain, handle, true);
+        res.send(info);
+      } catch (err) {
+        res.send(err);
+      }
+    } else res.json(await check_instance(domain, handle));
+  } else res.json({error: "not a handle or not a domain"});
 });
 
 app.get(process.env.DB_CLEAR + "_pop", async (req, res) => {
@@ -285,23 +314,29 @@ function create_twitter_client(user) {
 function db_to_log() {
   // for debugging
   let instances = DB().query("SELECT * FROM domains");
-  console.log(instances);
   instances.forEach((instance) => {
     console.log(instance.domain + " " + instance.status);
   });
 }
 
-function db_add(nodeinfo) {
+function db_add(nodeinfo, force = false) {
   let domain = nodeinfo["domain"];
-  let data = DB().queryFirstRow("SELECT * FROM domains WHERE domain=?", domain);
-  if (data) return data;
-  else {
-    try {
-      let added = DB().insert("domains", nodeinfo);
-    } catch (err) {
-      console.log(err);
+  if (force) {
+    DB().replace("domains", { domain: domain }, nodeinfo);
+  } else {
+    let data = DB().queryFirstRow(
+      "SELECT * FROM domains WHERE domain=?",
+      domain
+    );
+    if (data) return data;
+    else {
+      try {
+        let added = DB().insert("domains", nodeinfo);
+      } catch (err) {
+        console.log(err);
+      }
+      return nodeinfo;
     }
-    return nodeinfo;
   }
 }
 
@@ -313,9 +348,9 @@ function db_remove(domain) {
   }
 }
 
-function remove_domains_by_part_of_fediverse(fediversy) {
+async function remove_domains_by_part_of_fediverse(fediversy) {
   try {
-    DB().delete("domains", { part_of_fediverse: fediversy });
+    return await DB().delete("domains", { part_of_fediverse: fediversy });
   } catch (err) {
     console.log(err);
   }
@@ -331,7 +366,7 @@ function remove_domains_by_status(status) {
   }
 }
 
-async function update_data(domain, handle = null) {
+async function update_data(domain, handle = null, force = false) {
   let local_domain, wellknown, nodeinfo;
   if (handle) {
     // get local domain
@@ -348,7 +383,7 @@ async function update_data(domain, handle = null) {
     if (nodeinfo) {
       if (local_domain) nodeinfo["local_domain"] = local_domain;
       nodeinfo["domain"] = domain;
-      db_add(nodeinfo);
+      db_add(nodeinfo, force);
       return nodeinfo;
     }
   } else if (wellknown && "status" in wellknown) {
@@ -359,7 +394,7 @@ async function update_data(domain, handle = null) {
       status: wellknown.status,
       local_domain: local_domain,
     };
-    db_add(nodeinfo);
+    db_add(nodeinfo, force);
     return nodeinfo;
   }
   return { domain: domain, part_of_fediverse: 0, retries: 1 };
