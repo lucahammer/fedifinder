@@ -52,7 +52,60 @@ passport.use(
     function (token, tokenSecret, profile, cb) {
       profile["tokenSecret"] = tokenSecret;
       profile["accessToken"] = token;
-      return cb(null, profile);
+      const client = create_twitter_client(profile);
+
+      client.v2
+        .me({
+          "user.fields": ["name", "description", "url", "location", "entities"],
+          expansions: ["pinned_tweet_id"],
+          "tweet.fields": ["text", "entities"],
+        })
+        .then((data) => {
+          let user = data.data;
+          let pinned_tweet;
+          let urls = [];
+          const pinnedTweetInclude = data.includes.tweets[0] ?? null;
+
+          if (pinnedTweetInclude) {
+            pinned_tweet = pinnedTweetInclude.text;
+            if (
+              "entities" in pinnedTweetInclude &&
+              "urls" in pinnedTweetInclude["entities"]
+            ) {
+              pinnedTweetInclude["entities"]["urls"].map((url) =>
+                urls.push(url.expanded_url)
+              );
+            }
+          }
+
+          "entities" in user && "url" in user.entities
+            ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
+            : null;
+
+          "entities" in user &&
+          "description" in user.entities &&
+          "urls" in user.entities.description
+            ? user.entities.description.urls.map((url) =>
+                urls.push(url.expanded_url)
+              )
+            : null;
+
+          profile = {
+            _json: {
+              username: user.username,
+              name: user.name,
+              location: user.location,
+              description: user.description,
+              urls: urls,
+              pinned_tweet: pinned_tweet,
+            },
+            id: profile.id,
+            tokenSecret: tokenSecret,
+            accessToken: token,
+          };
+
+          return cb(null, profile);
+        });
     }
   )
 );
@@ -111,6 +164,7 @@ app.get(
       "Cache-Control",
       "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
     );
+
     res.render("success.hbs", {
       username: req.user.username,
       profile: req.user._json,
@@ -176,7 +230,8 @@ app.get(process.env.DB_CLEAR + "_pop", async (req, res) => {
 
 app.get(process.env.DB_CLEAR + "_popfresh", async (req, res) => {
   // visit this URL to remove timed out entries from the DB
-  let source_url = "https://fedifinder-backup.glitch.me/api/known_instances.json";
+  let source_url =
+    "https://fedifinder-backup.glitch.me/api/known_instances.json";
   console.log(
     "Populating the database with new data for known domains from " + source_url
   );
@@ -208,6 +263,21 @@ DB({
     migrationsPath: __dirname + "/migrations",
   },
 });
+
+function create_twitter_client(user) {
+  try {
+    const client = new TwitterApi({
+      appKey: process.env.TWITTER_CONSUMER_KEY,
+      appSecret: process.env.TWITTER_CONSUMER_SECRET,
+      accessToken: user.accessToken,
+      accessSecret: user.tokenSecret,
+    });
+
+    return client;
+  } catch (err) {
+    console.log("Error", err);
+  }
+}
 
 function db_to_log() {
   // for debugging
@@ -535,21 +605,6 @@ io.sockets.on("connection", function (socket) {
       socket.emit("Error", { Error: "SessionError" });
     };
   };
-
-  function create_twitter_client(user) {
-    try {
-      const client = new TwitterApi({
-        appKey: process.env.TWITTER_CONSUMER_KEY,
-        appSecret: process.env.TWITTER_CONSUMER_SECRET,
-        accessToken: user.accessToken,
-        accessSecret: user.tokenSecret,
-      });
-
-      return client;
-    } catch (err) {
-      socket.emit("Error", err);
-    }
-  }
 
   async function processRequests(type, data) {
     // get accounts from Twitter and sent relevant parts to frontend
