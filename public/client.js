@@ -13,10 +13,14 @@ let displayButtons = true;
 
 $(function () {
   // run after everything is loaded
+  processAccount("me", profile);
+  checkDomains();
   let text = user_to_text(profile);
+
   "pinnedTweet" in profile
     ? (text += " " + tweet_to_text(profile.pinnedTweet))
     : "";
+
   user_handles = [...new Set(findHandles(text))];
 
   if (user_handles.length > 0) {
@@ -65,6 +69,8 @@ function addHandles(username, handles) {
   if (handles.length > 0) {
     handles.forEach((handle) => {
       let domain = handle.split("@").slice(-1)[0];
+
+      // add to domains obj
       if (domain in domains) {
         domains[domain]["handles"].push({
           username: username,
@@ -107,6 +113,7 @@ function checkDomains() {
 }
 
 function generateCSV() {
+  addConfirmedToAccounts()
   let csv = "";
   csv = "Account address,Show boosts\n";
 
@@ -125,6 +132,7 @@ function generateCSV() {
 }
 
 function displayAllAccounts() {
+  addConfirmedToAccounts()
   $("#allAccounts").css("display", "block");
   $accountTable = $("<table>");
   $tableHead = $("<tr>");
@@ -148,7 +156,21 @@ function displayAllAccounts() {
   $("#allAccounts").append($accountTable);
 }
 
+function addConfirmedToAccounts() {
+  // add confirmed handles to accounts obj
+  for (const [domain, data] of Object.entries(domains)) {
+    if (data.part_of_fediverse && data.handles.length > 0) {
+      data.handles.forEach((handle) => {
+        if ("confirmed" in accounts[handle.username]) {
+          accounts[handle.username]["confirmed"].push(handle.handle);
+        } else accounts[handle.username]["confirmed"] = [handle.handle];
+      });
+    }
+  }
+}
+
 function generateAccountsCSV() {
+  addConfirmedToAccounts()
   let output = [];
   for (const [username, data] of Object.entries(accounts)) {
     output.push({ username: username, ...data });
@@ -410,7 +432,6 @@ socket.on("newAccounts", async function (data) {
     data.accounts.map((user) => processAccount(data.type, user));
     checkDomains();
     $("#infobox").css("visibility", "visible");
-    $("#accountsInfo").css("visibility", "visible");
     $("#download").css("display", "block");
   }
 });
