@@ -8,28 +8,20 @@ let user_lists = [];
 let unchecked_domains = [];
 let display_brokenList = "none";
 let displayBroken = "inline";
-let user_handles = [];
 let displayButtons = true;
 
 $(function () {
   // run after everything is loaded
   processAccount("me", profile);
   checkDomains();
-  let text = user_to_text(profile);
 
-  "pinnedTweet" in profile
-    ? (text += " " + tweet_to_text(profile.pinnedTweet))
-    : "";
-
-  user_handles = [...new Set(findHandles(text))];
-
-  if (user_handles.length > 0) {
+  if (accounts[profile.username]["handles"].length > 0) {
     $("#userHandles").append(
       $("<p>").text(`These handles were found in your profile @${username}`)
     );
     $("#userHandles").append($("<ul>"));
 
-    user_handles.forEach((handle) => {
+    accounts[profile.username]["handles"].forEach((handle) => {
       let import_url = handle.split("@")[2] + "/settings/import";
       $("#userHandles ul").append(
         $("<li>")
@@ -43,6 +35,7 @@ $(function () {
           )
           .append(")")
       );
+      $("#download").css("display", "block");
     });
     $("#displayFollowButtons").css("display", "block");
   } else {
@@ -113,7 +106,7 @@ function checkDomains() {
 }
 
 function generateCSV() {
-  addConfirmedToAccounts()
+  addConfirmedToAccounts();
   let csv = "";
   csv = "Account address,Show boosts\n";
 
@@ -132,7 +125,7 @@ function generateCSV() {
 }
 
 function displayAllAccounts() {
-  addConfirmedToAccounts()
+  addConfirmedToAccounts();
   $("#allAccounts").css("display", "block");
   $accountTable = $("<table>");
   $tableHead = $("<tr>");
@@ -153,7 +146,7 @@ function displayAllAccounts() {
     }
     $accountTable.append($tr);
   }
-  $("#allAccounts").append($accountTable);
+  $("#allAccounts table").replaceWith($accountTable);
 }
 
 function addConfirmedToAccounts() {
@@ -163,14 +156,19 @@ function addConfirmedToAccounts() {
       data.handles.forEach((handle) => {
         if ("confirmed" in accounts[handle.username]) {
           accounts[handle.username]["confirmed"].push(handle.handle);
+          // remove duplicates
+          accounts[handle.username]["confirmed"] = [
+          ...new Set(accounts[handle.username]["confirmed"]),
+        ];
         } else accounts[handle.username]["confirmed"] = [handle.handle];
+        
       });
     }
   }
 }
 
 function generateAccountsCSV() {
-  addConfirmedToAccounts()
+  addConfirmedToAccounts();
   let output = [];
   for (const [username, data] of Object.entries(accounts)) {
     output.push({ username: username, ...data });
@@ -336,11 +334,11 @@ function displayAccounts() {
         $li.append(")<br>");
 
         if (displayButtons) {
-          user_handles.map((user_handle) => {
-            let user_domain = domains[user_handle.split("@")[2]].local_domain? domains[user_handle.split("@")[2]].local_domain : user_handle.split("@")[2]
-            $li.append(
-              followButton(user_handle, user_domain, target_url)
-            );
+          accounts[profile.username]["handles"].map((user_handle) => {
+            let user_domain = domains[user_handle.split("@")[2]].local_domain
+              ? domains[user_handle.split("@")[2]].local_domain
+              : user_handle.split("@")[2];
+            $li.append(followButton(user_handle, user_domain, target_url));
           });
         }
 
@@ -550,7 +548,7 @@ function findHandles(text) {
     .normalize("NFKD");
 
   // different separators people use
-  let words = text.split(/,|\s|“|#|\(|\)|'|》|\n|\r|\t|・|\||…|\.\s|\s$/);
+  let words = text.split(/,|\s|“|#|\(|\)|'|》|\?|\n|\r|\t|・|\||…|\.\s|\s$/);
 
   // remove common false positives
   let unwanted_domains =
@@ -561,7 +559,6 @@ function findHandles(text) {
   let handles = [];
 
   words.map((word) => {
-    word.includes("agturcz") ? console.log(word) : null
     // @username@server.tld
     if (/^@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word)) handles.push(word);
     // some people don't include the initial @
@@ -570,7 +567,9 @@ function findHandles(text) {
     // server.tld/@username
     // friendica: sub.domain.tld/profile/name
     else if (
-      /^.+\.[a-zA-Z]+.*\/(@|profile\/|\/u\/|\/c\/)[a-zA-Z0-9_]+\/*$/.test(word)
+      /^.+\.[a-zA-Z]+.*\/(@|web\/|profile\/|\/u\/|\/c\/)[a-zA-Z0-9_]+\/*$/.test(
+        word
+      )
     )
       handles.push(handleFromUrl(word));
 
@@ -578,8 +577,7 @@ function findHandles(text) {
     // pleroma, snusocial
     //else if (/^.+\.[a-zA-Z]+\/[a-zA-Z_]+\/?$/.test(word)) console.log(word);
   });
-
-  return handles;
+  return [...new Set(handles)];
 }
 
 function tweet_to_text(tweet) {
