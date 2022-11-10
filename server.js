@@ -229,27 +229,27 @@ app.get("/api/check", async (req, res) => {
   let domain = req.query.domain
     ? req.query.domain.toLowerCase().match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)
     : null;
-  domain = domain ? domain[0]:null
+  domain = domain ? domain[0] : null;
 
   let handle = req.query.handle
     ? req.query.handle
         .toLowerCase()
         .match(/^@?[a-zA-Z0-9_]+@[a-zA-Z0-9\-\.]+\.[a-zA-Z]+$/)
     : null;
-  handle = handle ? handle[0]:null
-  
+  handle = handle ? handle[0].replace(/^@/, "") : null;
+
   domain = domain ? domain : handle ? handle.split("@").slice(-1)[0] : null;
 
   if (domain) {
     if ("force" in req.query) {
       try {
         let info = await update_data(domain, handle, true);
-        res.send(info);
+        res.json(info);
       } catch (err) {
-        res.send(err);
+        res.json(err);
       }
     } else res.json(await check_instance(domain, handle));
-  } else res.json({error: "not a handle or not a domain"});
+  } else res.json({ error: "not a handle or not a domain" });
 });
 
 app.get(process.env.DB_CLEAR + "_pop", async (req, res) => {
@@ -319,19 +319,19 @@ function db_to_log() {
   });
 }
 
-function db_add(nodeinfo, force = false) {
+async function db_add(nodeinfo, force = false) {
   let domain = nodeinfo["domain"];
   if (force) {
-    DB().replace("domains", { domain: domain }, nodeinfo);
+    DB().replaceWithBlackList("domains", nodeinfo, []);
   } else {
-    let data = DB().queryFirstRow(
+    let data = await DB().queryFirstRow(
       "SELECT * FROM domains WHERE domain=?",
       domain
     );
     if (data) return data;
     else {
       try {
-        let added = DB().insert("domains", nodeinfo);
+        DB().insert("domains", nodeinfo);
       } catch (err) {
         console.log(err);
       }
@@ -794,6 +794,7 @@ io.sockets.on("connection", function (socket) {
 });
 
 async function tests() {
+  DB().run("DELETE from domains");
   console.log("Start tests");
   const assert = require("assert").strict;
 
@@ -813,7 +814,7 @@ async function tests() {
   });
 
   it("should add an entry, update the entry, remove that entry based on retries", async () => {
-    let added_instance = db_add({ domain: "test.com", retries: 100 });
+    let added_instance = await db_add({ domain: "test.com", retries: 100 });
     assert(added_instance.domain == "test.com");
 
     let test_domain = DB().queryFirstRow(
