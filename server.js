@@ -204,7 +204,8 @@ app.get("/api/known_instances.json", (req, res) => {
 
 app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
   // visit this URL to remove timed out entries from the DB
-  //let not_fedi = await remove_domains_by_part_of_fediverse(0);
+  console.log(await remove_domains_by_part_of_fediverse(null));
+  console.log(await remove_domains_by_part_of_fediverse(0));
 
   let to_remove = [
     500,
@@ -226,25 +227,29 @@ app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
 app.get("/api/check", async (req, res) => {
   // force update a single domain
   let domain = req.query.domain
-    ? req.query.domain.toLowerCase().match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)[0]
+    ? req.query.domain.toLowerCase().match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)
     : null;
+  domain = domain ? domain[0]:null
 
   let handle = req.query.handle
     ? req.query.handle
         .toLowerCase()
-        .match(/^@?[a-zA-Z0-9\_\]+@[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)[0]
+        .match(/^@?[a-zA-Z0-9_]+@[a-zA-Z0-9\-\.]+\.[a-zA-Z]+$/)
     : null;
+  handle = handle ? handle[0]:null
+  
+  domain = domain ? domain : handle ? handle.split("@").slice(-1)[0] : null;
 
-  domain = domain ? domain : handle.split("@").slice(-1)[0];
-
-  if ("force" in req.query) {
-    try {
-      let info = await update_data(domain, handle, true);
-      res.send(info);
-    } catch (err) {
-      res.send(err);
-    }
-  } else res.send(await check_instance(domain, handle));
+  if (domain) {
+    if ("force" in req.query) {
+      try {
+        let info = await update_data(domain, handle, true);
+        res.send(info);
+      } catch (err) {
+        res.send(err);
+      }
+    } else res.json(await check_instance(domain, handle));
+  } else res.json({error: "not a handle or not a domain"});
 });
 
 app.get(process.env.DB_CLEAR + "_pop", async (req, res) => {
@@ -309,7 +314,6 @@ function create_twitter_client(user) {
 function db_to_log() {
   // for debugging
   let instances = DB().query("SELECT * FROM domains");
-  console.log(instances);
   instances.forEach((instance) => {
     console.log(instance.domain + " " + instance.status);
   });
@@ -344,9 +348,9 @@ function db_remove(domain) {
   }
 }
 
-function remove_domains_by_part_of_fediverse(fediversy) {
+async function remove_domains_by_part_of_fediverse(fediversy) {
   try {
-    DB().delete("domains", { part_of_fediverse: fediversy });
+    return await DB().delete("domains", { part_of_fediverse: fediversy });
   } catch (err) {
     console.log(err);
   }
