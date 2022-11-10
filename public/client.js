@@ -316,7 +316,7 @@ function displayAccounts() {
         if (displayButtons) {
           user_handles.map((user_handle) => {
             $li.append(
-              followButton(user_handle, user_handle.split("@")[2], target_url)
+              followButton(user_handle, domains[user_handle.split("@")[2]].local_domain, target_url)
             );
           });
         }
