@@ -64,7 +64,10 @@ passport.use(
           let user = data.data;
           let pinned_tweet;
           let urls = [];
-          const pinnedTweetInclude = data.includes.tweets[0] ?? null;
+          let pinnedTweetInclude;
+          if (data.includes)
+            pinnedTweetInclude =
+              "tweets" in data.includes ? data.includes.tweets[0] : null;
 
           if (pinnedTweetInclude) {
             pinned_tweet = pinnedTweetInclude.text;
