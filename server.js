@@ -24,6 +24,7 @@ const webfinger = new WebFinger({
 
 const sessions_db = new sqlite(".data/bettersessions.sqlite");
 const sessionOptions = {
+  proxy: true,
   secret: process.env.SECRET,
   store: new SqliteStore({
     client: sessions_db,
@@ -34,7 +35,7 @@ const sessionOptions = {
   }),
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false, sameSite: "lax", maxAge: 60 * 60 * 24 * 1000 },
+  cookie: { secure: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 1000 },
 };
 
 const sessionMiddleware = session(sessionOptions);
