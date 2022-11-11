@@ -677,5 +677,47 @@
     "software_name": "mastodon",
     "software_version": "3.5.3",
     "users_total": 1
+  },
+  "friendica.gidikroon.eu": {
+    "part_of_fediverse": 1,
+    "local_domain": "friendica.gidikroon.eu",
+    "software_name": "friendica",
+    "software_version": "2022.10-1484",
+    "users_total": 6
+  },
+  "bots.reinhart1010.id": {
+    "part_of_fediverse": 1,
+    "local_domain": "bots.reinhart1010.id",
+    "software_name": "misskey",
+    "software_version": "12.119.0",
+    "users_total": 9
+  },
+  "weirder.earth": {
+    "part_of_fediverse": 1,
+    "local_domain": "weirder.earth",
+    "software_name": "hometown",
+    "software_version": "3.4.6+1.0.5",
+    "users_total": 1035
+  },
+  "social.jlamothe.net": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "social.jlamothe.net",
+    "software_name": "friendica",
+    "software_version": "2022.10-1484"
+  },
+  "benny.de": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.benny.de",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 1
+  },
+  "m.phase.org": {
+    "part_of_fediverse": 1,
+    "local_domain": "m.phase.org",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 2
   }
 }
