@@ -14,11 +14,7 @@ let accounts = {},
 
 fetch("/cached/known_instances.json")
   .then((response) => response.json())
-  .then((data) =>
-    data.forEach((domain) => {
-      known_instances[domain.domain] = domain;
-    })
-  );
+  .then((data) => (known_instances = data));
 
 $(function () {
   // run after everything is loaded
@@ -112,18 +108,11 @@ function checkDomains() {
     if ("part_of_fediverse" in data === false) {
       if (domain in known_instances) {
         // add info from cached instance data
-        [
-          "part_of_fediverse",
-          "openRegistrations",
-          "local_domain",
-          "software_name",
-          "software_version",
-          "users_total",
-        ].forEach((key) => {
-          domains[domain][key] = known_instances[domain][key]
-            ? known_instances[domain][key]
-            : null;
-        });
+        domains[domain] = Object.assign(
+          {},
+          domains[domain],
+          known_instances[domain]
+        );
       } else {
         // get new info from server
         unchecked_domains.push(domain);

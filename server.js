@@ -187,9 +187,30 @@ app.get(process.env.DB_CLEAR + "_all", function (req, res) {
 });
 
 async function write_cached_files() {
-  let instances = await DB().query("SELECT * FROM domains WHERE part_of_fediverse = 1");
-  fs.writeFileSync("public/cached/known_instances.json", JSON.stringify(instances, null, 2));
-  console.log("New cached known_instances.json was created.")
+  let domains = {};
+  let relevant_keys = [
+    "part_of_fediverse",
+    "openRegistrations",
+    "local_domain",
+    "software_name",
+    "software_version",
+    "users_total",
+  ];
+  let instances = await DB().query(
+    "SELECT * FROM domains WHERE part_of_fediverse = 1"
+  );
+
+  instances.forEach((instance) => {
+    domains[instance.domain] = {};
+    relevant_keys.forEach((key) => {
+      instance[key] ? (domains[instance.domain][key] = instance[key]) : void 0;
+    });
+  });
+  fs.writeFileSync(
+    "public/cached/known_instances.json",
+    JSON.stringify(domains, null, 2)
+  );
+  console.log("New cached known_instances.json was created.");
 }
 
 app.get("/api/known_instances.json", (req, res) => {
@@ -253,7 +274,7 @@ app.get("/api/check", async (req, res) => {
 
 app.get(process.env.DB_CLEAR + "_wcache", async (req, res) => {
   // delete all records from the database and repopulate it with data from remote server
-  await write_cached_files()
+  await write_cached_files();
   res.redirect("/success");
 });
 
