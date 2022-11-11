@@ -50,61 +50,72 @@ passport.use(
       profile["accessToken"] = token;
       const client = create_twitter_client(profile);
 
-      client.v2
-        .me({
-          "user.fields": ["name", "description", "url", "location", "entities"],
-          expansions: ["pinned_tweet_id"],
-          "tweet.fields": ["text", "entities"],
-        })
-        .then((data) => {
-          let user = data.data;
-          let pinned_tweet;
-          let urls = [];
-          let pinnedTweetInclude;
-          if (data.includes)
-            pinnedTweetInclude =
-              "tweets" in data.includes ? data.includes.tweets[0] : null;
+      try {
+        client.v2
+          .me({
+            "user.fields": [
+              "name",
+              "description",
+              "url",
+              "location",
+              "entities",
+            ],
+            expansions: ["pinned_tweet_id"],
+            "tweet.fields": ["text", "entities"],
+          })
+          .then((data) => {
+            let user = data.data;
+            let pinned_tweet;
+            let urls = [];
+            let pinnedTweetInclude;
+            if (data.includes)
+              pinnedTweetInclude =
+                "tweets" in data.includes ? data.includes.tweets[0] : null;
 
-          if (pinnedTweetInclude) {
-            pinned_tweet = pinnedTweetInclude.text;
-            if (
-              "entities" in pinnedTweetInclude &&
-              "urls" in pinnedTweetInclude["entities"]
-            ) {
-              pinnedTweetInclude["entities"]["urls"].map((url) =>
-                urls.push(url.expanded_url)
-              );
+            if (pinnedTweetInclude) {
+              pinned_tweet = pinnedTweetInclude.text;
+              if (
+                "entities" in pinnedTweetInclude &&
+                "urls" in pinnedTweetInclude["entities"]
+              ) {
+                pinnedTweetInclude["entities"]["urls"].map((url) =>
+                  urls.push(url.expanded_url)
+                );
+              }
             }
-          }
 
-          "entities" in user && "url" in user.entities
-            ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
-            : null;
+            "entities" in user && "url" in user.entities
+              ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
+              : null;
 
-          "entities" in user &&
-          "description" in user.entities &&
-          "urls" in user.entities.description
-            ? user.entities.description.urls.map((url) =>
-                urls.push(url.expanded_url)
-              )
-            : null;
+            "entities" in user &&
+            "description" in user.entities &&
+            "urls" in user.entities.description
+              ? user.entities.description.urls.map((url) =>
+                  urls.push(url.expanded_url)
+                )
+              : null;
 
-          profile = {
-            _json: {
-              username: user.username,
-              name: user.name,
-              location: user.location,
-              description: user.description,
-              urls: urls,
-              pinned_tweet: pinned_tweet,
-            },
-            id: profile.id,
-            tokenSecret: tokenSecret,
-            accessToken: token,
-          };
+            profile = {
+              _json: {
+                username: user.username,
+                name: user.name,
+                location: user.location,
+                description: user.description,
+                urls: urls,
+                pinned_tweet: pinned_tweet,
+              },
+              id: profile.id,
+              tokenSecret: tokenSecret,
+              accessToken: token,
+            };
 
-          return cb(null, profile);
-        });
+            return cb(null, profile);
+          });
+      } catch (err) {
+        console.log("Passport failed.");
+        cb(err);
+      }
     }
   )
 );
