@@ -57,9 +57,17 @@ $(function () {
         Please use the format @name@host.tld or https://host.tld/@name. \
         If you added it after authorizing Fedifinder, please re-authorize to get new data. `
         )
-        .append($("<a>").attr("href", "/actualAuth/twitter").text("Re-authorize")).append(".");
+        .append(
+          $("<a>").attr("href", "/actualAuth/twitter").text("Re-authorize")
+        )
+        .append(".");
     }
   });
+
+  let script = document.createElement("script");
+  script["data-style"] = "glitch";
+  script.src = "https://button.glitch.me/button.js";
+  document.body.append(script);
 });
 
 function removeDuplicates() {
