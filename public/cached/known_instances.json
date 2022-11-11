@@ -227,5 +227,29 @@
     "software_name": "mastodon",
     "software_version": "3.5.2",
     "users_total": 20073
+  },
+  "botsin.space": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "botsin.space",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 5937
+  },
+  "vis.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "vis.social",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 5779
+  },
+  "det.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "det.social",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 10694
   }
 }
