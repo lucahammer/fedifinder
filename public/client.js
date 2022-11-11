@@ -1,48 +1,65 @@
-/* globals io, username, tests, eq profile json2csv*/
+/* globals io, tests, eq json2csv*/
 
 const socket = io();
-let accounts = {};
-let domains = {};
-let checked_accounts = 0;
-let user_lists = [];
-let unchecked_domains = [];
-let display_brokenList = "none";
-let displayBroken = "inline";
-let displayButtons = true;
+let accounts = {},
+  domains = {},
+  known_instances = {},
+  user_lists,
+  unchecked_domains = [],
+  checked_accounts = 0,
+  display_brokenList = "none",
+  displayBroken = "inline",
+  displayButtons = true,
+  profile;
+
+fetch("/cached/known_instances.json")
+  .then((response) => response.json())
+  .then((data) =>
+    data.forEach((domain) => {
+      known_instances[domain.domain] = domain;
+    })
+  );
 
 $(function () {
   // run after everything is loaded
-  processAccount("me", profile);
-  checkDomains();
+  socket.emit("getProfile");
+  socket.on("profile", function (data) {
+    profile = data;
 
-  if (accounts[profile.username]["handles"].length > 0) {
-    $("#userHandles").append(
-      $("<p>").text(`These handles were found in your profile @${username}`)
-    );
-    $("#userHandles").append($("<ul>"));
+    processAccount("me", profile);
+    checkDomains();
 
-    accounts[profile.username]["handles"].forEach((handle) => {
-      let import_url = handle.split("@")[2] + "/settings/import";
-      $("#userHandles ul").append(
-        $("<li>")
-          .text(handle)
-          .append("<br>(After exporting the CSV, import it at ")
-          .append(
-            $("<a>")
-              .attr("href", "https://" + import_url)
-              .attr("target", "_blank")
-              .text(import_url)
-          )
-          .append(")")
+    if (accounts[profile.username]["handles"].length > 0) {
+      $("#userHandles").append(
+        $("<p>").text(
+          `These handles were found in your profile @${profile.username}`
+        )
       );
-      $("#download").css("display", "block");
-    });
-    $("#displayFollowButtons").css("display", "block");
-  } else {
-    $("#userHandles").text(
-      `No handles were found on your profile @${username}. Please use the format @name@host.tld or https://host.tld/@name`
-    );
-  }
+      $("#userHandles").append($("<ul>"));
+
+      accounts[profile.username]["handles"].forEach((handle) => {
+        let import_url = handle.split("@")[2] + "/settings/import";
+        $("#userHandles ul").append(
+          $("<li>")
+            .text(handle)
+            .append("<br>(After exporting the CSV, import it at ")
+            .append(
+              $("<a>")
+                .attr("href", "https://" + import_url)
+                .attr("target", "_blank")
+                .text(import_url)
+            )
+            .append(")")
+        );
+        $("#download").css("display", "block");
+      });
+      $("#displayFollowButtons").css("display", "block");
+    } else {
+      $("#userHandles").text(
+        `No handles were found on your profile @${profile.username}. Please use the format @name@host.tld or https://host.tld/@name`
+      );
+    }
+  });
 });
 
 function removeDuplicates() {
@@ -93,13 +110,32 @@ function checkDomains() {
   let domains_to_check = [];
   for (const [domain, data] of Object.entries(domains)) {
     if ("part_of_fediverse" in data === false) {
-      unchecked_domains.push(domain);
-      domains_to_check.push({
-        domain: domain,
-        handle: data["handles"][0]["handle"],
-      });
+      if (domain in known_instances) {
+        // add info from cached instance data
+        [
+          "part_of_fediverse",
+          "openRegistrations",
+          "local_domain",
+          "software_name",
+          "software_version",
+          "users_total",
+        ].forEach((key) => {
+          domains[domain][key] = known_instances[domain][key]
+            ? known_instances[domain][key]
+            : null;
+        });
+      } else {
+        // get new info from server
+        unchecked_domains.push(domain);
+        domains_to_check.push({
+          domain: domain,
+          handle: data["handles"][0]["handle"],
+        });
+      }
     }
   }
+  updateCounts();
+  displayAccounts();
   if (domains_to_check.length > 0) {
     socket.emit("checkDomains", { domains: domains_to_check });
   }
@@ -158,10 +194,9 @@ function addConfirmedToAccounts() {
           accounts[handle.username]["confirmed"].push(handle.handle);
           // remove duplicates
           accounts[handle.username]["confirmed"] = [
-          ...new Set(accounts[handle.username]["confirmed"]),
-        ];
+            ...new Set(accounts[handle.username]["confirmed"]),
+          ];
         } else accounts[handle.username]["confirmed"] = [handle.handle];
-        
       });
     }
   }
@@ -215,7 +250,7 @@ function getFollowers() {
 }
 
 function loadLists() {
-  socket.emit("loadLists", username);
+  socket.emit("loadLists", profile.username);
   $("#listLoader").prop("disabled", true);
 }
 

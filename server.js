@@ -2,7 +2,6 @@ const express = require("express");
 let app = express();
 const passport = require("passport");
 const Strategy = require("passport-twitter").Strategy;
-const hbs = require("hbs");
 const url = require("url");
 const https = require("https");
 const session = require("express-session");
@@ -14,16 +13,13 @@ const WebFinger = require("webfinger.js");
 const sqlite = require("better-sqlite3");
 const SqliteStore = require("better-sqlite3-session-store")(session);
 const DB = require("better-sqlite3-helper");
+const fs = require("fs");
 
 const webfinger = new WebFinger({
   webfist_fallback: false,
   tls_only: true,
   uri_fallback: true,
   request_timeout: 5000,
-});
-
-hbs.registerHelper("json", function (context) {
-  return JSON.stringify(context);
 });
 
 const sessions_db = new sqlite(".data/bettersessions.sqlite");
@@ -168,10 +164,7 @@ app.get(
       "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
     );
 
-    res.render("success.hbs", {
-      username: req.user.username,
-      profile: req.user._json,
-    });
+    res.redirect("/success.html");
   }
 );
 
@@ -193,8 +186,14 @@ app.get(process.env.DB_CLEAR + "_all", function (req, res) {
   res.redirect("/");
 });
 
+async function write_cached_files() {
+  let instances = await DB().query("SELECT * FROM domains WHERE part_of_fediverse = 1");
+  fs.writeFileSync("public/cached/known_instances.json", JSON.stringify(instances, null, 2));
+  console.log("New cached known_instances.json was created.")
+}
+
 app.get("/api/known_instances.json", (req, res) => {
-  let data = DB().query("SELECT * FROM domains WHERE openRegistrations = 1");
+  let data = DB().query("SELECT * FROM domains WHERE part_of_fediverse = 1");
   data.forEach((data) => {
     data["openRegistrations"] = data["openRegistrations"] ? true : false;
     data["part_of_fediverse"] = data["part_of_fediverse"] ? true : false;
@@ -250,6 +249,12 @@ app.get("/api/check", async (req, res) => {
       }
     } else res.json(await check_instance(domain, handle));
   } else res.json({ error: "not a handle or not a domain" });
+});
+
+app.get(process.env.DB_CLEAR + "_wcache", async (req, res) => {
+  // delete all records from the database and repopulate it with data from remote server
+  await write_cached_files()
+  res.redirect("/success");
 });
 
 app.get(process.env.DB_CLEAR + "_pop", async (req, res) => {
@@ -637,6 +642,10 @@ io.sockets.on("connection", function (socket) {
     );
   });
 
+  socket.on("getProfile", function () {
+    socket.emit("profile", socket.request.user._json);
+  });
+
   const errorHandler = (handler) => {
     const handleError = (err) => {
       console.log(err);
@@ -794,9 +803,10 @@ io.sockets.on("connection", function (socket) {
 });
 
 async function tests() {
-  DB().run("DELETE from domains");
+  //DB().run("DELETE from domains");
   console.log("Start tests");
   const assert = require("assert").strict;
+  write_cached_files();
 
   const it = (description, function_to_test) => {
     try {
