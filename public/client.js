@@ -250,7 +250,7 @@ function getFollowers() {
 }
 
 function loadLists() {
-  socket.emit("loadLists", username);
+  socket.emit("loadLists", profile.username);
   $("#listLoader").prop("disabled", true);
 }
 

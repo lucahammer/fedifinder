@@ -1,0 +1,44 @@
+[
+  {
+    "domain": "lucahammer.com",
+    "local_domain": null,
+    "part_of_fediverse": 1,
+    "software_name": "wordpress",
+    "software_version": "6.1",
+    "users_total": 1,
+    "users_activeMonth": null,
+    "users_activeHalfyear": null,
+    "localPosts": 17,
+    "openRegistrations": 0,
+    "status": null,
+    "retries": null
+  },
+  {
+    "domain": "bawue.social",
+    "local_domain": "mastodon.bawue.social",
+    "part_of_fediverse": 1,
+    "software_name": "mastodon",
+    "software_version": "4.0.0rc2",
+    "users_total": 28,
+    "users_activeMonth": 27,
+    "users_activeHalfyear": 27,
+    "localPosts": 201,
+    "openRegistrations": 0,
+    "status": null,
+    "retries": null
+  },
+  {
+    "domain": "circumstances.run",
+    "local_domain": "circumstances.run",
+    "part_of_fediverse": 1,
+    "software_name": "mastodon",
+    "software_version": "4.0.0rc2",
+    "users_total": 5,
+    "users_activeMonth": 5,
+    "users_activeHalfyear": 5,
+    "localPosts": 543,
+    "openRegistrations": 0,
+    "status": null,
+    "retries": null
+  }
+]
