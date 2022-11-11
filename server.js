@@ -1,5 +1,6 @@
 const express = require("express");
 let app = express();
+app.set("trust proxy", 1);
 const passport = require("passport");
 const Strategy = require("passport-twitter").Strategy;
 const url = require("url");
@@ -118,6 +119,10 @@ passport.use(
               };
 
               return cb(null, profile);
+            })
+            .catch((err) => {
+              console.log(err);
+              return cb();
             });
         } catch (err) {
           console.log("Passport failed.");
@@ -628,6 +633,7 @@ function get_nodeinfo(nodeinfo_url) {
             } catch (err) {
               console.log(nodeinfo_url);
               console.log(err);
+              resolve({ part_of_fediverse: 0 });
             }
           }
         });
