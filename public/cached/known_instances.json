@@ -673,5 +673,12 @@
     "software_name": "mastodon",
     "software_version": "3.5.3",
     "users_total": 1
+  },
+  "looka.at": {
+    "part_of_fediverse": 1,
+    "local_domain": "looka.at",
+    "software_name": "wordpress",
+    "software_version": "6.1",
+    "users_total": 1
   }
 }

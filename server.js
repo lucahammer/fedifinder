@@ -519,7 +519,7 @@ async function get_nodeinfo_url(host_domain, redirect_count = 0) {
   return new Promise((resolve) => {
     let options = {
       method: "GET",
-      host: host_domain,
+      host: encodeURI(host_domain),
       json: true,
       path: "/.well-known/nodeinfo",
       timeout: 5000,
@@ -570,7 +570,7 @@ function get_nodeinfo(nodeinfo_url) {
   // get fresh nodeinfo and save to db
   return new Promise((resolve) => {
     https
-      .get(nodeinfo_url, { timeout: 5000 }, (res) => {
+      .get(encodeURI(nodeinfo_url), { timeout: 5000 }, (res) => {
         let body = "";
         if (res.statusCode != 200) {
           resolve({ part_of_fediverse: 0 });
