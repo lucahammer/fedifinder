@@ -34,6 +34,7 @@ const sessionOptions = {
   }),
   resave: false,
   saveUninitialized: false,
+  cookie: { secure: false, sameSite: "lax", maxAge: 60 * 60 * 24 * 1000 },
 };
 
 const sessionMiddleware = session(sessionOptions);
@@ -48,73 +49,78 @@ passport.use(
     function (token, tokenSecret, profile, cb) {
       profile["tokenSecret"] = tokenSecret;
       profile["accessToken"] = token;
-      const client = create_twitter_client(profile);
+      if (tokenSecret && token) {
+        try {
+          const client = create_twitter_client(profile);
+          client.v2
+            .me({
+              "user.fields": [
+                "name",
+                "description",
+                "url",
+                "location",
+                "entities",
+              ],
+              expansions: ["pinned_tweet_id"],
+              "tweet.fields": ["text", "entities"],
+            })
+            .then((data) => {
+              let user = data.data;
+              let pinned_tweet;
+              let urls = [];
+              let pinnedTweetInclude;
+              if (data.includes)
+                pinnedTweetInclude =
+                  "tweets" in data.includes ? data.includes.tweets[0] : null;
 
-      try {
-        client.v2
-          .me({
-            "user.fields": [
-              "name",
-              "description",
-              "url",
-              "location",
-              "entities",
-            ],
-            expansions: ["pinned_tweet_id"],
-            "tweet.fields": ["text", "entities"],
-          })
-          .then((data) => {
-            let user = data.data;
-            let pinned_tweet;
-            let urls = [];
-            let pinnedTweetInclude;
-            if (data.includes)
-              pinnedTweetInclude =
-                "tweets" in data.includes ? data.includes.tweets[0] : null;
-
-            if (pinnedTweetInclude) {
-              pinned_tweet = pinnedTweetInclude.text;
-              if (
-                "entities" in pinnedTweetInclude &&
-                "urls" in pinnedTweetInclude["entities"]
-              ) {
-                pinnedTweetInclude["entities"]["urls"].map((url) =>
-                  urls.push(url.expanded_url)
-                );
+              if (pinnedTweetInclude) {
+                pinned_tweet = pinnedTweetInclude.text;
+                if (
+                  "entities" in pinnedTweetInclude &&
+                  "urls" in pinnedTweetInclude["entities"]
+                ) {
+                  pinnedTweetInclude["entities"]["urls"].map((url) =>
+                    urls.push(url.expanded_url)
+                  );
+                }
               }
-            }
 
-            "entities" in user && "url" in user.entities
-              ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
-              : null;
+              "entities" in user && "url" in user.entities
+                ? user.entities.url.urls.map((url) =>
+                    urls.push(url.expanded_url)
+                  )
+                : null;
 
-            "entities" in user &&
-            "description" in user.entities &&
-            "urls" in user.entities.description
-              ? user.entities.description.urls.map((url) =>
-                  urls.push(url.expanded_url)
-                )
-              : null;
+              "entities" in user &&
+              "description" in user.entities &&
+              "urls" in user.entities.description
+                ? user.entities.description.urls.map((url) =>
+                    urls.push(url.expanded_url)
+                  )
+                : null;
 
-            profile = {
-              _json: {
-                username: user.username,
-                name: user.name,
-                location: user.location,
-                description: user.description,
-                urls: urls,
-                pinned_tweet: pinned_tweet,
-              },
-              id: profile.id,
-              tokenSecret: tokenSecret,
-              accessToken: token,
-            };
+              profile = {
+                _json: {
+                  username: user.username,
+                  name: user.name,
+                  location: user.location,
+                  description: user.description,
+                  urls: urls,
+                  pinned_tweet: pinned_tweet,
+                },
+                id: profile.id,
+                tokenSecret: tokenSecret,
+                accessToken: token,
+              };
 
-            return cb(null, profile);
-          });
-      } catch (err) {
-        console.log("Passport failed.");
-        cb(err);
+              return cb(null, profile);
+            });
+        } catch (err) {
+          console.log("Passport failed.");
+          cb(err);
+        }
+      } else {
+        console.log("No access tokens..");
       }
     }
   )
@@ -132,7 +138,7 @@ app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(sessionMiddleware);
 app.use(passport.initialize());
-app.use(passport.session(sessionOptions));
+app.use(passport.session());
 app.set("json spaces", 20);
 
 // Define routes.
@@ -159,10 +165,14 @@ app.get("/actualAuth/twitter", passport.authenticate("twitter"));
 app.get(
   "/login/twitter/return",
   passport.authenticate("twitter", { failureRedirect: "/" }),
-  function (req, res) {
-    req.session.save(function () {
-      res.redirect("/success");
-    });
+  function (req, res, next) {
+    if ("accessToken" in req.user == false)
+      return next(new Error("no access token"));
+    else {
+      req.session.save(function () {
+        res.redirect("/success");
+      });
+    }
   }
 );
 
@@ -179,16 +189,12 @@ app.get(
   }
 );
 
-app.get(process.env.DB_CLEAR + "_sessions", async function (req, res) {
+app.get(process.env.DB_CLEAR + "_sessions", function (req, res) {
   // visit this URL to reset the DB
-  let data = await sessions_db
-    .query("SELECT COUNT(sid) FROM sessions", {
-      raw: true,
-    })
-    .then((data) => {
-      sessions_db.sync({ force: true });
-      res.send(data);
-    });
+  let data = sessions_db.prepare("SELECT * FROM sessions").get();
+  const stmt = sessions_db.prepare("DELETE FROM sessions").run();
+  console.log("deleted sessions " + stmt);
+  res.send(data);
 });
 
 app.get(process.env.DB_CLEAR + "_all", function (req, res) {
@@ -519,10 +525,15 @@ function get_webfinger(handle) {
 async function url_from_handle(handle) {
   // checks if webfinger exists for a handle and returns the first href aka webadress
   handle = handle.replace(/^@/, "");
-  let data = await get_webfinger(handle);
-  if (data) {
-    return data["object"]["links"][0]["href"];
-  } else return false;
+  try {
+    let data = await get_webfinger(handle);
+    if (data) {
+      return data["object"]["links"][0]["href"];
+    } else return false;
+  } catch (err) {
+    console.log(err);
+    return false;
+  }
 }
 
 async function get_nodeinfo_url(host_domain, redirect_count = 0) {
@@ -888,8 +899,6 @@ async function tests() {
 
   it("get url from handle (webfinger)", async () => {
     let url = await url_from_handle("@luca@vis.social");
-    assert("https://vis.social/@Luca" == url);
-    url = await url_from_handle("@luca@vis.social");
     assert("https://vis.social/@Luca" == url);
     url = await url_from_handle("luca@lucahammer.com");
     assert("https://lucahammer.com/author/luca" == url);
