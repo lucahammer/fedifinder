@@ -24,6 +24,7 @@ const webfinger = new WebFinger({
 const sessionMiddleware = cookieSession({
   name: "session",
   keys: [process.env.SECRET],
+  proxy: true,
   secure: true,
   maxAge: 24 * 60 * 60 * 1000,
 });
