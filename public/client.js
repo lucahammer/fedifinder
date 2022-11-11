@@ -10,6 +10,11 @@ let display_brokenList = "none";
 let displayBroken = "inline";
 let displayButtons = true;
 let profile;
+let known_instances;
+
+fetch("/cached/known_instances.json")
+  .then((response) => response.json())
+  .then((data) => (known_instances = data));
 
 $(function () {
   // run after everything is loaded
@@ -22,7 +27,9 @@ $(function () {
 
     if (accounts[profile.username]["handles"].length > 0) {
       $("#userHandles").append(
-        $("<p>").text(`These handles were found in your profile @${profile.username}`)
+        $("<p>").text(
+          `These handles were found in your profile @${profile.username}`
+        )
       );
       $("#userHandles").append($("<ul>"));
 

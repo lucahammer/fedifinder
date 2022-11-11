@@ -628,9 +628,9 @@ io.sockets.on("connection", function (socket) {
       )
     );
   });
-  
+
   socket.on("getProfile", function () {
-    socket.emit("profile", socket.request.user._json);  
+    socket.emit("profile", socket.request.user._json);
   });
 
   const errorHandler = (handler) => {
