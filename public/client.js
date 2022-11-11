@@ -638,20 +638,19 @@ function user_to_text(user) {
 }
 
 async function processAccount(type, user) {
-  let following, follower, list;
+  let followings, follower, list;
 
   // get list name from local user_lists
   type.type == "list"
     ? (list = user_lists.filter((list) => list.id_str == type.list_id)[0].name)
     : null;
-
-  type.type == follower ? (follower = true) : null;
-  type.type == following ? (following = true) : null;
+  type.type == "follower" ? (follower = true) : null;
+  type.type == "followings" ? (followings = true) : null;
 
   if (user.username in accounts) {
     accounts[user.username].following = accounts[user.username].following
       ? accounts[user.username].following
-      : following;
+      : followings;
     accounts[user.username].follower = accounts[user.username].follower
       ? accounts[user.username].follower
       : follower;
@@ -669,7 +668,7 @@ async function processAccount(type, user) {
 
     accounts[user.username] = {
       name: user.name,
-      following: following,
+      following: followings,
       follower: follower,
       lists: [list],
       handles: handles,
