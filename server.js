@@ -4,16 +4,15 @@ const passport = require("passport");
 const Strategy = require("passport-twitter").Strategy;
 const url = require("url");
 const https = require("https");
-const session = require("express-session");
 const bodyParser = require("body-parser");
 const TwitterApi = require("twitter-api-v2").TwitterApi;
 const TwitterV2IncludesHelper =
   require("twitter-api-v2").TwitterV2IncludesHelper;
 const WebFinger = require("webfinger.js");
 const sqlite = require("better-sqlite3");
-const SqliteStore = require("better-sqlite3-session-store")(session);
 const DB = require("better-sqlite3-helper");
 const fs = require("fs");
+const cookieSession = require("cookie-session");
 
 const webfinger = new WebFinger({
   webfist_fallback: false,
@@ -22,23 +21,21 @@ const webfinger = new WebFinger({
   request_timeout: 5000,
 });
 
-const sessions_db = new sqlite(".data/bettersessions.sqlite");
-const sessionOptions = {
-  proxy: true,
-  secret: process.env.SECRET,
-  store: new SqliteStore({
-    client: sessions_db,
-    expired: {
-      clear: true,
-      intervalMs: 900000, //ms = 15min
-    },
-  }),
-  resave: false,
-  saveUninitialized: false,
-  cookie: { secure: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 1000 },
-};
+const sessionMiddleware = cookieSession({
+  name: "session",
+  keys: [process.env.SECRET],
+  secure: true,
+  maxAge: 24 * 60 * 60 * 1000,
+});
 
-const sessionMiddleware = session(sessionOptions);
+// Telling passport that cookies are fine and there is no need for server side sessions
+// https://github.com/LinkedInLearning/node-authentication-2881188/issues/2#issuecomment-1297496099
+const regenerate = (callback) => {
+  callback();
+};
+const save = (callback) => {
+  callback();
+};
 
 passport.use(
   new Strategy(
@@ -50,6 +47,7 @@ passport.use(
     function (token, tokenSecret, profile, cb) {
       profile["tokenSecret"] = tokenSecret;
       profile["accessToken"] = token;
+
       if (tokenSecret && token) {
         try {
           const client = create_twitter_client(profile);
@@ -64,6 +62,10 @@ passport.use(
               ],
               expansions: ["pinned_tweet_id"],
               "tweet.fields": ["text", "entities"],
+            })
+            .catch((err) => {
+              console.log(err);
+              return cb();
             })
             .then((data) => {
               let user = data.data;
@@ -122,6 +124,7 @@ passport.use(
         }
       } else {
         console.log("No access tokens..");
+        cb();
       }
     }
   )
@@ -141,18 +144,18 @@ app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(passport.session());
 app.set("json spaces", 20);
+app.use((req, res, next) => {
+  req.session.regenerate = regenerate;
+  req.session.save = save;
+  next();
+});
 
 // Define routes.
 app.all("*", checkHttps);
 
 app.get("/logoff", function (req, res) {
-  req.session.destroy((err) => {
-    if (err) {
-      res.status(400).send("Logging out went wrong");
-    } else {
-      res.redirect("/");
-    }
-  });
+  req.session = null;
+  res.redirect("/");
 });
 
 app.get("/auth/twitter", (req, res) => {
@@ -165,15 +168,14 @@ app.get("/actualAuth/twitter", passport.authenticate("twitter"));
 
 app.get(
   "/login/twitter/return",
-  passport.authenticate("twitter", { failureRedirect: "/" }),
-  function (req, res, next) {
-    if ("accessToken" in req.user == false)
-      return next(new Error("no access token"));
-    else {
-      req.session.save(function () {
-        res.redirect("/success");
-      });
-    }
+  passport.authenticate("twitter", {
+    failureRedirect: "/",
+    failureMessage: false,
+  }),
+  function (req, res) {
+    req.session.save(function () {
+      res.redirect("/success");
+    });
   }
 );
 
@@ -189,14 +191,6 @@ app.get(
     res.redirect("/success.html");
   }
 );
-
-app.get(process.env.DB_CLEAR + "_sessions", function (req, res) {
-  // visit this URL to reset the DB
-  let data = sessions_db.prepare("SELECT * FROM sessions").get();
-  const stmt = sessions_db.prepare("DELETE FROM sessions").run();
-  console.log("deleted sessions " + stmt);
-  res.send(data);
-});
 
 app.get(process.env.DB_CLEAR + "_all", function (req, res) {
   // visit this URL to reset the DB

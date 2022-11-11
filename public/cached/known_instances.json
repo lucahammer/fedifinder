@@ -648,5 +648,34 @@
     "software_name": "mastodon",
     "software_version": "3.5.3",
     "users_total": 3409
+  },
+  "mastodon.bawue.social": {
+    "part_of_fediverse": 1,
+    "local_domain": "mastodon.bawue.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.0rc2",
+    "users_total": 28
+  },
+  "circumstances.run": {
+    "part_of_fediverse": 1,
+    "local_domain": "circumstances.run",
+    "software_name": "mastodon",
+    "software_version": "4.0.0rc2",
+    "users_total": 5
+  },
+  "bawue.social": {
+    "part_of_fediverse": 1,
+    "local_domain": "mastodon.bawue.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.0rc2",
+    "users_total": 28
+  },
+  "meis.space": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "mastodon.meis.space",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 1
   }
 }
