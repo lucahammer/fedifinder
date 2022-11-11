@@ -666,5 +666,12 @@
     "software_name": "mastodon",
     "software_version": "3.5.3",
     "users_total": 254
+  },
+  "m.brokep.com": {
+    "part_of_fediverse": 1,
+    "local_domain": "m.brokep.com",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 1
   }
 }

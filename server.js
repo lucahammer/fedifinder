@@ -492,7 +492,7 @@ async function check_instance(domain, handle = null) {
 function get_webfinger(handle) {
   // get webfinger data for a handle
   return new Promise(function (resolve) {
-    webfinger.lookup(handle, function (err, info) {
+    webfinger.lookup(encodeURI(handle), function (err, info) {
       if (err) {
         //console.log("error: ", err.message);
         resolve(null);
