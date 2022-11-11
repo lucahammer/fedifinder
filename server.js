@@ -634,6 +634,7 @@ function checkHttps(req, res, next) {
 
 const { Server } = require("socket.io");
 const io = new Server(server);
+write_cached_files();
 
 const wrap = (middleware) => (socket, next) =>
   middleware(socket.request, {}, next);
