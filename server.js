@@ -50,6 +50,7 @@ passport.use(
     function (token, tokenSecret, profile, cb) {
       profile["tokenSecret"] = tokenSecret;
       profile["accessToken"] = token;
+
       if (tokenSecret && token) {
         try {
           const client = create_twitter_client(profile);
@@ -64,6 +65,10 @@ passport.use(
               ],
               expansions: ["pinned_tweet_id"],
               "tweet.fields": ["text", "entities"],
+            })
+            .catch((err) => {
+              console.log(err);
+              return cb();
             })
             .then((data) => {
               let user = data.data;
@@ -122,6 +127,7 @@ passport.use(
         }
       } else {
         console.log("No access tokens..");
+        cb();
       }
     }
   )
@@ -165,15 +171,14 @@ app.get("/actualAuth/twitter", passport.authenticate("twitter"));
 
 app.get(
   "/login/twitter/return",
-  passport.authenticate("twitter", { failureRedirect: "/" }),
-  function (req, res, next) {
-    if ("accessToken" in req.user == false)
-      return next(new Error("no access token"));
-    else {
-      req.session.save(function () {
-        res.redirect("/success");
-      });
-    }
+  passport.authenticate("twitter", {
+    failureRedirect: "/",
+    failureMessage: false,
+  }),
+  function (req, res) {
+    req.session.save(function () {
+      res.redirect("/success");
+    });
   }
 );
 
