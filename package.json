@@ -14,7 +14,6 @@
     "passport": "^0.6.0",
     "passport-twitter": "^1.0.4",
     "socket.io": "^4.5.3",
-    "hbs": "^4.2.0",
     "twitter-api-v2": "^1.12.9",
     "bufferutil": "^4.0.7",
     "utf-8-validate": "^5.0.10",

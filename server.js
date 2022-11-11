@@ -2,7 +2,6 @@ const express = require("express");
 let app = express();
 const passport = require("passport");
 const Strategy = require("passport-twitter").Strategy;
-const hbs = require("hbs");
 const url = require("url");
 const https = require("https");
 const session = require("express-session");
@@ -20,10 +19,6 @@ const webfinger = new WebFinger({
   tls_only: true,
   uri_fallback: true,
   request_timeout: 5000,
-});
-
-hbs.registerHelper("json", function (context) {
-  return JSON.stringify(context);
 });
 
 const sessions_db = new sqlite(".data/bettersessions.sqlite");
@@ -168,10 +163,7 @@ app.get(
       "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
     );
 
-    res.render("success.hbs", {
-      username: req.user.username,
-      profile: req.user._json,
-    });
+    res.redirect("/success.html");
   }
 );
 
@@ -635,6 +627,10 @@ io.sockets.on("connection", function (socket) {
           })
       )
     );
+  });
+  
+  socket.on("getProfile", function () {
+    socket.emit("profile", socket.request.user._json);  
   });
 
   const errorHandler = (handler) => {
