@@ -161,10 +161,13 @@ app.all("*", checkHttps);
 
 app.get("/logoff", function (req, res) {
   req.session = null;
+  res.clearCookie("session", { path: "/" });
   res.redirect("/");
 });
 
 app.get("/auth/twitter", (req, res) => {
+  //delete old session cookie
+  res.clearCookie("connect.sid", { path: "/" });
   "user" in req
     ? res.redirect("/success")
     : res.redirect("/actualAuth/twitter");
