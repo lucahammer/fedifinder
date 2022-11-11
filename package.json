@@ -10,7 +10,6 @@
     "connect-ensure-login": "^0.1.1",
     "cookie-parser": "^1.4.6",
     "express": "^4.18.2",
-    "express-session": "^1.17.3",
     "passport": "^0.6.0",
     "passport-twitter": "^1.0.4",
     "socket.io": "^4.5.3",
@@ -19,7 +18,6 @@
     "utf-8-validate": "^5.0.10",
     "webfinger.js": "^2.7.1",
     "better-sqlite3": "^7.6.2",
-    "better-sqlite3-session-store": "^0.1.0",
     "better-sqlite3-helper": "^3.1.6",
     "cookie-session": "^2.0.0"
   },

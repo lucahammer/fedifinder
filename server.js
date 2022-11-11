@@ -122,7 +122,7 @@ passport.use(
             })
             .catch((err) => {
               console.log(err);
-              return cb();
+              return cb(null, profile);
             });
         } catch (err) {
           console.log("Passport failed.");
@@ -130,7 +130,7 @@ passport.use(
         }
       } else {
         console.log("No access tokens..");
-        cb();
+        cb(null, profile);
       }
     }
   )

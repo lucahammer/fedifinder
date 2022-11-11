@@ -480,10 +480,16 @@ function handleErrors(data) {
   console.log("Server sent an error message:");
   console.log(data);
   if (typeof data === "string") {
-    $("#error").text(
-      "An unexpected error occured. \
-Please reload the page.\n\n" + data
-    );
+    $("#error")
+      .append(
+        $("<span>").text(
+          "An unexpected error occured. \
+Please try reloading or reauthorizing.\n\n"
+        )
+      )
+      .append(" ")
+      .append($("<a>").attr("href", "/actualAuth/twitter").text("Re-authorize"))
+      .append(". " + data);
     $("#error").css("background-color", "orange");
     $("#error").css("padding", "5px");
   } else if ("code" in data && data.code == 429) {
@@ -523,10 +529,16 @@ Please wait 15 minutes before trying again. You can still use the other options.
     $("#error").css("background-color", "orange");
     $("#error").css("padding", "5px");
   } else {
-    $("#error").text(
-      "An unexpected error occured. \
-Please reload the page.\n\n" + data
-    );
+    $("#error")
+      .append(
+        $("<span>").text(
+          "An unexpected error occured. \
+Please try reloading or reauthorizing.\n\n"
+        )
+      )
+      .append(" ")
+      .append($("<a>").attr("href", "/actualAuth/twitter").text("Re-authorize"))
+      .append(". " + data);
     $("#error").css("background-color", "orange");
     $("#error").css("padding", "5px");
   }
