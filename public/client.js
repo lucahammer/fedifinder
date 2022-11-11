@@ -588,7 +588,7 @@ function findHandles(text) {
 
   // remove common false positives
   let unwanted_domains =
-    /gmail\.com|mixcloud|linktr\.ee|pinboard|xing\com|researchgate|about|bit\.ly|imprint|impressum|patreon|donate|blog|facebook|news|github|instagram|t\.me|medium\.com|t\.co|tiktok\.com|youtube\.com|pronouns\.page|mail@|observablehq|twitter\.com|contact@|kontakt@|protonmail|medium\.com|traewelling\.de|press@|support@|info@|pobox|hey\.com/;
+    /gmail\.com|mixcloud|linktr\.ee|pinboardxing\com|researchgate|about|bit\.ly|imprint|impressum|patreon|donate|blog|facebook|news|github|instagram|t\.me|medium\.com|t\.co|tiktok\.com|youtube\.com|pronouns\.page|mail@|observablehq|twitter\.com|contact@|kontakt@|protonmail|medium\.com|traewelling\.de|press@|support@|info@|pobox|hey\.com/;
   words = words.filter((word) => !unwanted_domains.test(word));
   words = words.filter((w) => w);
 
