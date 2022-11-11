@@ -1,20 +1,24 @@
-/* globals io,, tests, eq json2csv*/
+/* globals io, tests, eq json2csv*/
 
 const socket = io();
-let accounts = {};
-let domains = {};
-let checked_accounts = 0;
-let user_lists = [];
-let unchecked_domains = [];
-let display_brokenList = "none";
-let displayBroken = "inline";
-let displayButtons = true;
-let profile;
-let known_instances;
+let accounts = {},
+  domains = {},
+  known_instances = {},
+  user_lists,
+  unchecked_domains = [],
+  checked_accounts = 0,
+  display_brokenList = "none",
+  displayBroken = "inline",
+  displayButtons = true,
+  profile;
 
 fetch("/cached/known_instances.json")
   .then((response) => response.json())
-  .then((data) => (known_instances = data));
+  .then((data) =>
+    data.forEach((domain) => {
+      known_instances[domain.domain] = domain;
+    })
+  );
 
 $(function () {
   // run after everything is loaded
@@ -106,13 +110,32 @@ function checkDomains() {
   let domains_to_check = [];
   for (const [domain, data] of Object.entries(domains)) {
     if ("part_of_fediverse" in data === false) {
-      unchecked_domains.push(domain);
-      domains_to_check.push({
-        domain: domain,
-        handle: data["handles"][0]["handle"],
-      });
+      if (domain in known_instances) {
+        // add info from cached instance data
+        [
+          "part_of_fediverse",
+          "openRegistrations",
+          "local_domain",
+          "software_name",
+          "software_version",
+          "users_total",
+        ].forEach((key) => {
+          domains[domain][key] = known_instances[domain][key]
+            ? known_instances[domain][key]
+            : null;
+        });
+      } else {
+        // get new info from server
+        unchecked_domains.push(domain);
+        domains_to_check.push({
+          domain: domain,
+          handle: data["handles"][0]["handle"],
+        });
+      }
     }
   }
+  updateCounts();
+  displayAccounts();
   if (domains_to_check.length > 0) {
     socket.emit("checkDomains", { domains: domains_to_check });
   }
