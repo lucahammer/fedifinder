@@ -14,7 +14,7 @@ const sqlite = require("better-sqlite3");
 const DB = require("better-sqlite3-helper");
 const fs = require("fs");
 const cookieSession = require("cookie-session");
-var cors = require('cors');
+var cors = require("cors");
 
 const webfinger = new WebFinger({
   webfist_fallback: false,
@@ -153,7 +153,7 @@ app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(passport.session());
 app.set("json spaces", 20);
-app.use(cors({ origin: '*', methods: 'GET', allowedHeaders: 'Content-Type' }));
+app.use(cors({ origin: "*", methods: "GET", allowedHeaders: "Content-Type" }));
 app.use((req, res, next) => {
   req.session.regenerate = regenerate;
   req.session.save = save;
@@ -299,22 +299,29 @@ app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
 
 app.get("/api/check", async (req, res) => {
   // force update a single domain
+
   let domain = req.query.domain
-    ? req.query.domain.toLowerCase().match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)
-    : null;
-  domain = domain ? domain[0] : null;
+    ? req.query.domain.match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)
+    : "";
+  domain = domain ? domain[0].toLowerCase() : "";
 
   let handle = req.query.handle
-    ? req.query.handle
-        .toLowerCase()
-        .match(/^@?[a-zA-Z0-9_]+@[a-zA-Z0-9\-\.]+\.[a-zA-Z]+$/)
-    : null;
-  handle = handle ? handle[0].replace(/^@/, "") : null;
+    ? req.query.handle.match(/^@?[a-zA-Z0-9_]+@[a-zA-Z0-9\-\.]+\.[a-zA-Z]+$/)
+    : "";
+  handle = handle ? handle[0].replace(/^@/, "").toLowerCase() : "";
 
-  domain = domain ? domain : handle ? handle.split("@").slice(-1)[0] : null;
+  domain = domain ? domain : handle ? handle.split("@").slice(-1)[0] : "";
 
   if (domain) {
     if ("force" in req.query) {
+      process.env.LOOKUP_SERVER
+        ? https.get(
+            `${process.env.LOOKUP_SERVER}/api/check?handle=${domain}&domain=${
+              handle ? handle : ""
+            }&force`
+          )
+        : void 0;
+
       try {
         let info = await update_data(domain, handle, true);
         res.json(info);
@@ -716,7 +723,7 @@ io.sockets.on("connection", function (socket) {
 
   socket.on("checkDomains", (data) => {
     data.domains.forEach(async (domain) => {
-      console.log(domain)
+      console.log(domain);
       let data = await check_instance(domain.domain, domain.handle ?? null);
       socket.emit("checkedDomains", data);
     });
