@@ -44,7 +44,9 @@ passport.use(
     {
       consumerKey: process.env.TWITTER_CONSUMER_KEY,
       consumerSecret: process.env.TWITTER_CONSUMER_SECRET,
-      callbackURL: `https://${process.env.PROJECT_DOMAIN}.glitch.me/login/twitter/return`,
+      callbackURL: process.env.PROJECT_DOMAIN.includes("http")
+        ? process.env.PROJECT_DOMAIN
+        : `https://${process.env.PROJECT_DOMAIN}.glitch.me/login/twitter/return`,
     },
     function (token, tokenSecret, profile, cb) {
       profile["tokenSecret"] = tokenSecret;
