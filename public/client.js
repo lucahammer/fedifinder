@@ -110,7 +110,16 @@ function retryDomains() {
       domain: domain,
     })
   );
-  socket.emit("checkDomains", { domains: to_check });
+
+  lookup_server
+    ? to_check.forEach((domain) =>
+        fetch(
+          `${lookup_server}/api/check?handle=${domain.handle}&${domain.domain}`
+        )
+          .then((response) => response.json())
+          .then((data) => processCheckedDomain(data))
+      )
+    : socket.emit("checkDomains", { domains: to_check });
   $("#retry").css("display", "none");
 }
 
