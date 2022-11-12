@@ -444,7 +444,6 @@ function processCheckedDomain(data) {
 socket.on("checkedDomains", (data) => processCheckedDomain);
 
 socket.on("lookup_server", function (data) {
-  console.log(data);
   lookup_server = data;
 });
 

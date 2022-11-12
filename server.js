@@ -14,6 +14,7 @@ const sqlite = require("better-sqlite3");
 const DB = require("better-sqlite3-helper");
 const fs = require("fs");
 const cookieSession = require("cookie-session");
+var cors = require('cors');
 
 const webfinger = new WebFinger({
   webfist_fallback: false,
@@ -152,6 +153,7 @@ app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(passport.session());
 app.set("json spaces", 20);
+app.use(cors({ origin: '*', methods: 'GET', allowedHeaders: 'Content-Type' }));
 app.use((req, res, next) => {
   req.session.regenerate = regenerate;
   req.session.save = save;
