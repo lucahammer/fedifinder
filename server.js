@@ -210,30 +210,58 @@ app.get(process.env.DB_CLEAR + "_all", function (req, res) {
 });
 
 async function write_cached_files() {
-  let domains = {};
-  let relevant_keys = [
-    "part_of_fediverse",
-    "openRegistrations",
-    "local_domain",
-    "software_name",
-    "software_version",
-    "users_total",
-  ];
-  let instances = await DB().query(
-    "SELECT * FROM domains WHERE part_of_fediverse = 1"
-  );
+  if (process.env.LOOKUP_SERVER) {
+    // get known instances file from lookup server
+    https.get(
+      process.env.LOOKUP_SERVER + "/cached/known_instances.json",
+      (res) => {
+        let body = "";
+        if (res.statusCode != 200) {
+          console.log(res);
+        }
+        res.on("data", (d) => {
+          body += d;
+        });
+        res.on("end", () => {
+          fs.writeFileSync("public/cached/known_instances.json", body);
+          console.log(
+            "New cached known_instances.json was created from " +
+              process.env.LOOKUP_SERVER
+          );
+        });
+        res.on("error", (err) => {
+          console.log(err);
+        });
+      }
+    );
+  } else {
+    let domains = {};
+    let relevant_keys = [
+      "part_of_fediverse",
+      "openRegistrations",
+      "local_domain",
+      "software_name",
+      "software_version",
+      "users_total",
+    ];
+    let instances = await DB().query(
+      "SELECT * FROM domains WHERE part_of_fediverse = 1"
+    );
 
-  instances.forEach((instance) => {
-    domains[instance.domain] = {};
-    relevant_keys.forEach((key) => {
-      instance[key] ? (domains[instance.domain][key] = instance[key]) : void 0;
+    instances.forEach((instance) => {
+      domains[instance.domain] = {};
+      relevant_keys.forEach((key) => {
+        instance[key]
+          ? (domains[instance.domain][key] = instance[key])
+          : void 0;
+      });
     });
-  });
-  fs.writeFileSync(
-    "public/cached/known_instances.json",
-    JSON.stringify(domains, null, 2)
-  );
-  console.log("New cached known_instances.json was created.");
+    fs.writeFileSync(
+      "public/cached/known_instances.json",
+      JSON.stringify(domains, null, 2)
+    );
+    console.log("New cached known_instances.json was created from database.");
+  }
 }
 
 app.get("/api/known_instances.json", (req, res) => {
@@ -681,16 +709,15 @@ io.use((socket, next) => {
 });
 
 io.sockets.on("connection", function (socket) {
-  socket.on("checkDomains", function (data) {
-    Promise.all(
-      data.domains.map((domain) =>
-        check_instance(domain.domain, domain.handle ?? null)
-          .catch((err) => console.log(err))
-          .then((data) => {
-            socket.emit("checkedDomains", data);
-          })
-      )
-    );
+  if (process.env.LOOKUP_SERVER)
+    socket.emit("lookup_server", process.env.LOOKUP_SERVER);
+
+  socket.on("checkDomains", (data) => {
+    data.domains.forEach(async (domain) => {
+      console.log(domain)
+      let data = await check_instance(domain.domain, domain.handle ?? null);
+      socket.emit("checkedDomains", data);
+    });
   });
 
   socket.on("getProfile", function () {

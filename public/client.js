@@ -10,7 +10,8 @@ let accounts = {},
   display_brokenList = "none",
   displayBroken = "inline",
   displayButtons = true,
-  profile;
+  profile,
+  lookup_server;
 
 fetch("/cached/known_instances.json")
   .then((response) => response.json())
@@ -138,7 +139,15 @@ function checkDomains() {
   updateCounts();
   displayAccounts();
   if (domains_to_check.length > 0) {
-    socket.emit("checkDomains", { domains: domains_to_check });
+    lookup_server
+      ? domains_to_check.forEach((domain) =>
+          fetch(
+            `${lookup_server}/api/check?handle=${domain.handle}&${domain.domain}`
+          )
+            .then((response) => response.json())
+            .then((data) => processCheckedDomain(data))
+        )
+      : socket.emit("checkDomains", { domains: domains_to_check });
   }
 }
 
@@ -421,7 +430,7 @@ function displayAccounts() {
   $("#displayBroken").css("display", displayBroken);
 }
 
-socket.on("checkedDomains", function (data) {
+function processCheckedDomain(data) {
   // add info about domains
   unchecked_domains = unchecked_domains.filter(
     (item) => item != data["domain"]
@@ -430,6 +439,13 @@ socket.on("checkedDomains", function (data) {
   updateCounts();
   displayAccounts();
   unchecked_domains.length < 1 ? $("#retry").css("display", "none") : void 0;
+}
+
+socket.on("checkedDomains", (data) => processCheckedDomain);
+
+socket.on("lookup_server", function (data) {
+  console.log(data);
+  lookup_server = data;
 });
 
 socket.on("userLists", function (lists) {
