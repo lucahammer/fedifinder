@@ -14,7 +14,8 @@ const sqlite = require("better-sqlite3");
 const DB = require("better-sqlite3-helper");
 const fs = require("fs");
 const cookieSession = require("cookie-session");
-var cors = require("cors");
+const cors = require("cors");
+const parser = require('xml2json');
 
 const webfinger = new WebFinger({
   webfist_fallback: false,
@@ -577,6 +578,31 @@ async function url_from_handle(handle) {
     console.log(err);
     return false;
   }
+}
+
+async function get_hostmeta(domain) {
+  return new Promise((resolve) => {
+    https.get("https://"+domain, (res) => {
+      if (res.statusCode == 200) {
+        let host_body = "";
+        res.on("data", (d) => {
+          host_body += d;
+        });
+        res.on("end", () => {
+          try {
+            console.log(parser.toJson(host_body));
+          } catch (err) {
+            console.log(err);
+            resolve(null);
+          }
+        });
+        res.on("error", (err) => {
+          //console.log(err);
+          resolve({ status: err["code"] });
+        });
+      }
+    });
+  });
 }
 
 async function get_nodeinfo_url(host_domain, redirect_count = 0) {
