@@ -112,7 +112,11 @@ async function getMe() {
           `https://${auth_domain}/api/v1/accounts/${auth_me}/following?`,
           (follows) => {
             follows.forEach((follow) => {
-              auth_followings.push("@" + follow.acct.toLowerCase());
+              (follow.acct.match(/@/g) || []).length == 2
+                ? auth_followings.push(
+                    "@" + follow.acct.toLowerCase() + "@" + auth_domain
+                  )
+                : auth_followings.push("@" + follow.acct.toLowerCase());
             });
             displayAccounts();
             updateCounts();
@@ -218,6 +222,7 @@ function reDrawHandles() {
 async function authUrl(domain) {
   // create url that users can click to give fedifinder access to their mastodon profile
   let client_id = await api(`/api/app?domain=${domain}`);
+
   if ("client_id" in client_id && client_id.client_id != null) {
     let auth_url =
       "https://" +
@@ -318,10 +323,10 @@ function retryDomains() {
 
 async function api(api_string) {
   return new Promise((resolve) => {
-    let url = "https://";
+    let url = "";
     lookup_server
       ? (url += lookup_server + api_string)
-      : (url += window.location.hostname + api_string);
+      : (url += "https://" + window.location.hostname + api_string);
 
     fetch(url)
       .then((response) => response.json())
@@ -524,7 +529,6 @@ function updateCounts() {
   $("#nr_broken").text(broken_counter);
   $("#domains_waiting").text(unchecked_domains.length);
   $("#already_followed").text(already_following);
-
 }
 
 function followButton(username, user_instance, target_url) {

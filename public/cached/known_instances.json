@@ -774,5 +774,13 @@
     "software_name": "mastodon",
     "software_version": "3.5.3",
     "users_total": 5
+  },
+  "emacs.ch": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "emacs.ch",
+    "software_name": "mastodon",
+    "software_version": "4.0.0rc2",
+    "users_total": 91
   }
 }
