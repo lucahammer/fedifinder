@@ -60,7 +60,13 @@ const createApp = (domain, remote_domain = false) => {
 
   let postData = JSON.stringify({
     client_name: "Fedifinder",
-    redirect_uris: fedifinder_domain + "/success",
+    redirect_uris:
+      fedifinder_domain +
+      "/success" +
+      " " +
+      "https://fedifinder.glitch.me/success" +
+      " " +
+      "https://fedifinder-backup.glitch.me/success", //todo remove hardcoded URLs, different apps for each?
     scopes: "read:accounts read:follows",
     website: fedifinder_domain,
   });

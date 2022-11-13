@@ -357,6 +357,8 @@ app.get("/api/app", async (req, res) => {
     : "";
   remote_domain = remote_domain ? remote_domain[0].toLowerCase() : "";
 
+  console.log(remote_domain);
+
   if (domain && remote_domain) {
     let data = await getApp(domain, remote_domain);
     data
@@ -1046,3 +1048,5 @@ async function tests() {
   });
 }
 if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
+
+//DB().run("DELETE from mastodonapps");
