@@ -14,7 +14,8 @@ const sqlite = require("better-sqlite3");
 const DB = require("better-sqlite3-helper");
 const fs = require("fs");
 const cookieSession = require("cookie-session");
-var cors = require("cors");
+const cors = require("cors");
+const parser = require("xml2json");
 
 const webfinger = new WebFinger({
   webfist_fallback: false,
@@ -69,8 +70,7 @@ passport.use(
               "tweet.fields": ["text", "entities"],
             })
             .catch((err) => {
-              console.log(err);
-              return cb();
+              cb(new Error(err));
             })
             .then((data) => {
               let user = data.data;
@@ -124,16 +124,13 @@ passport.use(
               return cb(null, profile);
             })
             .catch((err) => {
-              console.log(err);
-              return cb(null, profile);
+              cb(new Error(err));
             });
         } catch (err) {
-          console.log("Passport failed.");
-          cb(err);
+          cb(new Error(err));
         }
       } else {
-        console.log("No access tokens..");
-        cb(null, profile);
+        cb(new Error("no tokens"));
       }
     }
   )
@@ -155,9 +152,21 @@ app.use(passport.session());
 app.set("json spaces", 20);
 app.use(cors({ origin: "*", methods: "GET", allowedHeaders: "Content-Type" }));
 app.use((req, res, next) => {
-  req.session.regenerate = regenerate;
-  req.session.save = save;
+  if (
+    req.path == "/login/twitter/return" &&
+    "oauth:twitter" in req.session == false
+  ) {
+    // catch empty return requests. probably because of 2FA login
+    res.redirect("/actualAuth/twitter");
+  } else {
+    req.session.regenerate = regenerate;
+    req.session.save = save;
+  }
   next();
+});
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send("Something broke!");
 });
 
 // Define routes.
@@ -195,7 +204,7 @@ app.get(
 app.get(
   "/success",
   require("connect-ensure-login").ensureLoggedIn("/"),
-  function (req, res) {
+  (req, res, next) => {
     res.header(
       "Cache-Control",
       "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
@@ -579,6 +588,31 @@ async function url_from_handle(handle) {
   }
 }
 
+async function get_hostmeta(domain) {
+  return new Promise((resolve) => {
+    https.get("https://" + domain, (res) => {
+      if (res.statusCode == 200) {
+        let host_body = "";
+        res.on("data", (d) => {
+          host_body += d;
+        });
+        res.on("end", () => {
+          try {
+            console.log(parser.toJson(host_body));
+          } catch (err) {
+            console.log(err);
+            resolve(null);
+          }
+        });
+        res.on("error", (err) => {
+          //console.log(err);
+          resolve({ status: err["code"] });
+        });
+      }
+    });
+  });
+}
+
 async function get_nodeinfo_url(host_domain, redirect_count = 0) {
   // get url of nodeinfo json
   return new Promise((resolve) => {
@@ -723,7 +757,6 @@ io.sockets.on("connection", function (socket) {
 
   socket.on("checkDomains", (data) => {
     data.domains.forEach(async (domain) => {
-      console.log(domain);
       let data = await check_instance(domain.domain, domain.handle ?? null);
       socket.emit("checkedDomains", data);
     });
