@@ -181,16 +181,20 @@ app.get("/auth/twitter", (req, res) => {
 app.get("/actualAuth/twitter", passport.authenticate("twitter"));
 
 app.get("/login/twitter/return", (req, res, next) => {
-  passport.authenticate("twitter", (err) => {
+  passport.authenticate("twitter", (err, user) => {
     if (err) {
-      res.redirect("/auth/twitter")
+      console.log(err);
+      res.redirect("/");
+      return;
     }
-  })(req, res, next),
-    (req, res) => {
-      req.session.save(() => {
-        res.redirect("/success");
-      });
-    };
+
+    req.session.save(() => {
+      console.log("saving");
+      res.redirect("/success");
+      next()
+      return;
+    });
+  })(req, res, next);
 });
 
 app.get(
