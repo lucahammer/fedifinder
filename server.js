@@ -15,7 +15,7 @@ const DB = require("better-sqlite3-helper");
 const fs = require("fs");
 const cookieSession = require("cookie-session");
 const cors = require("cors");
-const parser = require('xml2json');
+const parser = require("xml2json");
 
 const webfinger = new WebFinger({
   webfist_fallback: false,
@@ -70,8 +70,7 @@ passport.use(
               "tweet.fields": ["text", "entities"],
             })
             .catch((err) => {
-              console.log(err);
-              return cb();
+              cb(new Error(err));
             })
             .then((data) => {
               let user = data.data;
@@ -125,16 +124,13 @@ passport.use(
               return cb(null, profile);
             })
             .catch((err) => {
-              console.log(err);
-              return cb(null, profile);
+              cb(new Error(err));
             });
         } catch (err) {
-          console.log("Passport failed.");
-          cb(err);
+          cb(new Error(err));
         }
       } else {
-        console.log("No access tokens..");
-        cb(null, profile);
+        cb(new Error("no tokens"));
       }
     }
   )
@@ -160,6 +156,10 @@ app.use((req, res, next) => {
   req.session.save = save;
   next();
 });
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send("Something broke!");
+});
 
 // Define routes.
 app.all("*", checkHttps);
@@ -180,23 +180,23 @@ app.get("/auth/twitter", (req, res) => {
 
 app.get("/actualAuth/twitter", passport.authenticate("twitter"));
 
-app.get(
-  "/login/twitter/return",
-  passport.authenticate("twitter", {
-    failureRedirect: "/",
-    failureMessage: false,
-  }),
-  function (req, res) {
-    req.session.save(function () {
-      res.redirect("/success");
-    });
-  }
-);
+app.get("/login/twitter/return", (req, res, next) => {
+  passport.authenticate("twitter", (err) => {
+    if (err) {
+      res.redirect("/auth/twitter")
+    }
+  })(req, res, next),
+    (req, res) => {
+      req.session.save(() => {
+        res.redirect("/success");
+      });
+    };
+});
 
 app.get(
   "/success",
   require("connect-ensure-login").ensureLoggedIn("/"),
-  function (req, res) {
+  (req, res, next) => {
     res.header(
       "Cache-Control",
       "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
@@ -582,7 +582,7 @@ async function url_from_handle(handle) {
 
 async function get_hostmeta(domain) {
   return new Promise((resolve) => {
-    https.get("https://"+domain, (res) => {
+    https.get("https://" + domain, (res) => {
       if (res.statusCode == 200) {
         let host_body = "";
         res.on("data", (d) => {
