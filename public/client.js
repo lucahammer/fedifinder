@@ -11,7 +11,29 @@ let accounts = {},
   displayBroken = "inline",
   displayButtons = true,
   profile,
-  lookup_server;
+  lookup_server,
+  auth_domain,
+  auth_code,
+  auth_me,
+  auth_token,
+  auth_followings = [],
+  already_following = 0;
+
+window.addEventListener(
+  "storage",
+  function () {
+    setTimeout(function () {
+      // wait for all data to be replaced
+      auth_domain = localStorage.getItem("AUTHORIZED_DOMAIN");
+      auth_code = localStorage.getItem("MASTODON_CODE");
+      auth_token = localStorage.getItem("MASTODON_ACCESS_TOKEN");
+      auth_me = localStorage.getItem("MASTODON_USER");
+      reDrawHandles();
+      !auth_token ? getAccessToken() : void 0;
+    }, 400);
+  },
+  false
+);
 
 fetch("/cached/known_instances.json")
   .then((response) => response.json())
@@ -19,6 +41,21 @@ fetch("/cached/known_instances.json")
 
 $(function () {
   // run after everything is loaded
+
+  if (window.location.href.indexOf("?c=") !== -1) {
+    let mastodon_code = window.location.href.split("?c=").slice(-1)[0];
+    localStorage.setItem("MASTODON_CODE", mastodon_code);
+    $("body").html(
+      "<h2>Authorization successful</h2><p>You can close this window now.</p>"
+    );
+    window.stop();
+  }
+
+  auth_domain = localStorage.getItem("AUTHORIZED_DOMAIN");
+  auth_code = localStorage.getItem("MASTODON_CODE");
+  auth_token = localStorage.getItem("MASTODON_ACCESS_TOKEN");
+  auth_me = localStorage.getItem("MASTODON_USER");
+
   socket.emit("getProfile");
   socket.on("profile", function (data) {
     profile = data;
@@ -27,30 +64,7 @@ $(function () {
     checkDomains();
 
     if (accounts[profile.username]["handles"].length > 0) {
-      $("#userHandles").append(
-        $("<p>").text(
-          `These handles were found in your profile @${profile.username}`
-        )
-      );
-      $("#userHandles").append($("<ul>"));
-
-      accounts[profile.username]["handles"].forEach((handle) => {
-        let import_url = handle.split("@")[2] + "/settings/import";
-        $("#userHandles ul").append(
-          $("<li>")
-            .text(handle)
-            .append("<br>(After exporting the CSV, import it at ")
-            .append(
-              $("<a>")
-                .attr("href", "https://" + import_url)
-                .attr("target", "_blank")
-                .text(import_url)
-            )
-            .append(")")
-        );
-        $("#download").css("display", "block");
-      });
-      $("#displayFollowButtons").css("display", "block");
+      reDrawHandles();
     } else {
       $("#userHandles")
         .text(
@@ -70,6 +84,185 @@ $(function () {
   script.src = "https://button.glitch.me/button.js";
   document.body.append(script);
 });
+
+async function getAccessToken() {
+  if (auth_domain && auth_code && !auth_token) {
+    let data = await api(
+      `/api/totoken?domain=${window.location.hostname}&auth_domain=${auth_domain}&code=${auth_code}`
+    );
+
+    "access_token" in data
+      ? localStorage.setItem("MASTODON_ACCESS_TOKEN", data.access_token)
+      : console.log("nope");
+    auth_token = data.access_token;
+  }
+}
+
+async function getMe() {
+  return new Promise((resolve) => {
+    let url = `https://${auth_domain}/api/v1/accounts/verify_credentials?access_token=${auth_token}`;
+    fetch(url)
+      .then((response) => response.json())
+      .then((data) => {
+        auth_me = data.id;
+        localStorage.setItem("MASTODON_USER", auth_me);
+
+        //todo find a better place for this. should be its own function. chaining bad.
+        fetch_followings(
+          `https://${auth_domain}/api/v1/accounts/${auth_me}/following?`,
+          (follows) => {
+            follows.forEach((follow) => {
+              auth_followings.push("@" + follow.acct.toLowerCase());
+            });
+            displayAccounts();
+            updateCounts();
+          }
+        );
+      });
+  });
+}
+
+function fetch_followings(url, done) {
+  let api_url =
+    url + "&access_token=" + localStorage.getItem("MASTODON_ACCESS_TOKEN");
+
+  var request = new XMLHttpRequest();
+  request.open("GET", api_url, true);
+
+  request.onload = function () {
+    if (request.status >= 200 && request.status < 400) {
+      var data = JSON.parse(request.responseText);
+      done(data);
+
+      let next = parseLinkHeader(request.getResponseHeader("Link"))["next"];
+      if (next) {
+        fetch_followings(next, done);
+      }
+    } else {
+      console.log("Error with " + url + " request");
+    }
+  };
+
+  request.onerror = function () {
+    // There was a connection error of some sort
+  };
+  request.send();
+}
+
+const parseLinkHeader = (header) => {
+  // parse a Link header by https://gist.github.com/deiu/9335803
+  //
+  // Link:<https://example.org/.meta>; rel=meta
+  //
+  // var r = parseLinkHeader(xhr.getResponseHeader('Link');
+  // r['meta'] outputs https://example.org/.meta
+  if (!header) return "";
+  var linkexp =
+    /<[^>]*>\s*(\s*;\s*[^\(\)<>@,;:"\/\[\]\?={} \t]+=(([^\(\)<>@,;:"\/\[\]\?={} \t]+)|("[^"]*")))*(,|$)/g;
+  var paramexp =
+    /[^\(\)<>@,;:"\/\[\]\?={} \t]+=(([^\(\)<>@,;:"\/\[\]\?={} \t]+)|("[^"]*"))/g;
+
+  var matches = header.match(linkexp);
+  var rels = {};
+  for (var i = 0; i < matches.length; i++) {
+    var split = matches[i].split(">");
+    var href = split[0].substring(1);
+    var ps = split[1];
+    var s = ps.match(paramexp);
+    for (var j = 0; j < s.length; j++) {
+      var p = s[j];
+      var paramsplit = p.split("=");
+      var name = paramsplit[0];
+      var rel = paramsplit[1].replace(/["']/g, "");
+      rels[rel] = href;
+    }
+  }
+  return rels;
+};
+
+function reDrawHandles() {
+  auth_domain = localStorage.getItem("AUTHORIZED_DOMAIN");
+  auth_code = localStorage.getItem("MASTODON_CODE");
+
+  $("#userHandles").empty();
+
+  $("#userHandles").append(
+    $("<p>").text(
+      `These handles were found in your profile @${profile.username}`
+    )
+  );
+  $("#userHandles").append($("<ul>"));
+
+  accounts[profile.username]["handles"].forEach(async (handle) => {
+    let domain = handle.split("@")[2];
+    let import_url = domain + "/settings/import";
+    let auth_url = await authUrl(domain);
+    $("#userHandles ul").append(
+      $("<li>")
+        .text(handle)
+        .append("<br>(After exporting the CSV, import it at ")
+        .append(
+          $("<a>")
+            .attr("href", "https://" + import_url)
+            .attr("target", "_blank")
+            .text(import_url)
+        )
+        .append(")<br>")
+        .append(auth_url ? authButton(domain, auth_url) : "")
+    );
+    $("#download").css("display", "block");
+  });
+  $("#displayFollowButtons").css("display", "block");
+}
+
+async function authUrl(domain) {
+  // create url that users can click to give fedifinder access to their mastodon profile
+  let client_id = await api(`/api/app?domain=${domain}`);
+  if ("client_id" in client_id && client_id.client_id != null) {
+    let auth_url =
+      "https://" +
+      domain +
+      "/oauth/authorize?client_id=" +
+      client_id.client_id +
+      "&redirect_uri=https://" +
+      window.location.hostname +
+      "/success&response_type=code&scope=read:accounts%20read:follows";
+    return auth_url;
+  } else {
+    return null;
+  }
+}
+
+function authButton(domain, url) {
+  // create button
+  if (auth_domain == domain) {
+    return $("<span>")
+      .text(domain + " is currently authorized. ")
+      .append(
+        $("<button>")
+          .attr(
+            "onclick",
+            "localStorage.removeItem('AUTHORIZED_DOMAIN');localStorage.removeItem('MASTODON_CODE');localStorage.removeItem('MASTODON_ACCESS_TOKEN', '');reDrawHandles()"
+          )
+          .text("Delete Authorization")
+      )
+      .append(" ")
+      .append($("<button>").attr("onclick", "getMe()").text("Hide Followings"));
+  } else {
+    return $("<button>")
+      .attr("target", "popup")
+      .attr(
+        "onclick",
+        "onclick=localStorage.setItem('AUTHORIZED_DOMAIN', '" +
+          domain +
+          "');window.open('" +
+          url +
+          "','popup','width=600,height=600'); return false"
+      )
+      .text("Authorize")
+      .append(" to hide accounts you already follow");
+  }
+}
 
 function removeDuplicates() {
   for (const [domain, data] of Object.entries(domains)) {
@@ -121,6 +314,19 @@ function retryDomains() {
       )
     : socket.emit("checkDomains", { domains: to_check });
   $("#retry").css("display", "none");
+}
+
+async function api(api_string) {
+  return new Promise((resolve) => {
+    let url = "https://";
+    lookup_server
+      ? (url += lookup_server + api_string)
+      : (url += window.location.hostname + api_string);
+
+    fetch(url)
+      .then((response) => response.json())
+      .then((data) => resolve(data));
+  });
 }
 
 function checkDomains() {
@@ -317,6 +523,8 @@ function updateCounts() {
   $("#nr_checked").text(checked_accounts);
   $("#nr_broken").text(broken_counter);
   $("#domains_waiting").text(unchecked_domains.length);
+  $("#already_followed").text(already_following);
+
 }
 
 function followButton(username, user_instance, target_url) {
@@ -333,6 +541,8 @@ function followButton(username, user_instance, target_url) {
 
 function displayAccounts() {
   // replace the list of handles
+  already_following = 0;
+
   $list = $("<ul id='urlList'></ul>");
   for (const [domain, data] of Object.entries(domains)) {
     if ("part_of_fediverse" in data && data["part_of_fediverse"]) {
@@ -366,34 +576,38 @@ function displayAccounts() {
       $ol = $("<ol></ol>");
 
       data["handles"].forEach((handle) => {
-        $li = $("<li>");
-        let target_url =
-          "https://" + local_domain + "/@" + handle.handle.split("@")[1];
-        $li.append(
-          $("<a>")
-            .attr("href", target_url)
-            .text(handle["handle"])
-            .addClass("link")
-        );
+        if (auth_followings.includes(handle.handle)) {
+          already_following += 1;
+        } else {
+          $li = $("<li>");
+          let target_url =
+            "https://" + local_domain + "/@" + handle.handle.split("@")[1];
+          $li.append(
+            $("<a>")
+              .attr("href", target_url)
+              .text(handle["handle"])
+              .addClass("link")
+          );
 
-        $li.append(" (");
+          $li.append(" (");
 
-        $li.append(
-          $("<a>")
-            .attr("href", "https://twitter.com/" + handle.username)
-            .text("@" + handle.username)
-            .addClass("link")
-        );
+          $li.append(
+            $("<a>")
+              .attr("href", "https://twitter.com/" + handle.username)
+              .text("@" + handle.username)
+              .addClass("link")
+          );
 
-        $li.append(")<br>");
+          $li.append(")<br>");
 
-        if (displayButtons) {
-          accounts[profile.username]["handles"].map((user_handle) => {
-            let user_domain = domains[user_handle.split("@")[2]].local_domain
-              ? domains[user_handle.split("@")[2]].local_domain
-              : user_handle.split("@")[2];
-            $li.append(followButton(user_handle, user_domain, target_url));
-          });
+          if (displayButtons) {
+            accounts[profile.username]["handles"].map((user_handle) => {
+              let user_domain = domains[user_handle.split("@")[2]].local_domain
+                ? domains[user_handle.split("@")[2]].local_domain
+                : user_handle.split("@")[2];
+              $li.append(followButton(user_handle, user_domain, target_url));
+            });
+          }
         }
 
         $ol.append($li);

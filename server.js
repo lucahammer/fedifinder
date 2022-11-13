@@ -16,6 +16,8 @@ const fs = require("fs");
 const cookieSession = require("cookie-session");
 const cors = require("cors");
 const parser = require("xml2json");
+const { decrypt, encrypt } = require("./encryption.js");
+const { getApp, getFollowings, toToken } = require("./mastodon.js");
 
 const webfinger = new WebFinger({
   webfist_fallback: false,
@@ -50,7 +52,7 @@ passport.use(
         ? process.env.PROJECT_DOMAIN
         : `https://${process.env.PROJECT_DOMAIN}.glitch.me/login/twitter/return`,
     },
-    function (token, tokenSecret, profile, cb) {
+    (token, tokenSecret, profile, cb) => {
       profile["tokenSecret"] = tokenSecret;
       profile["accessToken"] = token;
 
@@ -136,11 +138,11 @@ passport.use(
   )
 );
 
-passport.serializeUser(function (user, cb) {
+passport.serializeUser((user, cb) => {
   cb(null, user);
 });
 
-passport.deserializeUser(function (obj, cb) {
+passport.deserializeUser((obj, cb) => {
   cb(null, obj);
 });
 
@@ -172,7 +174,7 @@ app.use((err, req, res, next) => {
 // Define routes.
 app.all("*", checkHttps);
 
-app.get("/logoff", function (req, res) {
+app.get("/logoff", (req, res) => {
   req.session = null;
   res.clearCookie("session", { path: "/" });
   res.redirect("/");
@@ -194,8 +196,8 @@ app.get(
     failureRedirect: "/",
     failureMessage: false,
   }),
-  function (req, res) {
-    req.session.save(function () {
+  (req, res) => {
+    req.session.save(() => {
       res.redirect("/success");
     });
   }
@@ -209,12 +211,13 @@ app.get(
       "Cache-Control",
       "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
     );
-
-    res.redirect("/success.html");
+    "code" in req.query
+      ? res.redirect("/success.html?c=" + req.query.code)
+      : res.redirect("/success.html");
   }
 );
 
-app.get(process.env.DB_CLEAR + "_all", function (req, res) {
+app.get(process.env.DB_CLEAR + "_all", (req, res) => {
   // visit this URL to reset the DB
   DB().run("DELETE from domains");
   res.redirect("/");
@@ -341,6 +344,56 @@ app.get("/api/check", async (req, res) => {
   } else res.json({ error: "not a handle or not a domain" });
 });
 
+app.get("/api/app", async (req, res) => {
+  // send app id for a domain back
+
+  let domain = req.query.domain
+    ? req.query.domain.match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)
+    : "";
+  domain = domain ? domain[0].toLowerCase() : "";
+
+  let remote_domain = req.query.remote_domain
+    ? req.query.remote_domain.match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)
+    : "";
+  remote_domain = remote_domain ? remote_domain[0].toLowerCase() : "";
+
+  if (domain && remote_domain) {
+    let data = await getApp(domain, remote_domain);
+    data
+      ? data.working != 0
+        ? res.json({ client_id: data.client_id })
+        : res.json({})
+      : res.json({});
+  } else if (domain) {
+    let data = await getApp(domain);
+    data
+      ? data.working != !0
+        ? res.json({ client_id: data.client_id })
+        : res.json({})
+      : res.json({});
+  } else res.json({ error: "not valid" });
+});
+
+app.get("/api/totoken", async (req, res) => {
+  // send app id for a domain back
+
+  let domain = req.query.domain
+    ? req.query.domain.match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)
+    : "";
+  domain = domain ? domain[0].toLowerCase() : "";
+
+  let auth_domain = req.query.auth_domain
+    ? req.query.auth_domain.match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)
+    : "";
+  auth_domain = auth_domain ? auth_domain[0].toLowerCase() : "";
+
+  if (auth_domain && domain && req.query.code) {
+    let app = await getApp(auth_domain, true);
+    let auth_token = await toToken(domain, app, req.query.code);
+    res.json(auth_token);
+  } else res.json({ error: "not valid" });
+});
+
 app.get(process.env.DB_CLEAR + "_wcache", async (req, res) => {
   // delete all records from the database and repopulate it with data from remote server
   await write_cached_files();
@@ -369,7 +422,7 @@ app.get(process.env.DB_CLEAR + "_popfresh", async (req, res) => {
   );
 });
 
-const server = app.listen(process.env.PORT, function () {
+const server = app.listen(process.env.PORT, () => {
   // listen for requests
   console.log("Your app is listening on port " + server.address().port);
 });
@@ -560,8 +613,8 @@ async function check_instance(domain, handle = null) {
 
 function get_webfinger(handle) {
   // get webfinger data for a handle
-  return new Promise(function (resolve) {
-    webfinger.lookup(encodeURI(handle), function (err, info) {
+  return new Promise((resolve) => {
+    webfinger.lookup(encodeURI(handle), (err, info) => {
       if (err) {
         //console.log("error: ", err.message);
         resolve(null);
@@ -751,7 +804,7 @@ io.use((socket, next) => {
   }
 });
 
-io.sockets.on("connection", function (socket) {
+io.sockets.on("connection", (socket) => {
   if (process.env.LOOKUP_SERVER)
     socket.emit("lookup_server", process.env.LOOKUP_SERVER);
 
@@ -762,7 +815,7 @@ io.sockets.on("connection", function (socket) {
     });
   });
 
-  socket.on("getProfile", function () {
+  socket.on("getProfile", () => {
     socket.emit("profile", socket.request.user._json);
   });
 
@@ -973,11 +1026,23 @@ async function tests() {
     assert(info.users_total == 1);
   });
 
-  it("get url from handle (webfinger)", async () => {
+  it("should get url from handle (webfinger)", async () => {
     let url = await url_from_handle("@luca@vis.social");
     assert("https://vis.social/@Luca" == url);
     url = await url_from_handle("luca@lucahammer.com");
     assert("https://lucahammer.com/author/luca" == url);
+  });
+
+  it("should encrypt and decrypt a string", () => {
+    let message = "message";
+    let encrypted = encrypt(message);
+    assert(encrypted != message);
+    assert(message == decrypt(encrypted));
+  });
+
+  it("get or create app for a mastodon instance", async () => {
+    let app = await getApp("vis.social");
+    assert(app.domain == "vis.social");
   });
 }
 if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();

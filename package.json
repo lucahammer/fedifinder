@@ -1,6 +1,6 @@
 {
   "name": "fedifinder",
-  "version": "3.5.1",
+  "version": "4.0.0",
   "description": "Extracts fediverse handles and URLS from Twitter accounts.",
   "main": "server.js",
   "scripts": {
@@ -20,7 +20,8 @@
     "better-sqlite3": "^7.6.2",
     "better-sqlite3-helper": "^3.1.6",
     "cookie-session": "^2.0.0",
-    "xml2json": "^0.12.0"
+    "xml2json": "^0.12.0",
+    "crypto-js": "^4.1.1"
   },
   "engines": {
     "node": "16.x"
