@@ -720,5 +720,59 @@
     "software_name": "wordpress",
     "software_version": "6.1",
     "users_total": 1
+  },
+  "systerserver.town": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "systerserver.town",
+    "software_name": "mastodon",
+    "software_version": "3.4.4",
+    "users_total": 62
+  },
+  "sueden.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "sueden.social",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 7426
+  },
+  "masthead.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "masthead.social",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 25467
+  },
+  "ooe.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "ooe.social",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 4
+  },
+  "berlin.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "berlin.social",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 1085
+  },
+  "d-64.social": {
+    "part_of_fediverse": 1,
+    "local_domain": "d-64.social",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 71
+  },
+  "tapbots.social": {
+    "part_of_fediverse": 1,
+    "local_domain": "tapbots.social",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 5
   }
 }

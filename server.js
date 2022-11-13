@@ -152,8 +152,16 @@ app.use(passport.session());
 app.set("json spaces", 20);
 app.use(cors({ origin: "*", methods: "GET", allowedHeaders: "Content-Type" }));
 app.use((req, res, next) => {
-  req.session.regenerate = regenerate;
-  req.session.save = save;
+  if (
+    req.path == "/login/twitter/return" &&
+    "oauth:twitter" in req.session == false
+  ) {
+    // catch empty return requests. probably because of 2FA login
+    res.redirect("/actualAuth/twitter");
+  } else {
+    req.session.regenerate = regenerate;
+    req.session.save = save;
+  }
   next();
 });
 app.use((err, req, res, next) => {
@@ -180,22 +188,18 @@ app.get("/auth/twitter", (req, res) => {
 
 app.get("/actualAuth/twitter", passport.authenticate("twitter"));
 
-app.get("/login/twitter/return", (req, res, next) => {
-  passport.authenticate("twitter", (err, user) => {
-    if (err) {
-      console.log(err);
-      res.redirect("/");
-      return;
-    }
-
-    req.session.save(() => {
-      console.log("saving");
+app.get(
+  "/login/twitter/return",
+  passport.authenticate("twitter", {
+    failureRedirect: "/",
+    failureMessage: false,
+  }),
+  function (req, res) {
+    req.session.save(function () {
       res.redirect("/success");
-      next()
-      return;
     });
-  })(req, res, next);
-});
+  }
+);
 
 app.get(
   "/success",
@@ -753,7 +757,6 @@ io.sockets.on("connection", function (socket) {
 
   socket.on("checkDomains", (data) => {
     data.domains.forEach(async (domain) => {
-      console.log(domain);
       let data = await check_instance(domain.domain, domain.handle ?? null);
       socket.emit("checkedDomains", data);
     });
