@@ -213,6 +213,17 @@ function reDrawHandles() {
         )
         .append(")<br>")
         .append(auth_url ? authButton(domain, auth_url) : "")
+        .append(" ")
+        .append(
+          $("<a>")
+            .attr(
+              "href",
+              "https://" + domain + "/oauth/authorized_applications"
+            )
+            .attr("target", "_blank")
+            .text("Authorized apps")
+        )
+        .append("<br>")
     );
     $("#download").css("display", "block");
   });
