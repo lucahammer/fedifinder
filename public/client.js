@@ -252,7 +252,15 @@ function authButton(domain, url) {
           .text("Delete Authorization")
       )
       .append(" ")
-      .append($("<button>").attr("onclick", "getMe()").text("Hide Followings"));
+      .append($("<button>").attr("onclick", "getMe()").text("Hide Followings"))
+      .append(" ")
+      .append(
+        $("<a>")
+          .attr("href", "https://" + domain + "/oauth/authorized_applications")
+          .attr("target", "_blank")
+          .text("Authorized apps")
+      )
+      .append("<br>");
   } else {
     return $("<button>")
       .attr("target", "popup")
