@@ -890,27 +890,6 @@ function tweet_to_text(tweet) {
   return text;
 }
 
-function user_to_text(user) {
-  // where handles could be: name, description, location, entities url urls expanded_url, entities description urls expanded_url
-  let text = `${user["name"]} ${user["description"]} ${user["location"]}`;
-  if ("entities" in user) {
-    if ("url" in user["entities"] && "urls" in user["entities"]["url"]) {
-      user["entities"]["url"]["urls"].map(
-        (url) => (text += ` ${url["expanded_url"]} `)
-      );
-    }
-    if (
-      "description" in user["entities"] &&
-      "urls" in user["entities"]["description"]
-    ) {
-      user["entities"]["description"]["urls"].map(
-        (url) => (text += ` ${url["expanded_url"]} `)
-      );
-    }
-  }
-  return text;
-}
-
 async function processAccount(type, user) {
   let followings, follower, list;
 
