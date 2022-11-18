@@ -850,7 +850,7 @@ function findHandles(text) {
 
   // remove common false positives
   let unwanted_domains =
-    /gmail\.com|mixcloud|linktr\.ee|pinboardxing\com|researchgate|about|bit\.ly|imprint|impressum|patreon|donate|blog|facebook|news|github|instagram|t\.me|medium\.com|t\.co|tiktok\.com|youtube\.com|pronouns\.page|mail@|observablehq|twitter\.com|contact@|kontakt@|protonmail|medium\.com|traewelling\.de|press@|support@|info@|pobox|hey\.com/;
+    /gmail\.com(?:$|\/)|mixcloud|linktr\.ee(?:$|\/)|pinboardxing\.com(?:$|\/)|researchgate|about|bit\.ly(?:$|\/)|imprint|impressum|patreon|donate|blog|facebook|news|github|instagram|t\.me(?:$|\/)|medium\.com(?:$|\/)|t\.co(?:$|\/)|tiktok\.com(?:$|\/)|youtube\.com(?:$|\/)|pronouns\.page(?:$|\/)|mail@|observablehq|twitter\.com(?:$|\/)|contact@|kontakt@|protonmail|traewelling\.de(?:$|\/)|press@|support@|info@|pobox|hey\.com(?:$|\/)/;
   words = words.filter((word) => !unwanted_domains.test(word));
   words = words.filter((w) => w);
 
@@ -918,7 +918,7 @@ async function processAccount(type, user) {
   type.type == "list"
     ? (list = user_lists.filter((list) => list.id_str == type.list_id)[0].name)
     : null;
-  type.type == "follower" ? (follower = true) : null;
+  type.type == "followers" ? (follower = true) : null;
   type.type == "followings" ? (followings = true) : null;
 
   if (user.username in accounts) {
