@@ -4,93 +4,314 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Find Fediverse accounts of your Twitter followings</title>
+    <title>Fedifinder</title>
     <meta
       name="description"
-      content="Extract the fediverse handles and urls of your Twitter followings."
+      content="Fediverse accounts of your Twitter followings"
     />
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <script src="/js/socket.io.min.js" type="text/javascript"></script>
+    <script src="/js/json2csv.js" type="text/javascript"></script>
+    <script src="/js/tinytest.js" type="text/javascript"></script>
+    <script src="/js/vue.dev.js" type="text/javascript"></script>
+    <script src="/js/font-awesome.min.js" type="text/javascript"></script>
+    <script src="/client.js" type="text/javascript"></script>
     <link rel="stylesheet" type="text/css" href="/style.css" />
-
-    <script>
-      if (location.protocol != "https:") {
-        location.href =
-          "https:" +
-          window.location.href.substring(window.location.protocol.length);
-      }
-    </script>
+    <link rel="stylesheet" type="text/css" href="/css/bulma.min.css" />
+    <link rel="stylesheet" type="text/css" href="/css/font-awesome.min.css" />
   </head>
-  <body>
-    <header>
-      <h2>Fedifinder</h2>
-      <p>
-        Extract the fediverse handles of your Twitter followings or list members
-        and import them on Mastodon to follow them all at once.
-      </p>
-    </header>
+  <body class="has-navbar-fixed-top">
+    <nav
+      class="navbar is-fixed-top"
+      role="navigation"
+      aria-label="main navigation"
+    >
+      <div class="navbar-brand">
+        <div class="navbar-item">
+          <a class="title" href="https://fedifinder.glitch.me/"
+            >Fedifinder<br />
+            <h3 class="subtitle is-4">Join the Fediverse in 5 easy steps</h3>
+          </a>
+        </div>
 
-    <main>
-      <form method="GET" action="/auth/twitter">
-        <h3>Find fediverse handles of Twitter contacts</h3>
-        <button style="height: 50px" type="submit">
-          Authorize to extract handles
+        <a
+          role="button"
+          class="navbar-burger"
+          aria-label="menu"
+          aria-expanded="false"
+          data-target="navbarBasicExample"
+        >
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+        </a>
+      </div>
+
+      <div id="navbarBasicExample" class="navbar-menu">
+        <div class="navbar-end">
+          <div class="navbar-item">
+            <div class="buttons">
+              <a href="/logoff" class="button is-danger is-light">
+                <strong>Logout</strong>
+              </a>
+              <a
+                target="_blank"
+                href="https://twitter.com/settings/connected_apps"
+                class="button is-danger is-outlined"
+              >
+                <strong>Revoke Permissions</strong>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <div id="vue">
+      <section class="section">
+        <h2 class="title is-4">
+          1. Find an instance
+          <span class="icon">
+            <i class="fas fa-check"></i>
+          </span>
+        </h2>
+        <h3 class="subtitle is-5">
+          <div class="level">
+            <div class="level-left">
+              <div class="level-item">
+                <button class="button is-info">
+                  <span class="icon">
+                    <i class="fab fa-twitter"></i>
+                  </span>
+                  <strong class="has-text-white">Authorize Twitter</strong>
+                </button>
+              </div>
+              <div class="level-item">
+                to see on which instances your Twitter contacts are.
+              </div>
+            </div>
+          </div>
+        </h3>
+      </section>
+
+      <section class="section">
+        <h2 class="title is-4">
+          2. Publish your handle
+          <span class="icon">
+            <i class="fas fa-check"></i>
+          </span>
+        </h2>
+        <h3 class="subtitle is-5">
+          Sign up for a Fediverse account and add the handle to your Twitter
+          profile
+        </h3>
+
+        <p>These handles were found in your profile @Luca.</p>
+
+        <div class="level">
+          <div class="level-left">
+            <div class="level-item">
+              <strong class="card-footer-item">@luca@vis.social</strong>
+            </div>
+            <div class="level-item">
+              <a href="#"
+                >Authorize @vis.social to hide already followed handles</a
+              >
+            </div>
+          </div>
+        </div>
+        <div class="level">
+          <div class="level-left">
+            <div class="level-item">
+              <strong class="card-footer-item">@luca@det.social</strong>
+            </div>
+            <div class="level-item">
+              <a href="#"
+                >Authorize @det.social to hide already followed handles</a
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="title is-4">3. Scan your network</h2>
+        <h3 class="subtitle is-5">
+          In addition to the accounts you follow, you can scan lists and
+          followers.
+        </h3>
+
+        <div class="level">
+          <div class="level-left">
+            <div class="level-item">
+              <div class="field has-addons">
+                <div class="control">
+                  <div class="select">
+                    <select name="list">
+                      <option value="vis">vis</option>
+                      <option value="Bolivia">Bolivia</option>
+                      <option value="Brazil">Brazil</option>
+                      <option value="Chile">Chile</option>
+                      <option value="Colombia">Colombia</option>
+                      <option value="Ecuador">Ecuador</option>
+                      <option value="Guyana">Guyana</option>
+                      <option value="Paraguay">Paraguay</option>
+                      <option value="Peru">Peru</option>
+                      <option value="Suriname">Suriname</option>
+                      <option value="Uruguay">Uruguay</option>
+                      <option value="Venezuela">Venezuela</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="control">
+                  <button type="submit" class="button is-success">
+                    <span class="icon">
+                      <i class="fa fa-users-viewfinder"></i>
+                    </span>
+                    <span>Scan list</span>
+                  </button>
+                </div>
+                <div class="control">
+                  <button type="submit" class="button is-warning is-outlined">
+                    <span class="icon">
+                      <i class="fas fa-xmark"></i>
+                    </span>
+                    <span>Skip list</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="level-item">
+              <button class="button is-success">
+                <span class="icon">
+                  <i class="fa fa-users-viewfinder"></i> </span
+                ><span>Scan Followers</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="content">
+          <p>
+            1 accounts scanned <br />
+            2 unique handles from working fediverse domains found<br />
+            0 accounts are already being followed by you (experimental feature)
+            <br />
+            0 handles from other services (eg. mail) or unresponsive servers
+            <br />0 domains are still being checked Retry
+          </p>
+          <progress class="progress is-info" value="45" max="100">45%</progress>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="title is-4">4. Export your network</h2>
+        <h3 class="subtitle is-5">Get all the handles in one CSV file</h3>
+        <button class="button is-success">
+          <span class="icon">
+            <i class="fas fa-file-export"></i>
+          </span>
+          <span>Export CSV with found handles</span>
         </button>
+      </section>
+
+      <section class="section">
+        <h2 class="title is-4">5. Import your network</h2>
+        <h3 class="subtitle is-5">
+          Go to the settings of your Fediverse account and import your whole
+          network at once.
+        </h3>
+
+        <div class="level">
+          <div class="level-left">
+            <div class="level-item">
+              <strong class="card-footer-item">@luca@vis.social</strong>
+            </div>
+            <div class="level-item"><a href="#">Open import settings</a></div>
+          </div>
+        </div>
+        <div class="level">
+          <div class="level-left">
+            <div class="level-item">
+              <strong class="card-footer-item">@luca@det.social</strong>
+            </div>
+            <div class="level-item"><a href="#">Open import settings</a></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="title is-4">Your network in the Fediverse</h2>
+        <h3 class="subtitle is-5">
+          Here are the found handles sorted by their instance.
+        </h3>
+        <h4 class="title is-5">social.luca.run</h4>
+        <h5 class="subtitle is-6">
+          mastodon 4.0.2, <strong>registration open</strong>
+        </h5>
+        <div class="content">
+          <ol>
+            <li>
+              <div class="level">
+                <div class="level-left">
+                  <div class="level-item">
+                    <a href="#">@luca@social.luca.run</a> (<a href=""></a>@Luca)
+                  </div>
+                  <div class="level-item">
+                    <button class="button is-link is-small">
+                      Follow @luca from @luca@social.luca.run
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="title is-4">Bonus: Backup all accounts</h2>
+        <h3 class="subtitle is-5">
+          You can download a CSV or JSON with information about all the scanned
+          accounts. Including those that haven't joined the Fediverse yet.
+        </h3>
+        <div class="level">
+          <div class="level-left">
+            <div class="level-item">
+              <button class="button is-success">
+                <span class="icon">
+                  <i class="fas fa-file-export"></i>
+                </span>
+                <span>Export CSV with all accounts</span>
+              </button>
+            </div>
+            <div class="level-item">
+              <button class="button is-success">
+                <span class="icon">
+                  <i class="fas fa-file-export"></i>
+                </span>
+                <span>Export JSON with all accounts</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer class="footer">
+      <div class="content has-text-centered">
         <p>
-          <small
-            >Fedifinder looks for @user@host.tld, user@host.tld and
-            host.tld/@user in the name, description, location, url field and
-            pinned Tweet.
-          </small>
+          <strong>Fedifinder</strong> by
+          <a href="https://vis.social/@luca">@luca@vis.social</a>. The source
+          code is licensed
+          <a href="http://opensource.org/licenses/mit-license.php">MIT</a>. You
+          can create your own version by remixing it on
+          <a href="https://glitch.com/edit/#!/fedifinder">Glitch</a> or
+          <a href="https://github.com/lucahammer/fedifinder">Github</a>.
         </p>
-      </form>
-    </main>
-
-    <p>
-      Made by <a rel="me" href="https://vis.social/@luca">@Luca@vis.social</a>.
-      <a href="https://glitch.com/edit/#!/fedifinder">Source code</a> in the
-      fish menu (top right). If something doesn't work, please post an issue on
-      <a href="https://github.com/lucahammer/fedifinder">Github</a> or discuss
-      the tool in the
-      <a href="https://vis.social/@Luca/109253908218072543">fediverse</a>.
-    </p>
-
-    <h4>Other options</h4>
-    <ul>
-      <li>
-        <a href="https://pruvisto.org/debirdify/">debirdify</a> by
-        <a href="https://graz.social/@pruvisto">@pruvisto@graz.social</a> works
-        very similarly.
-      </li>
-      <li>
-        <a href="https://twitodon.com/">twitodon</a> needs you and your
-        followers to be signed up there to match you.
-      </li>
-      <li>
-        <a href="https://fedifinder-backup.glitch.me/">Fedifinder Backup</a>
-        when Fedifinder is down.
-      </li>
-    </ul>
-
-    <h4>Donations</h4>
-    <p>
-      I don't want your money. But if you want to express your gratitude through
-      it, please donate to the following entities and sent me a message about
-      it: The admins of your fediverse instance, the developers of the Fediverse
-      software, that you use, or an organization that fights for civil
-      liberties. I like
-      <a href="https://freiheitsrechte.org/en/unterstuetzen">GFF</a>.
-    </p>
-
-    <script
-      async
-      src="https://button.glitch.me/button.js"
-      data-style="glitch"
-    ></script>
-    <div
-      class="glitchButton"
-      style="position: fixed; top: 20px; right: 20px"
-    ></div>
+      </div>
+    </footer>
   </body>
 </html>
