@@ -198,7 +198,7 @@ app.get(
   }),
   (req, res) => {
     req.session.save(() => {
-      res.redirect("/success");
+      res.redirect("/");
     });
   }
 );
@@ -802,11 +802,13 @@ io.use((socket, next) => {
   if (socket.request.user && socket.request.user.accessToken) {
     next();
   } else {
+    socket.emit("loggedOut")
     next(new Error("SessionError"));
   }
 });
 
 io.sockets.on("connection", (socket) => {
+  
   if (process.env.LOOKUP_SERVER)
     socket.emit("lookup_server", process.env.LOOKUP_SERVER);
 

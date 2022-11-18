@@ -16,12 +16,11 @@
     <script src="/js/socket.io.min.js" type="text/javascript"></script>
     <script src="/js/json2csv.js" type="text/javascript"></script>
     <script src="/js/tinytest.js" type="text/javascript"></script>
-    <script src="/js/vue.dev.js" type="text/javascript"></script>
+    <script src="/js/vue.prod.js" type="text/javascript"></script>
     <script src="/js/font-awesome.min.js" type="text/javascript"></script>
-    <script src="/client.js" type="text/javascript"></script>
+    <script src="/client.js" type="text/javascript" defer></script>
     <link rel="stylesheet" type="text/css" href="/style.css" />
     <link rel="stylesheet" type="text/css" href="/css/bulma.min.css" />
-    <link rel="stylesheet" type="text/css" href="/css/font-awesome.min.css" />
   </head>
   <body class="has-navbar-fixed-top">
     <nav
@@ -36,21 +35,9 @@
             <h3 class="subtitle is-4">Join the Fediverse in 5 easy steps</h3>
           </a>
         </div>
-
-        <a
-          role="button"
-          class="navbar-burger"
-          aria-label="menu"
-          aria-expanded="false"
-          data-target="navbarBasicExample"
-        >
-          <span aria-hidden="true"></span>
-          <span aria-hidden="true"></span>
-          <span aria-hidden="true"></span>
-        </a>
       </div>
 
-      <div id="navbarBasicExample" class="navbar-menu">
+      <div class="navbar-menu">
         <div class="navbar-end">
           <div class="navbar-item">
             <div class="buttons">
@@ -70,7 +57,20 @@
       </div>
     </nav>
 
-    <div id="vue">
+    <div class="section buttons is-flex-touch is-hidden-desktop">
+      <a href="/logoff" class="button is-danger is-light">
+        <strong>Logout</strong>
+      </a>
+      <a
+        target="_blank"
+        href="https://twitter.com/settings/connected_apps"
+        class="button is-danger is-outlined"
+      >
+        <strong>Revoke Permissions</strong>
+      </a>
+    </div>
+
+    <div id="fedifinder">
       <section class="section">
         <h2 class="title is-4">
           1. Find an instance
@@ -82,12 +82,12 @@
           <div class="level">
             <div class="level-left">
               <div class="level-item">
-                <button class="button is-info">
+                <a href="/Auth/twitter" class="button is-info">
                   <span class="icon">
                     <i class="fab fa-twitter"></i>
                   </span>
                   <strong class="has-text-white">Authorize Twitter</strong>
-                </button>
+                </a>
               </div>
               <div class="level-item">
                 to see on which instances your Twitter contacts are.
@@ -106,7 +106,7 @@
         </h2>
         <h3 class="subtitle is-5">
           Sign up for a Fediverse account and add the handle to your Twitter
-          profile
+          profile (description, location, url or pinned Tweet).
         </h3>
 
         <p>These handles were found in your profile @Luca.</p>
@@ -148,7 +148,7 @@
           <div class="level-left">
             <div class="level-item">
               <div class="field has-addons">
-                <div class="control">
+                <div class="control has-icons-left">
                   <div class="select">
                     <select name="list">
                       <option value="vis">vis</option>
@@ -164,6 +164,9 @@
                       <option value="Uruguay">Uruguay</option>
                       <option value="Venezuela">Venezuela</option>
                     </select>
+                  </div>
+                  <div class="icon is-small is-left">
+                    <i class="fas fa-list"></i>
                   </div>
                 </div>
                 <div class="control">
@@ -185,7 +188,7 @@
               </div>
             </div>
             <div class="level-item">
-              <button class="button is-success">
+              <button class="button is-success is-outlined">
                 <span class="icon">
                   <i class="fa fa-users-viewfinder"></i> </span
                 ><span>Scan Followers</span>
@@ -195,12 +198,16 @@
         </div>
         <div class="content">
           <p>
-            1 accounts scanned <br />
-            2 unique handles from working fediverse domains found<br />
-            0 accounts are already being followed by you (experimental feature)
+            {{scan_count}} accounts scanned <br />
+            {{unqiue_count}} unique handles from working fediverse domains
+            found<br />
+            {{followed_count}} accounts are already being followed by you
+            (experimental feature)
             <br />
-            0 handles from other services (eg. mail) or unresponsive servers
-            <br />0 domains are still being checked Retry
+            {{broken_count}} handles from other services (eg. mail) or
+            unresponsive servers
+            <br />{{unchecked_domains_count}} domains are still being checked
+            Retry
           </p>
           <progress class="progress is-info" value="45" max="100">45%</progress>
         </div>
