@@ -918,7 +918,7 @@ async function processAccount(type, user) {
   type.type == "list"
     ? (list = user_lists.filter((list) => list.id_str == type.list_id)[0].name)
     : null;
-  type.type == "follower" ? (follower = true) : null;
+  type.type == "followers" ? (follower = true) : null;
   type.type == "followings" ? (followings = true) : null;
 
   if (user.username in accounts) {
