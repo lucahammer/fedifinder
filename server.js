@@ -30,6 +30,8 @@ const sessionMiddleware = cookieSession({
   name: "session",
   keys: [process.env.SECRET],
   proxy: true,
+  sameSite: "lax",
+  saveUninitialized: false,
   secure: true,
   maxAge: 24 * 60 * 60 * 1000,
 });
@@ -175,6 +177,7 @@ app.use((err, req, res, next) => {
 app.all("*", checkHttps);
 
 app.get("/logoff", (req, res) => {
+  //todo: clear localstorage in frontend
   req.session = null;
   res.clearCookie("session", { path: "/" });
   res.redirect("/");
@@ -183,9 +186,7 @@ app.get("/logoff", (req, res) => {
 app.get("/auth/twitter", (req, res) => {
   //delete old session cookie
   res.clearCookie("connect.sid", { path: "/" });
-  "user" in req
-    ? res.redirect("/success")
-    : res.redirect("/actualAuth/twitter");
+  "user" in req ? res.redirect("/") : res.redirect("/actualAuth/twitter");
 });
 
 app.get("/actualAuth/twitter", passport.authenticate("twitter"));
@@ -198,24 +199,16 @@ app.get(
   }),
   (req, res) => {
     req.session.save(() => {
-      res.redirect("/success");
+      res.redirect("/#t");
     });
   }
 );
 
-app.get(
-  "/success",
-  require("connect-ensure-login").ensureLoggedIn("/"),
-  (req, res, next) => {
-    res.header(
-      "Cache-Control",
-      "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
-    );
-    "code" in req.query
-      ? res.redirect("/success.html?c=" + req.query.code)
-      : res.redirect("/success.html");
-  }
-);
+app.get("/", (req, res) => {
+  "code" in req.query
+    ? res.redirect("/success.html?c=" + req.query.code)
+    : res.redirect("/success.html");
+});
 
 app.get(process.env.DB_CLEAR + "_all", (req, res) => {
   // visit this URL to reset the DB
@@ -787,195 +780,152 @@ function checkHttps(req, res, next) {
   }
 }
 
-const { Server } = require("socket.io");
-const io = new Server(server);
-write_cached_files();
-
-const wrap = (middleware) => (socket, next) =>
-  middleware(socket.request, {}, next);
-
-io.use(wrap(sessionMiddleware));
-io.use(wrap(passport.initialize()));
-io.use(wrap(passport.session()));
-
-io.use((socket, next) => {
-  if (socket.request.user && socket.request.user.accessToken) {
-    next();
+app.get("/api/getProfile", async (req, res) => {
+  if ("user" in req) {
+    res.json(req.user._json);
   } else {
-    next(new Error("SessionError"));
+    res.json({ error: "not logged in" });
   }
 });
 
-io.sockets.on("connection", (socket) => {
-  if (process.env.LOOKUP_SERVER)
-    socket.emit("lookup_server", process.env.LOOKUP_SERVER);
+app.get("/api/lookupServer", async (req, res) => {
+  if (process.env.LOOKUP_SERVER) {
+    res.json(process.env.LOOKUP_SERVER);
+  } else {
+    res.json({ error: "no lookup server" });
+  }
+});
 
-  socket.on("checkDomains", (data) => {
-    data.domains.forEach(async (domain) => {
-      let data = await check_instance(domain.domain, domain.handle ?? null);
-      socket.emit("checkedDomains", data);
+app.get("/api/loadLists", async (req, res) => {
+  let client = create_twitter_client(req.user);
+  let lists = [];
+
+  // get lists owned by user
+  const ownedLists = await client.v2.listsOwned(req.user.id, {
+    "list.fields": ["member_count"],
+  });
+  for await (const list of ownedLists) {
+    lists.push({
+      name: list["name"],
+      id_str: list["id"],
+      member_count: list["member_count"],
     });
-  });
-
-  socket.on("getProfile", () => {
-    socket.emit("profile", socket.request.user._json);
-  });
-
-  const errorHandler = (handler) => {
-    const handleError = (err) => {
-      console.log(err);
-      socket.emit("Error", { Error: "SessionError" });
-    };
-  };
-
-  async function processRequests(type, data) {
-    // get accounts from Twitter and sent relevant parts to frontend
-    let accounts = [];
-    let batch_size = 1000;
-
-    try {
-      for await (const user of data) {
-        let urls = [];
-        let pinned_tweet;
-
-        const pinnedTweetInclude = data.includes.pinnedTweet(user);
-
-        if (pinnedTweetInclude) {
-          pinned_tweet = pinnedTweetInclude.text;
-          if (
-            "entities" in pinnedTweetInclude &&
-            "urls" in pinnedTweetInclude["entities"]
-          ) {
-            pinnedTweetInclude["entities"]["urls"].map((url) =>
-              urls.push(url.expanded_url)
-            );
-          }
-        }
-
-        "entities" in user && "url" in user.entities
-          ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
-          : null;
-
-        "entities" in user &&
-        "description" in user.entities &&
-        "urls" in user.entities.description
-          ? user.entities.description.urls.map((url) =>
-              urls.push(url.expanded_url)
-            )
-          : null;
-
-        accounts.push({
-          username: user.username,
-          name: user.name,
-          location: user.location,
-          description: user.description,
-          urls: urls,
-          pinned_tweet: pinned_tweet,
-        });
-
-        if (accounts.length >= batch_size) {
-          // don't wait until all accounts are loaded
-          accounts.length > 0
-            ? socket.emit("newAccounts", { type: type, accounts: accounts })
-            : null;
-          accounts = [];
-        }
-      }
-      accounts.length > 0
-        ? socket.emit("newAccounts", { type: type, accounts: accounts })
-        : null;
-    } catch (err) {
-      socket.emit("Error", err);
-      accounts.length > 0
-        ? socket.emit("newAccounts", { type: type, accounts: accounts })
-        : null;
-    }
   }
 
-  let client = create_twitter_client(socket.request.user);
-
-  socket.on("loadLists", async (username) => {
-    try {
-      let lists = [];
-
-      // get lists owned by user
-      const ownedLists = await client.v2.listsOwned(socket.request.user.id, {
-        "list.fields": ["member_count"],
-      });
-      for await (const list of ownedLists) {
-        lists.push({
-          name: list["name"],
-          id_str: list["id"],
-          member_count: list["member_count"],
-        });
-      }
-
-      // get subscribed lists of user
-      const followedLists = await client.v2.listFollowed(
-        socket.request.user.id,
-        {
-          "list.fields": ["member_count"],
-        }
-      );
-      for await (const list of followedLists) {
-        lists.push({
-          name: list["name"],
-          id_str: list["id"],
-          member_count: list["member_count"],
-        });
-      }
-      socket.emit("userLists", lists);
-    } catch (err) {
-      socket.emit("Error", err);
-    }
+  // get subscribed lists of user
+  const followedLists = await client.v2.listFollowed(req.user.id, {
+    "list.fields": ["member_count"],
   });
-
-  socket.on("getList", async (list_id) => {
-    // get list members from Twitter
-    try {
-      const data = await client.v2.listMembers(list_id, {
-        "user.fields": ["name", "description", "url", "location", "entities"],
-        expansions: ["pinned_tweet_id"],
-        "tweet.fields": ["text", "entities"],
-      });
-      processRequests({ type: "list", list_id: list_id }, data);
-    } catch (err) {
-      socket.emit("Error", err);
-    }
-  });
-
-  socket.on("getFollowings", async () => {
-    // get followings from Twitter
-    try {
-      const data = await client.v2.following(socket.request.user.id, {
-        asPaginator: true,
-        max_results: 1000,
-        "user.fields": ["name", "description", "url", "location", "entities"],
-        expansions: ["pinned_tweet_id"],
-        "tweet.fields": ["text", "entities"],
-      });
-      processRequests({ type: "followings" }, data);
-    } catch (err) {
-      socket.emit("Error", err);
-    }
-  });
-
-  socket.on("getFollowers", async () => {
-    // get followings from Twitter
-    try {
-      const data = await client.v2.followers(socket.request.user.id, {
-        asPaginator: true,
-        max_results: 1000,
-        "user.fields": ["name", "description", "url", "location", "entities"],
-        expansions: ["pinned_tweet_id"],
-        "tweet.fields": ["text", "entities"],
-      });
-      processRequests({ type: "followers" }, data);
-    } catch (err) {
-      socket.emit("Error", err);
-    }
-  });
+  for await (const list of followedLists) {
+    lists.push({
+      name: list["name"],
+      id_str: list["id"],
+      member_count: list["member_count"],
+    });
+  }
+  res.json(lists);
 });
+
+app.get("/api/getList", async (req, res) => {
+  let list_id;
+  "listid" in req.query
+    ? (list_id = req.query.listid)
+    : res.json({ error: "no list provided" });
+  if ("user" in req) {
+    let client = create_twitter_client(req.user);
+    const data = await client.v2.listMembers(list_id, {
+      "user.fields": ["name", "description", "url", "location", "entities"],
+      expansions: ["pinned_tweet_id"],
+      "tweet.fields": ["text", "entities"],
+    });
+    processRequests({ type: "list", list_id: list_id }, data, res);
+  } else {
+    res.json({ error: "not logged in" });
+  }
+});
+
+app.get("/api/getFollowings", async (req, res) => {
+  if ("user" in req) {
+    let client = create_twitter_client(req.user);
+    const data = await client.v2.following(req.user.id, {
+      asPaginator: true,
+      max_results: 1000,
+      "user.fields": ["name", "description", "url", "location", "entities"],
+      expansions: ["pinned_tweet_id"],
+      "tweet.fields": ["text", "entities"],
+    });
+    processRequests({ type: "followings" }, data, res);
+  } else {
+    res.json({ error: "not logged in" });
+  }
+});
+
+app.get("/api/getFollowers", async (req, res) => {
+  if ("user" in req) {
+    let client = create_twitter_client(req.user);
+    const data = await client.v2.followers(req.user.id, {
+      asPaginator: true,
+      max_results: 1000,
+      "user.fields": ["name", "description", "url", "location", "entities"],
+      expansions: ["pinned_tweet_id"],
+      "tweet.fields": ["text", "entities"],
+    });
+    processRequests({ type: "followers" }, data, res);
+  } else {
+    res.json({ error: "not logged in" });
+  }
+});
+
+async function processRequests(type, data, cb) {
+  // get accounts from Twitter and sent relevant parts to frontend
+  let accounts = [];
+
+  try {
+    for await (const user of data) {
+      let urls = [];
+      let pinned_tweet;
+
+      const pinnedTweetInclude = data.includes.pinnedTweet(user);
+
+      if (pinnedTweetInclude) {
+        pinned_tweet = pinnedTweetInclude.text;
+        if (
+          "entities" in pinnedTweetInclude &&
+          "urls" in pinnedTweetInclude["entities"]
+        ) {
+          pinnedTweetInclude["entities"]["urls"].map((url) =>
+            urls.push(url.expanded_url)
+          );
+        }
+      }
+
+      "entities" in user && "url" in user.entities
+        ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
+        : null;
+
+      "entities" in user &&
+      "description" in user.entities &&
+      "urls" in user.entities.description
+        ? user.entities.description.urls.map((url) =>
+            urls.push(url.expanded_url)
+          )
+        : null;
+
+      accounts.push({
+        username: user.username,
+        name: user.name,
+        location: user.location,
+        description: user.description,
+        urls: urls,
+        pinned_tweet: pinned_tweet,
+      });
+    }
+    cb.json({ type: type, accounts: accounts });
+  } catch (err) {
+    console.log(err);
+    cb.json({ type: type, accounts: accounts });
+  }
+}
 
 async function tests() {
   //DB().run("DELETE from domains");
@@ -1047,6 +997,7 @@ async function tests() {
     assert(app.domain == "vis.social");
   });
 }
-if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
 
+write_cached_files();
+if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
 //DB().run("DELETE from mastodonapps");
