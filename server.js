@@ -797,7 +797,7 @@ app.get("/api/lookupServer", async (req, res) => {
 });
 
 app.get("/api/loadLists", async (req, res) => {
-  let client = create_twitter_client(req.request.user);
+  let client = create_twitter_client(req.user);
   let lists = [];
 
   // get lists owned by user
@@ -823,7 +823,7 @@ app.get("/api/loadLists", async (req, res) => {
       member_count: list["member_count"],
     });
   }
-  res.json(lists)
+  res.json(lists);
 });
 
 app.get("/api/getList", async (req, res) => {
@@ -832,13 +832,13 @@ app.get("/api/getList", async (req, res) => {
     ? (list_id = req.query.listid)
     : res.json({ error: "no list provided" });
   if ("user" in req) {
-    let client = create_twitter_client(req.request.user);
+    let client = create_twitter_client(req.user);
     const data = await client.v2.listMembers(list_id, {
       "user.fields": ["name", "description", "url", "location", "entities"],
       expansions: ["pinned_tweet_id"],
       "tweet.fields": ["text", "entities"],
     });
-    processRequests({ type: "list", list_id: list_id }, data, res.json);
+    processRequests({ type: "list", list_id: list_id }, data, res);
   } else {
     res.json({ error: "not logged in" });
   }
@@ -862,7 +862,7 @@ app.get("/api/getFollowings", async (req, res) => {
 
 app.get("/api/getFollowers", async (req, res) => {
   if ("user" in req) {
-    let client = create_twitter_client(req.request.user);
+    let client = create_twitter_client(req.user);
     const data = await client.v2.followers(req.user.id, {
       asPaginator: true,
       max_results: 1000,
@@ -870,7 +870,7 @@ app.get("/api/getFollowers", async (req, res) => {
       expansions: ["pinned_tweet_id"],
       "tweet.fields": ["text", "entities"],
     });
-    processRequests({ type: "followers" }, data, res.json);
+    processRequests({ type: "followers" }, data, res);
   } else {
     res.json({ error: "not logged in" });
   }

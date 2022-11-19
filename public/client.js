@@ -87,26 +87,47 @@ function findHandles(text) {
 const app = Vue.createApp({
   data() {
     return {
+      scanned: [],
       scan_count: 0,
-      unqiue_count: 0,
-      followed_count: 0,
-      broken_count: 0,
-      unchecked_domains_count: 0,
       profile: null,
       user_lists: [],
+      selected_list: null,
       accounts: [],
       domains: {},
       known_instances: {},
       unchecked_domains: [],
       lookup_server: false,
       twitter_auth: false,
+      scanned_followers: false,
+      display_accounts: false,
     };
   },
-  computed: {},
+  computed: {
+    unique_count() {
+      let sum = 0;
+      for (const [domain, data] of Object.entries(this.domains)) {
+        "handles" in data && data["part_of_fediverse"] === 1
+          ? (sum = sum + data.handles.length)
+          : null;
+      }
+      return sum;
+    },
+    broken_count() {
+      let sum = 0;
+      for (const [domain, data] of Object.entries(this.domains)) {
+        "handles" in data && data["part_of_fediverse"] === 0
+          ? (sum = sum + data.handles.length)
+          : null;
+      }
+      return sum;
+    },
+    unchecked_domains_count() {
+      return this.unchecked_domains.length;
+    },
+  },
   methods: {
     processAccount(type, user) {
       let followings, follower, list;
-
       // get list name from local user_lists
       type.type == "list"
         ? (list = this.user_lists.filter(
@@ -215,10 +236,11 @@ const app = Vue.createApp({
     },
     processCheckedDomain(data) {
       // add info about domains
-      console.log(data)
-      this.unchecked_domains = this.unchecked_domains.filter(
-        (item) => item != data["domain"]
-      );
+      let index_of = this.unchecked_domains.findIndex((object) => {
+        return object === data["domain"];
+      });
+      this.unchecked_domains.splice(index_of, 1);
+
       this.domains[data["domain"]] = Object.assign(
         {},
         this.domains[data["domain"]],
@@ -238,6 +260,7 @@ const app = Vue.createApp({
           } else {
             this.profile = data;
             this.processAccount("me", data);
+            this.scanned.push("Your profile");
           }
         });
     },
@@ -252,8 +275,105 @@ const app = Vue.createApp({
               this.processAccount("followings", user)
             );
             this.checkDomains();
+            this.scanned.push(data.accounts.length + " followings");
           }
         });
+    },
+    loadFollowers() {
+      fetch("/api/getFollowers")
+        .then((response) => response.json())
+        .then((data) => {
+          if ("error" in data) {
+            console.log(data);
+          } else {
+            data.accounts.map((user) => this.processAccount("followers", user));
+            this.checkDomains();
+            this.scanned.push(data.accounts.length + " followers");
+            this.scanned_followers = true;
+          }
+        });
+    },
+    loadLists() {
+      fetch("/api/loadLists")
+        .then((response) => response.json())
+        .then((data) => {
+          if ("error" in data) {
+            console.log(data);
+          } else {
+            this.user_lists = data;
+            this.selected_list = data[0];
+          }
+        });
+    },
+    loadList() {
+      fetch("/api/getList?listid=" + this.selected_list.id_str)
+        .then((response) => response.json())
+        .then((data) => {
+          if ("error" in data) {
+            console.log(data);
+          } else {
+            data.accounts.map((user) =>
+              this.processAccount(this.selected_list.name, user)
+            );
+            this.checkDomains();
+            this.scanned.push(
+              data.accounts.length + " " + this.selected_list.name
+            );
+            this.skipList();
+          }
+        });
+    },
+    skipList() {
+      let index_of = this.user_lists.findIndex((object) => {
+        return object.id_str === this.selected_list.id_str;
+      });
+      this.user_lists.splice(index_of, 1);
+      this.selected_list = this.user_lists[0];
+    },
+    exportHandles() {
+      let csv = "";
+      csv = "Account address,Show boosts\n";
+
+      for (const [domain, data] of Object.entries(this.domains)) {
+        if ("part_of_fediverse" in data && data["part_of_fediverse"]) {
+          data["handles"].forEach(
+            (handle) => (csv += handle.handle.replace("@", "") + ",true\n")
+          );
+        }
+      }
+
+      let download = new Blob([csv], { type: "text/plain" });
+      let link = document.getElementById("downloadlink");
+      link.href = window.URL.createObjectURL(download);
+      link.download = "fedifinder_accounts.csv";
+    },
+    exportAccountsCsv() {
+      console.log(this.unchecked_domains);
+      let output = [];
+      for (const [username, data] of Object.entries(this.accounts)) {
+        output.push({ username: username, ...data });
+      }
+      const json2csvParser = new json2csv.Parser();
+      const csv = json2csvParser.parse(output);
+
+      let download = new Blob([csv], { type: "text/plain" });
+      let link = document.getElementById("allaccountscsv");
+      link.href = window.URL.createObjectURL(download);
+      link.download = "accounts.csv";
+    },
+    exportAccountsJson() {
+      let output = {};
+      for (const [username, data] of Object.entries(this.accounts)) {
+        output[username] = data;
+      }
+      let json_string = JSON.stringify(output, null, 2);
+      let download = new Blob([json_string], { type: "application/json" });
+      let link = document.getElementById("allaccountsjson");
+      link.href = window.URL.createObjectURL(download);
+      link.download = "accounts.json";
+    },
+    toggleDisplayAccounts() {
+      this.display_accounts = !this.display_accounts;
     },
   },
   mounted() {
@@ -265,6 +385,7 @@ const app = Vue.createApp({
       this.twitter_auth = true;
       this.loadProfile();
       this.loadFollowings();
+      this.loadLists();
     }
   },
 });

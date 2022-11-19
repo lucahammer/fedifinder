@@ -782,5 +782,19 @@
     "software_name": "mastodon",
     "software_version": "4.0.0rc2",
     "users_total": 91
+  },
+  "social.luca.run": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.luca.run",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 6
+  },
+  "looka.at": {
+    "part_of_fediverse": 1,
+    "local_domain": "looka.at",
+    "software_name": "wordpress",
+    "software_version": "6.1.1",
+    "users_total": 1
   }
 }
