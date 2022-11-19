@@ -99,12 +99,12 @@ const app = Vue.createApp({
       known_instances: {},
       unchecked_domains: [],
       lookup_server: false,
+      twitter_auth: false,
     };
   },
   computed: {},
   methods: {
     processAccount(type, user) {
-      console.log(user);
       let followings, follower, list;
 
       // get list name from local user_lists
@@ -184,7 +184,6 @@ const app = Vue.createApp({
     },
     checkDomains() {
       // send unchecked domains to server to get more info
-      let domains_to_check = [];
       for (const [domain, data] of Object.entries(this.domains)) {
         if ("part_of_fediverse" in data === false) {
           if (domain in this.known_instances) {
@@ -196,28 +195,27 @@ const app = Vue.createApp({
             );
           } else {
             // get new info from server
-            this.unchecked_domains.push(domain);
-            domains_to_check.push({
+            this.unchecked_domains.push({
               domain: domain,
               handle: data["handles"][0]["handle"],
             });
           }
         }
       }
-      if (domains_to_check.length > 0) {
-        this.lookup_server
-          ? domains_to_check.forEach((domain) =>
-              fetch(
-                `${this.lookup_server}/api/check?handle=${domain.handle}&${domain.domain}`
-              )
-                .then((response) => response.json())
-                .then((data) => this.processCheckedDomain(data))
-            )
-          : this.socket.emit("checkDomains", { domains: domains_to_check });
+      if (this.unchecked_domains.length > 0) {
+        let server = "";
+        this.lookup_server ? (server = this.lookup_server) : null;
+
+        this.unchecked_domains.forEach((domain) =>
+          fetch(`${server}/api/check?handle=${domain.handle}&${domain.domain}`)
+            .then((response) => response.json())
+            .then((data) => this.processCheckedDomain(data))
+        );
       }
     },
     processCheckedDomain(data) {
       // add info about domains
+      console.log(data)
       this.unchecked_domains = this.unchecked_domains.filter(
         (item) => item != data["domain"]
       );
@@ -226,14 +224,47 @@ const app = Vue.createApp({
         this.domains[data["domain"]],
         data
       );
-      this.unchecked_domains.length < 1
-        ? $("#retry").css("display", "none")
-        : void 0;
+    },
+    logoff() {
+      localStorage.clear();
+      window.location.href = "/logoff";
+    },
+    loadProfile() {
+      fetch("/api/getProfile")
+        .then((response) => response.json())
+        .then((data) => {
+          if ("error" in data) {
+            console.log(data);
+          } else {
+            this.profile = data;
+            this.processAccount("me", data);
+          }
+        });
+    },
+    loadFollowings() {
+      fetch("/api/getFollowings")
+        .then((response) => response.json())
+        .then((data) => {
+          if ("error" in data) {
+            console.log(data);
+          } else {
+            data.accounts.map((user) =>
+              this.processAccount("followings", user)
+            );
+            this.checkDomains();
+          }
+        });
     },
   },
   mounted() {
-    if (window.location.href.indexOf("?t") !== -1) {
+    if (window.location.href.indexOf("#t") !== -1) {
       localStorage.setItem("twitterAuth", true);
+      window.location.hash = "";
+    }
+    if (localStorage.getItem("twitterAuth")) {
+      this.twitter_auth = true;
+      this.loadProfile();
+      this.loadFollowings();
     }
   },
 });

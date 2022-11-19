@@ -30,6 +30,8 @@ const sessionMiddleware = cookieSession({
   name: "session",
   keys: [process.env.SECRET],
   proxy: true,
+  sameSite: "lax",
+  saveUninitialized: false,
   secure: true,
   maxAge: 24 * 60 * 60 * 1000,
 });
@@ -197,7 +199,7 @@ app.get(
   }),
   (req, res) => {
     req.session.save(() => {
-      res.redirect("/?t");
+      res.redirect("/#t");
     });
   }
 );
@@ -844,7 +846,7 @@ app.get("/api/getList", async (req, res) => {
 
 app.get("/api/getFollowings", async (req, res) => {
   if ("user" in req) {
-    let client = create_twitter_client(req.request.user);
+    let client = create_twitter_client(req.user);
     const data = await client.v2.following(req.user.id, {
       asPaginator: true,
       max_results: 1000,
@@ -852,7 +854,7 @@ app.get("/api/getFollowings", async (req, res) => {
       expansions: ["pinned_tweet_id"],
       "tweet.fields": ["text", "entities"],
     });
-    processRequests({ type: "followings" }, data, res.json);
+    processRequests({ type: "followings" }, data, res);
   } else {
     res.json({ error: "not logged in" });
   }
@@ -918,10 +920,10 @@ async function processRequests(type, data, cb) {
         pinned_tweet: pinned_tweet,
       });
     }
-    cb({ type: type, accounts: accounts });
+    cb.json({ type: type, accounts: accounts });
   } catch (err) {
     console.log(err);
-    cb({ type: type, accounts: accounts });
+    cb.json({ type: type, accounts: accounts });
   }
 }
 

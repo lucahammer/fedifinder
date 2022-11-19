@@ -21,7 +21,7 @@
     <link rel="stylesheet" type="text/css" href="/style.css" />
     <link rel="stylesheet" type="text/css" href="/css/bulma.min.css" />
   </head>
-  <body class="has-navbar-fixed-top">
+  <body class="has-navbar-fixed-top" id="fedifinder">
     <nav
       class="navbar is-fixed-top"
       role="navigation"
@@ -37,12 +37,12 @@
       </div>
 
       <div class="navbar-menu">
-        <div class="navbar-end">
+        <div v-if="twitter_auth" class="navbar-end">
           <div class="navbar-item">
             <div class="buttons">
-              <a href="/logoff" class="button is-danger is-light">
+              <button @click="logoff" class="button is-danger is-light">
                 <strong>Logout</strong>
-              </a>
+              </button>
               <a
                 target="_blank"
                 href="https://twitter.com/settings/connected_apps"
@@ -56,10 +56,13 @@
       </div>
     </nav>
 
-    <div class="section buttons is-flex-touch is-hidden-desktop">
-      <a href="/logoff" class="button is-danger is-light">
+    <div
+      v-if="twitter_auth"
+      class="section buttons is-flex-touch is-hidden-desktop"
+    >
+      <button @click="logoff()" class="button is-danger is-light">
         <strong>Logout</strong>
-      </a>
+      </button>
       <a
         target="_blank"
         href="https://twitter.com/settings/connected_apps"
@@ -69,15 +72,15 @@
       </a>
     </div>
 
-    <div id="fedifinder">
+    <div>
       <section class="section">
         <h2 class="title is-4">
           1. Find an instance
-          <span class="icon">
+          <span v-if="twitter_auth" class="icon has-text-success">
             <i class="fas fa-check"></i>
           </span>
         </h2>
-        <h3 class="subtitle is-5">
+        <h3 v-if="!twitter_auth" class="subtitle is-5">
           <div class="level">
             <div class="level-left">
               <div class="level-item">
@@ -94,44 +97,89 @@
             </div>
           </div>
         </h3>
+        <h3 v-else class="subtitle is-5">
+          Your Twitter contacts are on these instances.
+        </h3>
+        <div v-if="domains && Object.keys(domains).length > 0">
+          <ul>
+            <li v-for="[domain, data] of Object.entries(domains)">
+              <span
+                v-if="data['openRegistrations'] === 1 && data['part_of_fediverse'] === 1"
+              >
+                <a class="title is-5" :href="`https://${domain}`">{{domain}}</a>
+                {{data.software_name}} {{data.software_version}},
+                {{data.users_total}} users, {{data.handles.length}} of your
+                contacts
+                <span v-if="data['openRegistrations'] == 1"
+                  ><strong>registration open</strong></span
+                ><span v-else>registration closed</span></span
+              >
+            </li>
+            <li v-for="[domain, data] of Object.entries(domains)">
+              <span
+                v-if="data['openRegistrations'] === 0 && data['part_of_fediverse'] === 1"
+              >
+                <a class="title is-5" :href="`https://${domain}`">{{domain}}</a>
+                {{data.software_name}} {{data.software_version}},
+                {{data.users_total}} users, {{data.handles.length}} of your
+                contacts
+                <span v-if="data['openRegistrations'] == 1"
+                  ><strong>registration open</strong></span
+                ><span v-else>registration closed</span></span
+              >
+            </li>
+          </ul>
+        </div>
       </section>
 
       <section class="section">
         <h2 class="title is-4">
           2. Publish your handle
-          <span class="icon">
+          <span
+            v-if="profile && accounts[profile.username]['handles'].length > 0"
+            class="icon has-text-success"
+          >
             <i class="fas fa-check"></i>
+          </span>
+          <span v-else class="icon has-text-danger">
+            <i class="fas fa-xmark"></i>
           </span>
         </h2>
         <h3 class="subtitle is-5">
           Sign up for a Fediverse account and add the handle to your Twitter
           profile (description, location, url or pinned Tweet).
         </h3>
-
-        <p>These handles were found in your profile {{profile}}.</p>
-
-        <div class="level">
-          <div class="level-left">
-            <div class="level-item">
-              <strong class="card-footer-item">@luca@vis.social</strong>
-            </div>
-            <div class="level-item">
-              <a href="#"
-                >Authorize @vis.social to hide already followed handles</a
-              >
+        <div v-if="profile">
+          <div v-if="(accounts[profile.username]['handles'].length > 0)">
+            <p>
+              These handles were found in your profile @{{profile.username}}.
+            </p>
+            <div
+              v-for="handle in accounts[profile.username]['handles']"
+              class="level"
+            >
+              <div class="level-left">
+                <div class="level-item">
+                  <strong class="card-footer-item">{{handle}}</strong>
+                </div>
+                <div class="level-item">
+                  After exporting, you can import the CSV file at&nbsp;
+                  <a href="{{handle.split('@')[2]+'/settings/import'}}">
+                    {{handle.split("@")[2]+"/settings/import"}}</a
+                  >
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="level">
-          <div class="level-left">
-            <div class="level-item">
-              <strong class="card-footer-item">@luca@det.social</strong>
-            </div>
-            <div class="level-item">
-              <a href="#"
-                >Authorize @det.social to hide already followed handles</a
-              >
-            </div>
+          <div v-else>
+            <p>
+              No handles were found on your profile @{{profile.username}}.
+              Please use the format @name@host.tld or https://host.tld/@name. If
+              you added it after authorizing Fedifinder,
+              <a href="/ActualAuth/twitter" class="is-info is-small">
+                <strong>rescan your profile</strong> </a
+              >.
+            </p>
           </div>
         </div>
       </section>
@@ -177,7 +225,7 @@
                   </button>
                 </div>
                 <div class="control">
-                  <button type="submit" class="button is-warning is-outlined">
+                  <button type="submit" class="button is-black is-outlined">
                     <span class="icon">
                       <i class="fas fa-xmark"></i>
                     </span>
