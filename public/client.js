@@ -264,8 +264,8 @@ const app = Vue.createApp({
           }
         });
     },
-    loadFollowings() {
-      fetch("/api/getFollowings")
+    loadFollowings(next_token = "") {
+      fetch(`/api/getFollowings?next_token=${next_token}`)
         .then((response) => response.json())
         .then((data) => {
           if ("error" in data) {
@@ -276,11 +276,14 @@ const app = Vue.createApp({
             );
             this.checkDomains();
             this.scanned.push(data.accounts.length + " followings");
+            data.next_token && data.ratelimit_remaining > 0
+              ? this.loadFollowings((next_token = data.next_token))
+              : void 0;
           }
         });
     },
-    loadFollowers() {
-      fetch("/api/getFollowers")
+    loadFollowers(next_token = "") {
+      fetch(`/api/getFollowers?next_token=${next_token}`)
         .then((response) => response.json())
         .then((data) => {
           if ("error" in data) {
@@ -290,6 +293,9 @@ const app = Vue.createApp({
             this.checkDomains();
             this.scanned.push(data.accounts.length + " followers");
             this.scanned_followers = true;
+            data.next_token && data.ratelimit_remaining > 0
+              ? this.loadFollowers((next_token = data.next_token))
+              : void 0;
           }
         });
     },
@@ -381,7 +387,13 @@ const app = Vue.createApp({
       localStorage.setItem("twitterAuth", true);
       window.location.hash = "";
     }
+
     if (localStorage.getItem("twitterAuth")) {
+      fetch("/api/lookupServer")
+        .then((response) => response.json())
+        .then((data) =>
+          "error" in data ? void 0 : (this.lookup_server = data.lookup_server)
+        );
       this.twitter_auth = true;
       this.loadProfile();
       this.loadFollowings();
