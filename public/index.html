@@ -37,13 +37,24 @@
       </div>
 
       <div class="navbar-menu">
-        <div v-if="twitter_auth" class="navbar-end">
+        <div class="navbar-end">
           <div class="navbar-item">
             <div class="buttons">
-              <button @click="logoff" class="button is-danger is-light">
+              <button
+                onclick="document.getElementById('modal-about').classList.add('is-active')"
+                class="button is-light"
+              >
+                About
+              </button>
+              <button
+                v-if="twitter_auth"
+                @click="logoff"
+                class="button is-danger is-light"
+              >
                 <strong>Logout</strong>
               </button>
               <a
+                v-if="twitter_auth"
                 target="_blank"
                 href="https://twitter.com/settings/connected_apps"
                 class="button is-danger is-outlined"
@@ -56,14 +67,22 @@
       </div>
     </nav>
 
-    <div
-      v-if="twitter_auth"
-      class="section buttons is-flex-touch is-hidden-desktop"
-    >
-      <button @click="logoff()" class="button is-danger is-light">
+    <div class="section buttons is-flex-touch is-hidden-desktop">
+      <button
+        onclick="document.getElementById('modal-about').classList.add('is-active')"
+        class="button is-light"
+      >
+        About
+      </button>
+      <button
+        v-if="twitter_auth"
+        @click="logoff()"
+        class="button is-danger is-light"
+      >
         <strong>Logout</strong>
       </button>
       <a
+        v-if="twitter_auth"
         target="_blank"
         href="https://twitter.com/settings/connected_apps"
         class="button is-danger is-outlined"
@@ -287,7 +306,10 @@
             <ul>
               <li v-for="handle in accounts[profile.username]['handles']">
                 For <strong>{{handle}}</strong> import the CSV file at
-                <a target="_blank" :href="`https://${handle.split('@')[2]+'/settings/import'}`">
+                <a
+                  target="_blank"
+                  :href="`https://${handle.split('@')[2]+'/settings/import'}`"
+                >
                   {{handle.split("@")[2]+"/settings/import"}}</a
                 >
               </li>
@@ -331,7 +353,8 @@
             <div class="content">
               <ol>
                 <li v-for="handle in data.handles">
-                  <a target="_blank"
+                  <a
+                    target="_blank"
                     :href="`https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
                     >{{handle.handle}}</a
                   >
@@ -395,16 +418,120 @@
       </section>
     </div>
 
+    <div id="modal-about" class="modal">
+      <div class="modal-background"></div>
+
+      <div class="modal-content">
+        <div class="box">
+          <h1 class="title">About Fedifinder</h1>
+          <p>
+            Fedifinder helps you find the Fediverse accounts of your Twitter
+            contacts.
+          </p>
+          <br />
+          <h2 class="title is-4">How does it work?</h2>
+          <p>
+            It is based on consent and does not give you handles of people who
+            do not want to be found. After authorizing it to access your Twitter
+            account, Fedifinder retreives up to 15.000 of your Followings
+            (accounts which you follow). It then scans the profiles and pinned
+            Tweets of those accounts for Fediverse handles and links. Because
+            handles can look exactly like mail addresses it cross-checks them
+            with a cached list of domains. For domains it doesn't know, it tries
+            to do a webfinger lookup and collect information through the
+            /.well-known/nodeinfo file. The results of the lookup are cached on
+            a domain level (domain x is part of the fediverse, domain y is
+            not).<br />
+            It then shows you a list of the instances it found as well as the
+            individual accounts. You can export that list and import it in the
+            settings of the web app of your instance.
+          </p>
+          <br />
+          <h2 class="title is-4">Privacy and Security</h2>
+          <p>
+            This is a hobby project by
+            <a href="https://vis.social/@luca">@Luca@vis.social</a>. While I try
+            to follow best practice and am as open about the process as
+            possible, I can't guarantee the safety of your data. Because
+            Fedifinder mostly handles public data, the risk is low, but still
+            there.
+          </p>
+          <p>
+            You can run Fedifinder on your own server and look at the source
+            code and suggest improvements on
+            <a target="_blank" href="https://github.com/lucahammer/fedifinder"
+              >Github</a
+            >.
+          </p>
+          <div class="content">
+            <ul>
+              <li>
+                The Twitter keys are stored in the client in an encrypted cookie
+                that is transferred only over an secured connection.
+              </li>
+              <li>
+                The decryption key and Twitter app key is stored in an
+                environment variable on the server. Access to the Twitter
+                account is only possible with all three of them.
+              </li>
+              <li>
+                No information that identifies individuals is stored on the
+                server. No account data either. The only thing that is cached is
+                the information about domains. If they are part of the
+                fediverse, which software they run and some other information,
+                that's available through /.well-known/nodeinfo on each instance.
+              </li>
+              <li>
+                Some data is stored in the local storage of the client. For
+                example the fediverse auth code. That isn't encrypted at the
+                moment. The feature is still experimental and not available on
+                the main server.
+              </li>
+              <li>
+                Fedifinder is hosted on
+                <a target="_blank" href="https://glitch.com">Glitch</a> which is
+                part of <a href="https://www.fastly.com/">fastly</a>. They
+                collect some usage data:
+                <a target="_blank" href="https://glitch.com/legal/privacy"
+                  >https://glitch.com/legal/privacy</a
+                >. If you are concerned about that, please run it on your own
+                machine.
+              </li>
+            </ul>
+            <p>
+              If you have more questions, feel free to comment on this
+              <a
+                target="_blank"
+                href="https://github.com/lucahammer/fedifinder/issues/135"
+                >issue</a
+              >.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <button
+        onclick="document.getElementById('modal-about').classList.remove('is-active')"
+        class="modal-close is-large"
+        aria-label="close"
+      ></button>
+    </div>
+
     <footer class="footer">
       <div class="content has-text-centered">
         <p>
           <strong>Fedifinder</strong> by
-          <a href="https://vis.social/@luca">@luca@vis.social</a>. The source
-          code is licensed
+          <a target="_blank" href="https://vis.social/@luca">@luca@vis.social</a
+          >. The source code is licensed
           <a href="http://opensource.org/licenses/mit-license.php">MIT</a>. You
           can create your own version by remixing it on
-          <a href="https://glitch.com/edit/#!/fedifinder">Glitch</a> or
-          <a href="https://github.com/lucahammer/fedifinder">Github</a>.
+          <a target="_blank" href="https://glitch.com/edit/#!/fedifinder"
+            >Glitch</a
+          >
+          or
+          <a target="_blank" href="https://github.com/lucahammer/fedifinder"
+            >Github</a
+          >.
         </p>
       </div>
     </footer>
