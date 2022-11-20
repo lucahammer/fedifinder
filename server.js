@@ -318,7 +318,7 @@ app.get("/api/check", async (req, res) => {
   domain = domain ? domain[0].toLowerCase() : "";
 
   let handle = req.query.handle
-    ? req.query.handle.match(/^@?[a-zA-Z0-9_]+@[a-zA-Z0-9\-\.]+\.[a-zA-Z]+$/)
+    ? req.query.handle.match(/^@?[a-zA-Z0-9_\-]+@[a-zA-Z0-9\-\.]+\.[a-zA-Z]+$/)
     : "";
   handle = handle ? handle[0].replace(/^@/, "").toLowerCase() : "";
 

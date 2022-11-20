@@ -64,14 +64,14 @@ function findHandles(text) {
 
   words.map((word) => {
     // @username@server.tld
-    if (/^@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word)) handles.push(word);
+    if (/^@[a-zA-Z0-9_\-]+@.+\.[a-zA-Z]+$/.test(word)) handles.push(word);
     // some people don't include the initial @
-    else if (/^[a-zA-Z0-9_]+@.+\.[a-zA-Z|]+$/.test(word))
+    else if (/^[a-zA-Z0-9_\-]+@.+\.[a-zA-Z|]+$/.test(word))
       handles.push(`@${word}`);
     // server.tld/@username
     // friendica: sub.domain.tld/profile/name
     else if (
-      /^.+\.[a-zA-Z]+.*\/(@|web\/|profile\/|\/u\/|\/c\/)[a-zA-Z0-9_]+\/*$/.test(
+      /^.+\.[a-zA-Z]+.*\/(@|web\/|profile\/|\/u\/|\/c\/)[a-zA-Z0-9_\-]+\/*$/.test(
         word
       )
     )

@@ -1012,5 +1012,12 @@
     "software_name": "mastodon",
     "software_version": "4.0.2",
     "users_total": 876825
+  },
+  "peoplemaking.games": {
+    "part_of_fediverse": 1,
+    "local_domain": "peoplemaking.games",
+    "software_name": "mastodon",
+    "software_version": "4.0.1+glitch",
+    "users_total": 1941
   }
 }
