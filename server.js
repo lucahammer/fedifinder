@@ -780,7 +780,8 @@ function get_nodeinfo(nodeinfo_url) {
 
 function checkHttps(req, res, next) {
   // protocol check, if http, redirect to https
-  if (req.get("X-Forwarded-Proto").indexOf("https") != -1) {
+  const forwardedProto = req.get("X-Forwarded-Proto");
+  if (forwardedProto && forwardedProto.indexOf("https") != -1) {
     return next();
   } else {
     res.redirect("https://" + req.hostname + req.url);
