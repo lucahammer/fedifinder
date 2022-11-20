@@ -7,8 +7,6 @@ const url = require("url");
 const https = require("https");
 const bodyParser = require("body-parser");
 const TwitterApi = require("twitter-api-v2").TwitterApi;
-const TwitterV2IncludesHelper =
-  require("twitter-api-v2").TwitterV2IncludesHelper;
 const WebFinger = require("webfinger.js");
 const sqlite = require("better-sqlite3");
 const DB = require("better-sqlite3-helper");
@@ -69,6 +67,7 @@ passport.use(
                 "url",
                 "location",
                 "entities",
+                "public_metrics",
               ],
               expansions: ["pinned_tweet_id"],
               "tweet.fields": ["text", "entities"],
@@ -119,6 +118,7 @@ passport.use(
                   description: user.description,
                   urls: urls,
                   pinned_tweet: pinned_tweet,
+                  public_metrics: user.public_metrics,
                 },
                 id: profile.id,
                 tokenSecret: tokenSecret,
@@ -779,7 +779,8 @@ function get_nodeinfo(nodeinfo_url) {
 
 function checkHttps(req, res, next) {
   // protocol check, if http, redirect to https
-  if (req.get("X-Forwarded-Proto").indexOf("https") != -1) {
+  const forwardedProto = req.get("X-Forwarded-Proto");
+  if (forwardedProto && forwardedProto.indexOf("https") != -1) {
     return next();
   } else {
     res.redirect("https://" + req.hostname + req.url);
@@ -796,46 +797,40 @@ app.get("/api/getProfile", async (req, res) => {
 
 app.get("/api/lookupServer", async (req, res) => {
   if (process.env.LOOKUP_SERVER) {
-    res.json(process.env.LOOKUP_SERVER);
+    res.json({ lookup_server: process.env.LOOKUP_SERVER });
   } else {
     res.json({ error: "no lookup server" });
   }
 });
 
 app.get("/api/loadLists", async (req, res) => {
-  try {
-    let client = create_twitter_client(req.user);
-    let lists = [];
+  let client = create_twitter_client(req.user);
+  let lists = [];
 
-    // get lists owned by user
-    const ownedLists = await client.v2.listsOwned(req.user.id, {
-      "list.fields": ["member_count"],
+  // get lists owned by user
+  const ownedLists = await client.v2.listsOwned(req.user.id, {
+    "list.fields": ["member_count"],
+  });
+  for await (const list of ownedLists) {
+    lists.push({
+      name: list["name"],
+      id_str: list["id"],
+      member_count: list["member_count"],
     });
-    for await (const list of ownedLists) {
-      lists.push({
-        name: list["name"],
-        id_str: list["id"],
-        member_count: list["member_count"],
-      });
-    }
-
-    // get subscribed lists of user
-    const followedLists = await client.v2.listFollowed(req.user.id, {
-      "list.fields": ["member_count"],
-    });
-    for await (const list of followedLists) {
-      lists.push({
-        name: list["name"],
-        id_str: list["id"],
-        member_count: list["member_count"],
-      });
-    }
-    res.json(lists);
-  } catch (err) {
-    console.log(err);
-    res.json(err);
-    return;
   }
+
+  // get subscribed lists of user
+  const followedLists = await client.v2.listFollowed(req.user.id, {
+    "list.fields": ["member_count"],
+  });
+  for await (const list of followedLists) {
+    lists.push({
+      name: list["name"],
+      id_str: list["id"],
+      member_count: list["member_count"],
+    });
+  }
+  res.json(lists);
 });
 
 app.get("/api/getList", async (req, res) => {
@@ -858,15 +853,26 @@ app.get("/api/getList", async (req, res) => {
 
 app.get("/api/getFollowings", async (req, res) => {
   if ("user" in req) {
-    let client = create_twitter_client(req.user);
-    const data = await client.v2.following(req.user.id, {
-      asPaginator: true,
-      max_results: 1000,
-      "user.fields": ["name", "description", "url", "location", "entities"],
-      expansions: ["pinned_tweet_id"],
-      "tweet.fields": ["text", "entities"],
-    });
-    processRequests({ type: "followings" }, data, res);
+    try {
+      let client = create_twitter_client(req.user);
+      let params = {
+        max_results: 1000,
+        "user.fields": ["name", "description", "url", "location", "entities"],
+        expansions: ["pinned_tweet_id"],
+        "tweet.fields": ["text", "entities"],
+      };
+      "next_token" in req.query && req.query.next_token.length > 2
+        ? (params["pagination_token"] = req.query.next_token)
+        : void 0;
+      const twitres = await client.v2.get(
+        `users/${req.user.id}/following`,
+        params,
+        { fullResponse: true }
+      );
+      processData({ type: "followings" }, twitres, res);
+    } catch (err) {
+      res.json(err);
+    }
   } else {
     res.json({ error: "not logged in" });
   }
@@ -874,19 +880,87 @@ app.get("/api/getFollowings", async (req, res) => {
 
 app.get("/api/getFollowers", async (req, res) => {
   if ("user" in req) {
-    let client = create_twitter_client(req.user);
-    const data = await client.v2.followers(req.user.id, {
-      asPaginator: true,
-      max_results: 1000,
-      "user.fields": ["name", "description", "url", "location", "entities"],
-      expansions: ["pinned_tweet_id"],
-      "tweet.fields": ["text", "entities"],
-    });
-    processRequests({ type: "followers" }, data, res);
+    try {
+      let client = create_twitter_client(req.user);
+      let params = {
+        max_results: 1000,
+        "user.fields": ["name", "description", "url", "location", "entities"],
+        expansions: ["pinned_tweet_id"],
+        "tweet.fields": ["text", "entities"],
+      };
+      "next_token" in req.query && req.query.next_token.length > 2
+        ? (params["pagination_token"] = req.query.next_token)
+        : void 0;
+      const twitres = await client.v2.get(
+        `users/${req.user.id}/followers`,
+        params,
+        { fullResponse: true }
+      );
+      processData({ type: "followers" }, twitres, res);
+    } catch (err) {
+      res.json(err);
+    }
   } else {
     res.json({ error: "not logged in" });
   }
 });
+
+function processData(type, twitres, cb) {
+  // extract information from API response and sent relevant parts to frontend
+  let accounts = [];
+  twitres.data.data.forEach((user) => {
+    let urls = [];
+    let pinned_tweet;
+
+    if ("pinned_tweet_id" in user) {
+      const pinnedTweetInclude = twitres.data.includes.tweets.find(
+        (tweet) => tweet.id == user.pinned_tweet_id
+      );
+      if (pinned_tweet) {
+        pinned_tweet = pinnedTweetInclude.text;
+        if (
+          "entities" in pinnedTweetInclude &&
+          "urls" in pinnedTweetInclude["entities"]
+        ) {
+          pinnedTweetInclude["entities"]["urls"].map((url) =>
+            urls.push(url.expanded_url)
+          );
+        }
+      }
+    }
+
+    "entities" in user && "url" in user.entities
+      ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
+      : null;
+
+    "entities" in user &&
+    "description" in user.entities &&
+    "urls" in user.entities.description
+      ? user.entities.description.urls.map((url) => urls.push(url.expanded_url))
+      : "";
+
+    accounts.push({
+      username: user.username,
+      name: user.name,
+      location: user.location,
+      description: user.description,
+      urls: urls,
+      pinned_tweet: pinned_tweet,
+    });
+  });
+
+  let ratelimit_remaining = twitres.rateLimit.remaining;
+
+  let next_token =
+    "next_token" in twitres.data.meta ? twitres.data.meta.next_token : "";
+
+  cb.json({
+    type: type,
+    accounts: accounts,
+    ratelimit_remaining: ratelimit_remaining,
+    next_token: next_token,
+  });
+}
 
 async function processRequests(type, data, cb) {
   // get accounts from Twitter and sent relevant parts to frontend

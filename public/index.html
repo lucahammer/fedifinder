@@ -209,9 +209,9 @@
         <div v-if="scanned.length > 0">
           <div class="content">
             <p>
-              Already scanned: <span v-for="item in scanned">{{item}}, </span
-              ><br />
-              {{scan_count}} accounts scanned <br />
+              Already scanned:
+              <span v-for="item in scanned">{{item}}&nbsp;</span><br /><br />
+              {{scan_count}} unique accounts scanned <br />
               {{unique_count}} unique handles from working fediverse domains
               found
               <br />
@@ -334,11 +334,15 @@
           Here are the found handles sorted by their instance.
         </h3>
 
-        <button v-if="profile" @click="toggleDisplayAccounts()" class="button">
-          <span v-if="display_accounts">Hide network</span
+        <button
+          v-if="profile && unique_count > 100"
+          @click="toggleDisplayAccounts()"
+          class="button"
+        >
+          <span v-if="display_accounts | unique_count < 100">Hide network</span
           ><span v-else>Show network</span>
         </button>
-        <div v-if="profile && display_accounts">
+        <div v-if="profile && (display_accounts | unique_count < 100)">
           <div
             v-for="[domain, data] of Object.entries(domains)"
             style="padding-bottom: 2em"
@@ -360,20 +364,22 @@
                   >
                   (<a :href="`https://twitter.com/${handle.username}`"></a
                   >{{handle.username}})
-                  <span
-                    v-for="profilehandle in accounts[profile.username]['handles']"
-                  >
-                    <a
-                      target="_blank"
-                      :href="`https://${profilehandle.split('@')[2]}/authorize_interaction?uri=https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
-                      class="button is-link is-small"
+                  <div class="buttons">
+                    <span
+                      v-for="profilehandle in accounts[profile.username]['handles']"
                     >
-                      <span class="icon">
-                        <i class="fa-brands fa-mastodon"></i>
-                      </span>
-                      <span>Follow from {{profilehandle}} </span></a
-                    >&nbsp;
-                  </span>
+                      <a
+                        target="_blank"
+                        :href="`https://${profilehandle.split('@')[2]}/authorize_interaction?uri=https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
+                        class="button is-link is-small"
+                      >
+                        <span class="icon">
+                          <i class="fa-brands fa-mastodon"></i>
+                        </span>
+                        <span>Follow from {{profilehandle}} </span></a
+                      >&nbsp;
+                    </span>
+                  </div>
                 </li>
               </ol>
             </div>
@@ -506,6 +512,11 @@
                 >issue</a
               >.
             </p>
+            <h2 class="title is-4">Alternatives</h2>
+            <a href="https://pruvisto.org/debirdify/">Debirdify</a> works
+            similar to Fedifinder, but has some additional options. <br />
+            <a href="https://twitodon.com/">Twitodon</a> needs you and the
+            accounts to find to be signed up there.
           </div>
         </div>
       </div>

@@ -83,44 +83,48 @@ const createApp = (domain, remote_domain = false) => {
   };
 
   console.log("creating app");
-  const req = https.request(options, (res) => {
-    let body = "";
 
-    res.on("data", (d) => {
-      body += d;
+  return new Promise((resolve) => {
+    const req = https.request(options, (res) => {
+      let body = "";
+
+      res.on("data", (d) => {
+        body += d;
+        console.log(body);
+      });
+
+      res.on("error", (e) => {
+        console.error(e);
+      });
+
+      res.on("end", () => {
+        try {
+          let data = JSON.parse(body);
+          data["client_secret"] = encrypt(data["client_secret"]);
+
+          DB().insert("mastodonapps", {
+            domain: domain,
+            id: data["id"],
+            client_id: data["client_id"],
+            client_secret: data["client_secret"],
+            vapid_key: data["vapid_key"],
+          });
+          resolve(data);
+        } catch (err) {
+          DB().insert("mastodonapps", {
+            domain: domain,
+            working: 0,
+          });
+          resolve({
+            domain: domain,
+            working: 0,
+          });
+        }
+      });
     });
-
-    res.on("error", (e) => {
-      console.error(e);
-    });
-
-    res.on("end", () => {
-      try {
-        let data = JSON.parse(body);
-        data["client_secret"] = encrypt(data["client_secret"]);
-
-        DB().insert("mastodonapps", {
-          domain: domain,
-          id: data["id"],
-          client_id: data["client_id"],
-          client_secret: data["client_secret"],
-          vapid_key: data["vapid_key"],
-        });
-        return data;
-      } catch (err) {
-        DB().insert("mastodonapps", {
-          domain: domain,
-          working: 0,
-        });
-        return {
-          domain: domain,
-          working: 0,
-        };
-      }
-    });
+    req.write(postData);
+    req.end();
   });
-  req.write(postData);
-  req.end();
 };
 
 const getApp = async (domain, decrypted = false) => {
