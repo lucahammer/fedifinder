@@ -204,10 +204,17 @@ app.get(
   }
 );
 
-app.get("/", (req, res) => {
+
+/*app.get("/", (req, res) => {
   "code" in req.query
-    ? res.redirect("/success.html?c=" + req.query.code)
-    : res.redirect("/success.html");
+    ? res.redirect("/index.html#c=" + req.query.code)
+    : res.redirect("/index.html");
+});*/
+
+app.get("/success.html", (req, res) => {
+  // redirect people who come over an link for fedifinder-original
+
+  res.redirect("/");
 });
 
 app.get(process.env.DB_CLEAR + "_all", (req, res) => {

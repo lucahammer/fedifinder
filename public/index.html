@@ -287,7 +287,7 @@
             <ul>
               <li v-for="handle in accounts[profile.username]['handles']">
                 For <strong>{{handle}}</strong> import the CSV file at
-                <a href="{{handle.split('@')[2]+'/settings/import'}}">
+                <a target="_blank" :href="`https://${handle.split('@')[2]+'/settings/import'}`">
                   {{handle.split("@")[2]+"/settings/import"}}</a
                 >
               </li>
@@ -312,7 +312,7 @@
           Here are the found handles sorted by their instance.
         </h3>
 
-        <button @click="toggleDisplayAccounts()" class="button">
+        <button v-if="profile" @click="toggleDisplayAccounts()" class="button">
           <span v-if="display_accounts">Hide network</span
           ><span v-else>Show network</span>
         </button>
@@ -331,7 +331,7 @@
             <div class="content">
               <ol>
                 <li v-for="handle in data.handles">
-                  <a
+                  <a target="_blank"
                     :href="`https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
                     >{{handle.handle}}</a
                   >
