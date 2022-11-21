@@ -101,6 +101,7 @@ const app = Vue.createApp({
       scanned_followers: false,
       display_accounts: false,
       show_follow_buttons: true,
+      error_message: "",
     };
   },
   computed: {
@@ -260,7 +261,7 @@ const app = Vue.createApp({
         .then((response) => response.json())
         .then((data) => {
           if ("error" in data) {
-            console.log(data);
+            this.error_message = (data);
           } else {
             this.profile = data;
             this.processAccount("me", data);
@@ -273,7 +274,7 @@ const app = Vue.createApp({
         .then((response) => response.json())
         .then((data) => {
           if ("error" in data) {
-            console.log(data);
+            this.error_message = (data);
           } else {
             data.accounts.map((user) =>
               this.processAccount("followings", user)
@@ -293,7 +294,7 @@ const app = Vue.createApp({
         .then((response) => response.json())
         .then((data) => {
           if ("error" in data) {
-            console.log(data);
+            this.error_message = (data);
           } else {
             data.accounts.map((user) => this.processAccount("followers", user));
             this.checkDomains();
