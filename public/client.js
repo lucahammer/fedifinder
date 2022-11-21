@@ -126,6 +126,28 @@ const app = Vue.createApp({
     unchecked_domains_count() {
       return this.unchecked_domains.length;
     },
+    sorted_domains() {
+      let sorted = [];
+      for (const [domain, data] of Object.entries(this.domains)) {
+        sorted.push([
+          {
+            domain: domain,
+            local_domain: data.local_domain ? data.local_domain : domain,
+            software_name: data.software_name,
+            software_version: data.software_version,
+            users_total: data.users_total,
+            contacts: data.handles.length,
+            openRegistrations: data.openRegistrations,
+            part_of_fediverse: data.part_of_fediverse,
+          },
+          data.handles.length,
+        ]);
+      }
+      sorted.sort(function (a, b) {
+        return b[1] - a[1];
+      });
+      return sorted;
+    },
   },
   methods: {
     processAccount(type, user) {
@@ -261,7 +283,7 @@ const app = Vue.createApp({
         .then((response) => response.json())
         .then((data) => {
           if ("error" in data) {
-            this.error_message = (data);
+            this.error_message = data;
           } else {
             this.profile = data;
             this.processAccount("me", data);
@@ -274,7 +296,7 @@ const app = Vue.createApp({
         .then((response) => response.json())
         .then((data) => {
           if ("error" in data) {
-            this.error_message = (data);
+            this.error_message = data;
           } else {
             data.accounts.map((user) =>
               this.processAccount("followings", user)
@@ -294,7 +316,7 @@ const app = Vue.createApp({
         .then((response) => response.json())
         .then((data) => {
           if ("error" in data) {
-            this.error_message = (data);
+            this.error_message = data;
           } else {
             data.accounts.map((user) => this.processAccount("followers", user));
             this.checkDomains();
@@ -401,7 +423,7 @@ const app = Vue.createApp({
       let lookup_data = await fetch("/api/lookupServer");
       lookup_data = await lookup_data.json();
       "error" in lookup_data
-        ? (this.lookup_server = window.location.hostname)
+        ? (this.lookup_server = "https://" + window.location.hostname)
         : (this.lookup_server = lookup_data.lookup_server);
       let cached_data = await fetch("/cached/known_instances.json");
       this.known_instances = await cached_data.json();
