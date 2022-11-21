@@ -1,4 +1,4 @@
-/* globals io, tests, eq json2csv, Vue*/
+/* globals tests, eq json2csv, Vue*/
 
 function nameFromUrl(urlstring) {
   // returns username without @
@@ -107,18 +107,18 @@ const app = Vue.createApp({
     unique_count() {
       let sum = 0;
       for (const [domain, data] of Object.entries(this.domains)) {
-        "handles" in data && data["part_of_fediverse"] === 1
+        "handles" in data && data.part_of_fediverse === 1
           ? (sum = sum + data.handles.length)
-          : null;
+          : void 0;
       }
       return sum;
     },
     broken_count() {
       let sum = 0;
       for (const [domain, data] of Object.entries(this.domains)) {
-        "handles" in data && data["part_of_fediverse"] === 0
+        "handles" in data && data.part_of_fediverse === 0
           ? (sum = sum + data.handles.length)
-          : null;
+          : void 0;
       }
       return sum;
     },
@@ -217,10 +217,14 @@ const app = Vue.createApp({
             );
           } else {
             // get new info from server
-            this.unchecked_domains.push({
-              domain: domain,
-              handle: data["handles"][0]["handle"],
-            });
+            try {
+              this.unchecked_domains.push({
+                domain: domain,
+                handle: data["handles"][0]["handle"],
+              });
+            } catch (err) {
+              console.log(data);
+            }
           }
         }
       }
@@ -283,7 +287,8 @@ const app = Vue.createApp({
         });
     },
     loadFollowers(next_token = "") {
-      document.getElementById("loadFollowers").classList.add("is-loading");
+      if (document.getElementById("loadFollowers"))
+        document.getElementById("loadFollowers").classList.add("is-loading");
       fetch(`/api/getFollowers?next_token=${next_token}`)
         .then((response) => response.json())
         .then((data) => {
@@ -355,7 +360,6 @@ const app = Vue.createApp({
       link.download = "fedifinder_accounts.csv";
     },
     exportAccountsCsv() {
-      console.log(this.unchecked_domains);
       let output = [];
       for (const [username, data] of Object.entries(this.accounts)) {
         output.push({ username: username, ...data });
@@ -407,5 +411,4 @@ const app = Vue.createApp({
     }
   },
 });
-
 app.mount("#fedifinder");
