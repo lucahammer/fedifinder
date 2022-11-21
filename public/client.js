@@ -225,11 +225,10 @@ const app = Vue.createApp({
         }
       }
       if (this.unchecked_domains.length > 0) {
-        let server = "";
-        this.lookup_server ? (server = this.lookup_server) : null;
-
         this.unchecked_domains.forEach((domain) =>
-          fetch(`${server}/api/check?handle=${domain.handle}&${domain.domain}`)
+          fetch(
+            `${this.lookup_server}/api/check?handle=${domain.handle}&${domain.domain}`
+          )
             .then((response) => response.json())
             .then((data) => this.processCheckedDomain(data))
         );
@@ -284,6 +283,7 @@ const app = Vue.createApp({
         });
     },
     loadFollowers(next_token = "") {
+      document.getElementById("loadFollowers").classList.add("is-loading");
       fetch(`/api/getFollowers?next_token=${next_token}`)
         .then((response) => response.json())
         .then((data) => {
@@ -386,18 +386,20 @@ const app = Vue.createApp({
       this.show_follow_buttons = !this.show_follow_buttons;
     },
   },
-  mounted() {
+  async mounted() {
     if (window.location.href.indexOf("#t") !== -1) {
       localStorage.setItem("twitterAuth", true);
       window.location.hash = "";
     }
 
     if (localStorage.getItem("twitterAuth")) {
-      fetch("/api/lookupServer")
-        .then((response) => response.json())
-        .then((data) =>
-          "error" in data ? void 0 : (this.lookup_server = data.lookup_server)
-        );
+      let lookup_data = await fetch("/api/lookupServer");
+      lookup_data = await lookup_data.json();
+      "error" in lookup_data
+        ? (this.lookup_server = window.location.hostname)
+        : (this.lookup_server = lookup_data.lookup_server);
+      let cached_data = await fetch("/cached/known_instances.json");
+      this.known_instances = await cached_data.json();
       this.twitter_auth = true;
       this.loadProfile();
       this.loadFollowings();

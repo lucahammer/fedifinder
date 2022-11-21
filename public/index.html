@@ -119,7 +119,12 @@
         <h3 v-else class="subtitle is-5">
           Your Twitter contacts are on these instances.
         </h3>
-        <div v-if="domains && Object.keys(domains).length > 0">
+        <div v-if="twitter_auth && (!domains | Object.entries(domains).length < 1)">
+          <progress class="progress is-large is-info" max="100">
+            Scanning accounts
+          </progress>
+        </div>
+        <div v-else>
           <ul>
             <li v-for="[domain, data] of Object.entries(domains)">
               <span
@@ -265,6 +270,7 @@
               </div>
               <div v-if="!scanned_followers" class="level-item">
                 <button
+                  id="loadFollowers"
                   @click="loadFollowers()"
                   class="button is-success is-outlined"
                 >
@@ -345,12 +351,16 @@
             ><span v-else>Show network</span>
           </button>
 
-          <button @click="toggleFollowButtons()" class="button">
+          <button
+            v-if="display_accounts | unique_count < 100"
+            @click="toggleFollowButtons()"
+            class="button"
+          >
             <span v-if="show_follow_buttons">Hide follow buttons</span
             ><span v-else>Show follow buttons</span>
           </button>
         </div>
-        
+
         <div v-if="profile && (display_accounts | unique_count < 100)">
           <div v-for="[domain, data] of Object.entries(domains)">
             <div v-if="data.part_of_fediverse == 1" style="padding-bottom: 2em">
