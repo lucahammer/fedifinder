@@ -367,7 +367,7 @@
           </button>
 
           <button
-            v-if="display_accounts | unique_count < 100"
+            v-if="profile && (display_accounts | unique_count < 100)"
             @click="toggleFollowButtons()"
             class="button"
           >
