@@ -100,6 +100,7 @@ const app = Vue.createApp({
       twitter_auth: false,
       scanned_followers: false,
       display_accounts: false,
+      show_follow_buttons: true,
     };
   },
   computed: {
@@ -380,6 +381,9 @@ const app = Vue.createApp({
     },
     toggleDisplayAccounts() {
       this.display_accounts = !this.display_accounts;
+    },
+    toggleFollowButtons() {
+      this.show_follow_buttons = !this.show_follow_buttons;
     },
   },
   mounted() {
