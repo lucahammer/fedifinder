@@ -337,6 +337,7 @@ app.get("/api/check", async (req, res) => {
         let info = await update_data(domain, handle, true);
         res.json(info);
       } catch (err) {
+        console.log(err);
         res.json(err);
       }
     } else res.json(await check_instance(domain, handle));
@@ -644,7 +645,13 @@ async function url_from_handle(handle) {
 
 async function get_hostmeta(domain) {
   return new Promise((resolve) => {
-    https.get("https://" + domain, (res) => {
+    const options = {
+      headers: {
+        "User-Agent": "fedifinder.glitch.me",
+      },
+    };
+
+    https.get("https://" + domain, options, (res) => {
       if (res.statusCode == 200) {
         let host_body = "";
         res.on("data", (d) => {
@@ -676,6 +683,9 @@ async function get_nodeinfo_url(host_domain, redirect_count = 0) {
       json: true,
       path: "/.well-known/nodeinfo",
       timeout: 5000,
+      headers: {
+        "User-Agent": "fedifinder.glitch.me",
+      },
     };
 
     https
@@ -722,8 +732,14 @@ async function get_nodeinfo_url(host_domain, redirect_count = 0) {
 function get_nodeinfo(nodeinfo_url) {
   // get fresh nodeinfo and save to db
   return new Promise((resolve) => {
+    const options = {
+      headers: {
+        "User-Agent": "fedifinder.glitch.me",
+      },
+      timeout: 5000,
+    };
     https
-      .get(encodeURI(nodeinfo_url), { timeout: 5000 }, (res) => {
+      .get(encodeURI(nodeinfo_url), options, (res) => {
         let body = "";
         if (res.statusCode != 200) {
           resolve({ part_of_fediverse: 0 });

@@ -92,6 +92,19 @@
     </div>
 
     <div>
+      <section v-if="error_message.length > 0" id="error">
+        <article class="message is-warning">
+          <div class="message-header">
+            <p>Error</p>
+            <button
+              class="delete"
+              onclick="document.getElementById('error').classList.remove('is-active')"
+              aria-label="delete"
+            ></button>
+          </div>
+          <div class="message-body">{{error_message}}</div>
+        </article>
+      </section>
       <section class="section">
         <h2 class="title is-4">
           1. Find an instance
@@ -119,7 +132,9 @@
         <h3 v-else class="subtitle is-5">
           Your Twitter contacts are on these instances.
         </h3>
-        <div v-if="(twitter_auth && unique_count <= 1) | unchecked_domains_count > 0">
+        <div
+          v-if="(twitter_auth && unique_count <= 1) | unchecked_domains_count > 0"
+        >
           <progress class="progress is-large is-info" max="100">
             Scanning accounts
           </progress>
@@ -409,14 +424,16 @@
                 Error: {{data.status}}
               </p>
               <div class="content">
-                <p v-for="handle in data.handles">
-                  <a
-                    target="_blank"
-                    :href="`https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
-                    >{{handle.handle}}</a
-                  >
-                  (<a :href="`https://twitter.com/${handle.username}`"></a
-                  >{{handle.username}})
+                <p>
+                  <span v-for="handle in data.handles">
+                    <a
+                      target="_blank"
+                      :href="`https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
+                      >{{handle.handle}}</a
+                    >
+                    (<a :href="`https://twitter.com/${handle.username}`"></a
+                    >{{handle.username}})<br />
+                  </span>
                 </p>
               </div>
             </div>
