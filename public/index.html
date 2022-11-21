@@ -395,7 +395,7 @@
                   <li v-for="handle in data.handles">
                     <a
                       target="_blank"
-                      :href="`https://${domains[handle.handle.split('@')[2]].local_domain}/@${handle.handle.split('@')[1]}`"
+                      :href="`https://${domains[handle.handle.split('@')[2]].local_domain?domains[handle.handle.split('@')[2]].local_domain:handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
                       >{{handle.handle}}</a
                     >
                     (<a :href="`https://twitter.com/${handle.username}`"></a
@@ -406,7 +406,7 @@
                       >
                         <a
                           target="_blank"
-                          :href="`https://${domains[profilehandle.split('@')[2]].local_domain}/authorize_interaction?uri=https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
+                          :href="`https://${domains[profilehandle.split('@')[2]].local_domain?domains[profilehandle.split('@')[2]].local_domain:profilehandle.split('@')[2]}/authorize_interaction?uri=https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
                           class="button is-link is-small"
                         >
                           <span class="icon">
