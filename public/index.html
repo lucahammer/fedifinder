@@ -323,17 +323,19 @@
           Go to the settings of your Fediverse account and import your whole
           network at once.
         </h3>
-
         <div v-if="profile">
           <div v-if="(accounts[profile.username]['handles'].length > 0)">
             <ul>
               <li v-for="handle in accounts[profile.username]['handles']">
-                For <strong>{{handle}}</strong> import the CSV file at
-                <a
-                  target="_blank"
-                  :href="`https://${handle.split('@')[2]+'/settings/import'}`"
-                >
-                  {{handle.split("@")[2]+"/settings/import"}}</a
+                <span v-if="handle && handle.split('@')[2] in domains">
+                  {{handle.split('@')[2]}} For
+                  <strong>{{handle}}</strong> import the CSV file at
+                  <a
+                    target="_blank"
+                    :href="`https://${domains[handle.split('@')[2]].local_domain?domains[handle.split('@')[2]].local_domain:handle.split('@')[2]}/settings/import`"
+                  >
+                    {{domains[handle.split('@')[2]].local_domain?domains[handle.split('@')[2]].local_domain:handle.split('@')[2]}}/settings/import</a
+                  ></span
                 >
               </li>
             </ul>
