@@ -1050,5 +1050,27 @@
     "local_domain": "bln41.net",
     "software_name": "gotosocial",
     "software_version": "0.5.1-SNAPSHOT git-81c1fe0"
+  },
+  "social.targaryen.house": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.targaryen.house",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 3801
+  },
+  "scrubjay.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "scrubjay.social",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 4
+  },
+  "xoxo.zone": {
+    "part_of_fediverse": 1,
+    "local_domain": "xoxo.zone",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 585
   }
 }

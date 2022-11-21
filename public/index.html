@@ -90,21 +90,20 @@
         <strong>Revoke Permissions</strong>
       </a>
     </div>
-
     <div>
-      <section v-if="error_message.length > 0" id="error">
+      <div v-if="error_message.length > 0" id="error" class="section">
         <article class="message is-warning">
           <div class="message-header">
             <p>Error</p>
             <button
               class="delete"
-              onclick="document.getElementById('error').classList.remove('is-active')"
+              @click="error_message = ''"
               aria-label="delete"
             ></button>
           </div>
           <div class="message-body">{{error_message}}</div>
         </article>
-      </section>
+      </div>
       <section class="section">
         <h2 class="title is-4">
           1. Find an instance
@@ -141,18 +140,21 @@
         </div>
         <div v-if="domains">
           <ul>
-            <li v-for="[domain, data] of Object.entries(domains)">
+            <li v-for="data in sorted_domains">
               <span
-                v-if="data.openRegistrations === 1 && data.part_of_fediverse === 1"
+                v-if="data[0].openRegistrations === 1 && data[0].part_of_fediverse === 1"
               >
-                <a class="title is-5" :href="`https://${domain}`">{{domain}}</a>
-                {{data.software_name}} {{data.software_version}},
-                {{data.users_total}} users, {{data.handles.length}} of your
+                <a class="title is-5" :href="`https://${data[0].local_domain}`"
+                  >{{data[0].domain}}</a
+                >
+                {{data[0].software_name}} {{data[0].software_version}},
+                {{data[0].users_total}} users, {{data[0].contacts}} of your
                 contacts,
-                <span v-if="data.openRegistrations == 1"
-                  ><strong>registration open</strong></span
-                ><span v-else>registration closed</span></span
-              >
+                <span v-if="data[0].openRegistrations == 1">
+                  <strong>registration open</strong>
+                </span>
+                <span v-else>registration closed</span>
+              </span>
             </li>
             <li v-for="[domain, data] of Object.entries(domains)">
               <span
@@ -367,7 +369,7 @@
           </button>
 
           <button
-            v-if="display_accounts | unique_count < 100"
+            v-if="profile && (display_accounts | unique_count < 100)"
             @click="toggleFollowButtons()"
             class="button"
           >
@@ -391,7 +393,7 @@
                   <li v-for="handle in data.handles">
                     <a
                       target="_blank"
-                      :href="`https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
+                      :href="`https://${domains[handle.handle.split('@')[2]].local_domain}/@${handle.handle.split('@')[1]}`"
                       >{{handle.handle}}</a
                     >
                     (<a :href="`https://twitter.com/${handle.username}`"></a
@@ -402,7 +404,7 @@
                       >
                         <a
                           target="_blank"
-                          :href="`https://${profilehandle.split('@')[2]}/authorize_interaction?uri=https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
+                          :href="`https://${domains[profilehandle.split('@')[2]].local_domain}/authorize_interaction?uri=https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
                           class="button is-link is-small"
                         >
                           <span class="icon">
