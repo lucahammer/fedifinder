@@ -1,4 +1,4 @@
-/* globals io, tests, eq json2csv, Vue*/
+/* globals tests, eq json2csv, Vue*/
 
 function nameFromUrl(urlstring) {
   // returns username without @
@@ -100,24 +100,25 @@ const app = Vue.createApp({
       twitter_auth: false,
       scanned_followers: false,
       display_accounts: false,
+      show_follow_buttons: true,
     };
   },
   computed: {
     unique_count() {
       let sum = 0;
       for (const [domain, data] of Object.entries(this.domains)) {
-        "handles" in data && data["part_of_fediverse"] === 1
+        "handles" in data && data.part_of_fediverse === 1
           ? (sum = sum + data.handles.length)
-          : null;
+          : void 0;
       }
       return sum;
     },
     broken_count() {
       let sum = 0;
       for (const [domain, data] of Object.entries(this.domains)) {
-        "handles" in data && data["part_of_fediverse"] === 0
+        "handles" in data && data.part_of_fediverse === 0
           ? (sum = sum + data.handles.length)
-          : null;
+          : void 0;
       }
       return sum;
     },
@@ -216,19 +217,22 @@ const app = Vue.createApp({
             );
           } else {
             // get new info from server
-            this.unchecked_domains.push({
-              domain: domain,
-              handle: data["handles"][0]["handle"],
-            });
+            try {
+              this.unchecked_domains.push({
+                domain: domain,
+                handle: data["handles"][0]["handle"],
+              });
+            } catch (err) {
+              console.log(data);
+            }
           }
         }
       }
       if (this.unchecked_domains.length > 0) {
-        let server = "";
-        this.lookup_server ? (server = this.lookup_server) : null;
-
         this.unchecked_domains.forEach((domain) =>
-          fetch(`${server}/api/check?handle=${domain.handle}&${domain.domain}`)
+          fetch(
+            `${this.lookup_server}/api/check?handle=${domain.handle}&${domain.domain}`
+          )
             .then((response) => response.json())
             .then((data) => this.processCheckedDomain(data))
         );
@@ -283,6 +287,8 @@ const app = Vue.createApp({
         });
     },
     loadFollowers(next_token = "") {
+      if (document.getElementById("loadFollowers"))
+        document.getElementById("loadFollowers").classList.add("is-loading");
       fetch(`/api/getFollowers?next_token=${next_token}`)
         .then((response) => response.json())
         .then((data) => {
@@ -354,7 +360,6 @@ const app = Vue.createApp({
       link.download = "fedifinder_accounts.csv";
     },
     exportAccountsCsv() {
-      console.log(this.unchecked_domains);
       let output = [];
       for (const [username, data] of Object.entries(this.accounts)) {
         output.push({ username: username, ...data });
@@ -381,19 +386,24 @@ const app = Vue.createApp({
     toggleDisplayAccounts() {
       this.display_accounts = !this.display_accounts;
     },
+    toggleFollowButtons() {
+      this.show_follow_buttons = !this.show_follow_buttons;
+    },
   },
-  mounted() {
+  async mounted() {
     if (window.location.href.indexOf("#t") !== -1) {
       localStorage.setItem("twitterAuth", true);
       window.location.hash = "";
     }
 
     if (localStorage.getItem("twitterAuth")) {
-      fetch("/api/lookupServer")
-        .then((response) => response.json())
-        .then((data) =>
-          "error" in data ? void 0 : (this.lookup_server = data.lookup_server)
-        );
+      let lookup_data = await fetch("/api/lookupServer");
+      lookup_data = await lookup_data.json();
+      "error" in lookup_data
+        ? (this.lookup_server = window.location.hostname)
+        : (this.lookup_server = lookup_data.lookup_server);
+      let cached_data = await fetch("/cached/known_instances.json");
+      this.known_instances = await cached_data.json();
       this.twitter_auth = true;
       this.loadProfile();
       this.loadFollowings();
@@ -401,5 +411,4 @@ const app = Vue.createApp({
     }
   },
 });
-
 app.mount("#fedifinder");

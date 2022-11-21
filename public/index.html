@@ -119,30 +119,35 @@
         <h3 v-else class="subtitle is-5">
           Your Twitter contacts are on these instances.
         </h3>
-        <div v-if="domains && Object.keys(domains).length > 0">
+        <div v-if="(twitter_auth && unique_count <= 1) | unchecked_domains_count > 0">
+          <progress class="progress is-large is-info" max="100">
+            Scanning accounts
+          </progress>
+        </div>
+        <div v-if="domains">
           <ul>
             <li v-for="[domain, data] of Object.entries(domains)">
               <span
-                v-if="data['openRegistrations'] === 1 && data['part_of_fediverse'] === 1"
+                v-if="data.openRegistrations === 1 && data.part_of_fediverse === 1"
               >
                 <a class="title is-5" :href="`https://${domain}`">{{domain}}</a>
                 {{data.software_name}} {{data.software_version}},
                 {{data.users_total}} users, {{data.handles.length}} of your
                 contacts,
-                <span v-if="data['openRegistrations'] == 1"
+                <span v-if="data.openRegistrations == 1"
                   ><strong>registration open</strong></span
                 ><span v-else>registration closed</span></span
               >
             </li>
             <li v-for="[domain, data] of Object.entries(domains)">
               <span
-                v-if="data['openRegistrations'] === 0 && data['part_of_fediverse'] === 1"
+                v-if="data.openRegistrations === 0 && data.part_of_fedivers === 1"
               >
                 <a class="title is-5" :href="`https://${domain}`">{{domain}}</a>
                 {{data.software_name}} {{data.software_version}},
                 {{data.users_total}} users, {{data.handles.length}} of your
                 contacts,
-                <span v-if="data['openRegistrations'] == 1"
+                <span v-if="data.openRegistration == 1"
                   ><strong>registration open</strong></span
                 ><span v-else>registration closed</span></span
               >
@@ -265,6 +270,7 @@
               </div>
               <div v-if="!scanned_followers" class="level-item">
                 <button
+                  id="loadFollowers"
                   @click="loadFollowers()"
                   class="button is-success is-outlined"
                 >
@@ -334,29 +340,76 @@
           Here are the found handles sorted by their instance.
         </h3>
 
-        <button
-          v-if="profile && unique_count > 100"
-          @click="toggleDisplayAccounts()"
-          class="button"
-        >
-          <span v-if="display_accounts | unique_count < 100">Hide network</span
-          ><span v-else>Show network</span>
-        </button>
-        <div v-if="profile && (display_accounts | unique_count < 100)">
-          <div
-            v-for="[domain, data] of Object.entries(domains)"
-            style="padding-bottom: 2em"
+        <div class="buttons">
+          <button
+            v-if="profile && unique_count > 100"
+            @click="toggleDisplayAccounts()"
+            class="button"
           >
-            <h4 class="title is-5">{{domain}}</h4>
-            <h5 class="subtitle is-6">
-              {{data.software_name}} {{data.software_version}},
-              <span v-if="data['openRegistrations'] == 1"
-                ><strong>registration open</strong></span
-              ><span v-else>registration closed</span>
-            </h5>
-            <div class="content">
-              <ol>
-                <li v-for="handle in data.handles">
+            <span v-if="display_accounts | unique_count < 100"
+              >Hide network</span
+            ><span v-else>Show network</span>
+          </button>
+
+          <button
+            v-if="display_accounts | unique_count < 100"
+            @click="toggleFollowButtons()"
+            class="button"
+          >
+            <span v-if="show_follow_buttons">Hide follow buttons</span
+            ><span v-else>Show follow buttons</span>
+          </button>
+        </div>
+
+        <div v-if="profile && (display_accounts | unique_count < 100)">
+          <div v-for="[domain, data] of Object.entries(domains)">
+            <div v-if="data.part_of_fediverse == 1" style="padding-bottom: 2em">
+              <h4 class="title is-5">{{domain}}</h4>
+              <h5 class="subtitle is-6">
+                {{data.software_name}} {{data.software_version}},
+                <span v-if="data.openRegistrations == 1"
+                  ><strong>registration open</strong></span
+                ><span v-else>registration closed</span>
+              </h5>
+              <div class="content">
+                <ol>
+                  <li v-for="handle in data.handles">
+                    <a
+                      target="_blank"
+                      :href="`https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
+                      >{{handle.handle}}</a
+                    >
+                    (<a :href="`https://twitter.com/${handle.username}`"></a
+                    >{{handle.username}})
+                    <div v-if="show_follow_buttons" class="buttons">
+                      <span
+                        v-for="profilehandle in accounts[profile.username]['handles']"
+                      >
+                        <a
+                          target="_blank"
+                          :href="`https://${profilehandle.split('@')[2]}/authorize_interaction?uri=https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
+                          class="button is-link is-small"
+                        >
+                          <span class="icon">
+                            <i class="fa-brands fa-mastodon"></i>
+                          </span>
+                          <span>Follow from {{profilehandle}} </span></a
+                        >&nbsp;
+                      </span>
+                    </div>
+                  </li>
+                </ol>
+              </div>
+            </div>
+          </div>
+          <div v-for="[domain, data] of Object.entries(domains)">
+            <div v-if="data.part_of_fediverse == 0">
+              <p>
+                <strong>{{domain}}</strong> Maybe down, maybe not Fediverse.
+                Error: {{data.status}}
+              </p>
+              <div class="content">
+                <p v-for="handle in data.handles">
                   <a
                     target="_blank"
                     :href="`https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
@@ -364,24 +417,8 @@
                   >
                   (<a :href="`https://twitter.com/${handle.username}`"></a
                   >{{handle.username}})
-                  <div class="buttons">
-                    <span
-                      v-for="profilehandle in accounts[profile.username]['handles']"
-                    >
-                      <a
-                        target="_blank"
-                        :href="`https://${profilehandle.split('@')[2]}/authorize_interaction?uri=https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
-                        class="button is-link is-small"
-                      >
-                        <span class="icon">
-                          <i class="fa-brands fa-mastodon"></i>
-                        </span>
-                        <span>Follow from {{profilehandle}} </span></a
-                      >&nbsp;
-                    </span>
-                  </div>
-                </li>
-              </ol>
+                </p>
+              </div>
             </div>
           </div>
         </div>
