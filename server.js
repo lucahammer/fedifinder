@@ -713,7 +713,8 @@ async function get_local_domain(host_domain, redirect_count = 0) {
                   });
                 }
               } catch (err) {
-                resolve({ status: err });
+                console.log(err)
+                resolve({ status: "well-known/host-meta broken" });
               }
             } else resolve({ status: ".well-known/host-meta not found" });
           });
