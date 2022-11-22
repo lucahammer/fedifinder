@@ -298,9 +298,9 @@ app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
     504,
     301,
     302,
-    //"ECONNRESET",
+    "ECONNRESET",
     "ETIMEDOUT",
-    //"ENOTFOUND",
+    "ENOTFOUND",
   ];
   to_remove.forEach((status) => remove_domains_by_status(status));
   res.send(`Removed ${JSON.stringify(to_remove, null, 4)}`);
@@ -310,7 +310,6 @@ app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
 
 app.get("/api/check", async (req, res) => {
   // force update a single domain
-
   let domain = req.query.domain
     ? req.query.domain.match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)
     : "";
@@ -325,20 +324,22 @@ app.get("/api/check", async (req, res) => {
 
   if (domain) {
     if ("force" in req.query) {
-      process.env.LOOKUP_SERVER
-        ? https.get(
+      if (process.env.LOOKUP_SERVER) {
+        https
+          .get(
             `${process.env.LOOKUP_SERVER}/api/check?handle=${domain}&domain=${
               handle ? handle : ""
             }&force`
           )
-        : void 0;
-
-      try {
-        let info = await update_data(domain, handle, true);
-        res.json(info);
-      } catch (err) {
-        console.log(err);
-        res.json(err);
+          .then((data) => res.json(data));
+      } else {
+        try {
+          let info = await update_data(domain, handle, true);
+          res.json(info);
+        } catch (err) {
+          console.log(err);
+          res.json(err);
+        }
       }
     } else res.json(await check_instance(domain, handle));
   } else res.json({ error: "not a handle or not a domain" });
@@ -518,15 +519,11 @@ function remove_domains_by_status(status) {
 
 async function update_data(domain, handle = null, force = false) {
   let local_domain, wellknown, nodeinfo;
-  if (handle) {
-    // get local domain
-    let profile_url = await url_from_handle(handle);
-    if (profile_url) {
-      local_domain = profile_url.split("//")[1].split("/")[0];
-      wellknown = await get_nodeinfo_url(local_domain);
-    }
-  }
-  if (wellknown == null) wellknown = await get_nodeinfo_url(domain);
+
+  local_domain = await get_hostmeta(domain);
+  local_domain = local_domain.split("//")[1].split("/")[0];
+
+  wellknown = await get_nodeinfo_url(local_domain);
 
   if (wellknown && "nodeinfo_url" in wellknown) {
     let nodeinfo = await get_nodeinfo(wellknown.nodeinfo_url);
@@ -618,14 +615,14 @@ function get_webfinger(handle) {
   return new Promise((resolve) => {
     webfinger.lookup(encodeURI(handle), (err, info) => {
       if (err) {
-        //console.log("error: ", err.message);
+        console.log("error: ", err.message);
         resolve(null);
       } else {
         resolve(info);
       }
     });
   }).catch((err) => {
-    //console.log(err);
+    console.log(err);
   });
 }
 
@@ -643,34 +640,66 @@ async function url_from_handle(handle) {
   }
 }
 
-async function get_hostmeta(domain) {
+async function get_hostmeta(host_domain, redirect_count = 0) {
+  // get url of nodeinfo json
   return new Promise((resolve) => {
-    const options = {
+    let options = {
+      method: "GET",
+      host: encodeURI(host_domain),
+      path: "/.well-known/host-meta",
+      timeout: 5000,
       headers: {
         "User-Agent": "fedifinder.glitch.me",
       },
     };
 
-    https.get("https://" + domain, options, (res) => {
-      if (res.statusCode == 200) {
-        let host_body = "";
-        res.on("data", (d) => {
-          host_body += d;
-        });
-        res.on("end", () => {
-          try {
-            console.log(parser.toJson(host_body));
-          } catch (err) {
-            console.log(err);
-            resolve(null);
+    https
+      .get(options, (res) => {
+        let body = "";
+        if (res.statusCode != 200) {
+          if (
+            (res.statusCode == 302 ||
+              res.statusCode == 301 ||
+              res.statusCode == 303) &&
+            redirect_count <= 3 // limit redirects to prevent circular ones
+          ) {
+            redirect_count += 1;
+            resolve(
+              get_hostmeta(res.headers.location.split("/")[2], redirect_count)
+            );
           }
-        });
-        res.on("error", (err) => {
-          //console.log(err);
-          resolve({ status: err["code"] });
-        });
-      }
-    });
+        } else {
+          res.on("data", (d) => {
+            body += d;
+          });
+          res.on("end", () => {
+            if (body.startsWith("<") === true) {
+              try {
+                let data = parser.toJson(body, {
+                  object: true,
+                  reversible: false,
+                  coerce: false,
+                  sanitize: true,
+                  trim: true,
+                  arrayNotation: false,
+                  alternateTextNode: false,
+                });
+                resolve(data.XRD.Link.template);
+              } catch (err) {
+                console.log(err);
+                resolve(null);
+              }
+            } else resolve(null);
+          });
+        }
+      })
+      .on("error", (err) => {
+        //console.log(err);
+        resolve({ status: err["code"] });
+        //todo: resolve unknown status
+      });
+  }).catch((err) => {
+    console.log(err);
   });
 }
 
@@ -693,8 +722,10 @@ async function get_nodeinfo_url(host_domain, redirect_count = 0) {
         let body = "";
         if (res.statusCode != 200) {
           if (
-            (res.statusCode == 302 || res.statusCode == 301) &&
-            redirect_count <= 2 // only follow two redirects deep to prevent circular ones
+            (res.statusCode == 302 ||
+              res.statusCode == 301 ||
+              res.statusCode == 303) &&
+            redirect_count <= 3 // limit redirects to prevent circular ones
           ) {
             redirect_count += 1;
             resolve(
