@@ -43,7 +43,6 @@ function handleFromUrl(urlstring) {
 }
 
 function findHandles(text) {
-  console.log(text);
   // split text into string and check them for handles
 
   // remove weird characters and unicode font stuff
@@ -62,7 +61,6 @@ function findHandles(text) {
   words = words.filter((w) => w);
 
   let handles = [];
-  console.log(words);
   words.map((word) => {
     // @username@server.tld
     if (/^@[a-zA-Z0-9_\-]+@.+\.[a-zA-Z]+$/.test(word))
@@ -429,7 +427,7 @@ const app = Vue.createApp({
       this.known_instances = await cached_data.json();
       this.twitter_auth = true;
       this.loadProfile();
-      //this.loadFollowings();
+      this.loadFollowings();
       this.loadLists();
     }
   },
