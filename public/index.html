@@ -398,8 +398,8 @@
                       :href="`https://${domains[handle.handle.split('@')[2]].local_domain?domains[handle.handle.split('@')[2]].local_domain:handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
                       >{{handle.handle}}</a
                     >
-                    (<a :href="`https://twitter.com/${handle.username}`"></a
-                    >{{handle.username}})
+                    (<a target="_blank" :href="`https://twitter.com/${handle.username}`">{{handle.username}}</a
+                    >)
                     <div v-if="show_follow_buttons" class="buttons">
                       <span
                         v-for="profilehandle in accounts[profile.username]['handles']"

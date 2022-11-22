@@ -100,7 +100,7 @@ const app = Vue.createApp({
       twitter_auth: false,
       scanned_followers: false,
       display_accounts: false,
-      show_follow_buttons: true,
+      show_follow_buttons: false,
       error_message: "",
     };
   },
@@ -152,12 +152,6 @@ const app = Vue.createApp({
   methods: {
     processAccount(type, user) {
       let followings, follower, list;
-      // get list name from local user_lists
-      type.type == "list"
-        ? (list = this.user_lists.filter(
-            (list) => list.id_str == type.list_id
-          )[0].name)
-        : null;
       type.type == "followers" ? (follower = true) : null;
       type.type == "followings" ? (followings = true) : null;
 
@@ -171,7 +165,7 @@ const app = Vue.createApp({
           ? this.accounts[user.username].follower
           : follower;
         type.type == "list"
-          ? this.accounts[user.username].lists.push(list)
+          ? this.accounts[user.username].lists.push(type.list_name)
           : this.accounts[user.username].lists;
       } else {
         this.scan_count += 1;
@@ -186,7 +180,7 @@ const app = Vue.createApp({
           name: user.name,
           following: followings,
           follower: follower,
-          lists: [list],
+          lists: [type.list_name],
           handles: handles,
           location: user.location,
           description: user.description,
@@ -287,6 +281,7 @@ const app = Vue.createApp({
           } else {
             this.profile = data;
             this.processAccount("me", data);
+            this.checkDomains();
             this.scanned.push("Your profile");
           }
         });
@@ -302,7 +297,7 @@ const app = Vue.createApp({
               this.processAccount("followings", user)
             );
             this.checkDomains();
-            this.scanned.push(data.accounts.length + " followings");
+            this.scanned.push(", " + data.accounts.length + " followings");
             data.next_token && data.ratelimit_remaining > 0
               ? this.loadFollowings((next_token = data.next_token))
               : void 0;
@@ -320,7 +315,7 @@ const app = Vue.createApp({
           } else {
             data.accounts.map((user) => this.processAccount("followers", user));
             this.checkDomains();
-            this.scanned.push(data.accounts.length + " followers");
+            this.scanned.push(", " + data.accounts.length + " followers");
             this.scanned_followers = true;
             data.next_token && data.ratelimit_remaining > 0
               ? this.loadFollowers((next_token = data.next_token))
@@ -347,12 +342,15 @@ const app = Vue.createApp({
           if ("error" in data) {
             console.log(data);
           } else {
-            data.accounts.map((user) =>
-              this.processAccount(this.selected_list.name, user)
-            );
+            data.accounts.map((user) => {
+              this.processAccount(
+                { type: "list", list_name: this.selected_list.name },
+                user
+              );
+            });
             this.checkDomains();
             this.scanned.push(
-              data.accounts.length + " " + this.selected_list.name
+              ", " + data.accounts.length + " " + this.selected_list.name
             );
             this.skipList();
           }
@@ -429,7 +427,8 @@ const app = Vue.createApp({
       this.known_instances = await cached_data.json();
       this.twitter_auth = true;
       this.loadProfile();
-      this.loadFollowings();
+      if (/^(staging|localhost|127\.0\.0\.1)/.test(location.hostname))
+        this.loadFollowings();
       this.loadLists();
     }
   },
