@@ -128,12 +128,6 @@
     "software_version": "3.5.3",
     "users_total": 3
   },
-  "worldpeace.social": {
-    "part_of_fediverse": 1,
-    "software_name": "akkoma",
-    "software_version": "3.3.1-72-gc0eecb55-develop",
-    "users_total": 4
-  },
   "chinwag.org": {
     "part_of_fediverse": 1,
     "local_domain": "social.chinwag.org",
@@ -1227,14 +1221,6 @@
     "software_name": "mastodon",
     "software_version": "3.5.3",
     "users_total": 2
-  },
-  "techies.social": {
-    "part_of_fediverse": 1,
-    "openRegistrations": 1,
-    "local_domain": "techies.social",
-    "software_name": "mastodon",
-    "software_version": "3.5.3",
-    "users_total": 5
   },
   "tath.am": {
     "part_of_fediverse": 1,
@@ -29149,5 +29135,964 @@
     "software_name": "mastodon",
     "software_version": "4.0.2",
     "users_total": 40
+  },
+  "bln41.net": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "bln41.net",
+    "software_name": "gotosocial",
+    "software_version": "0.5.1-SNAPSHOT git-81c1fe0"
+  },
+  "worldpeace.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "software_name": "gotosocial",
+    "software_version": "v0.5.0 git-5210977"
+  },
+  "mastodon.gastrokon.com": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "software_name": "mastodon",
+    "software_version": "4.0.1",
+    "users_total": 38
+  },
+  "mastodon.3dgo.net": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "mastodon.3dgo.net",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "realize.be": {
+    "part_of_fediverse": 1,
+    "local_domain": "realize.be",
+    "software_name": "drupal",
+    "software_version": "1.0.0-alpha3",
+    "users_total": 1
+  },
+  "lesbian.energy": {
+    "part_of_fediverse": 1,
+    "software_name": "misskey",
+    "software_version": "12.119.0",
+    "users_total": 2824
+  },
+  "effektio.org": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "mastodon.effektio.org",
+    "software_name": "mastodon",
+    "software_version": "4.0.0rc3",
+    "users_total": 2
+  },
+  "social.btbytes.com": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.btbytes.com",
+    "software_name": "gotosocial",
+    "software_version": "v0.5.0 git-be3d999"
+  },
+  "fedi.olly.xyz": {
+    "part_of_fediverse": 1,
+    "local_domain": "fedi.olly.xyz",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "wxcloud.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "wxcloud.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 19
+  },
+  "booknerds.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "booknerds.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "opsone.social": {
+    "part_of_fediverse": 1,
+    "local_domain": "opsone.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 4
+  },
+  "lafriks.id.lv": {
+    "part_of_fediverse": 1,
+    "local_domain": "lafriks.id.lv",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "social.calidris.lv": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.calidris.lv",
+    "software_name": "mastodon",
+    "software_version": "3.4.6",
+    "users_total": 2
+  },
+  "freemasonry.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "freemasonry.social",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 50
+  },
+  "unix.family": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "unix.family",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "m.divita.eu": {
+    "part_of_fediverse": 1,
+    "local_domain": "m.divita.eu",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "carpdiem.online": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "carpdiem.online",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "ceilidh.online": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "ceilidh.online",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "nullpointer.org": {
+    "part_of_fediverse": 1,
+    "local_domain": "nullpointer.org",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 3
+  },
+  "mastodon.muito.top": {
+    "part_of_fediverse": 1,
+    "local_domain": "mastodon.muito.top",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 1
+  },
+  "konsonantenboy.com": {
+    "part_of_fediverse": 1,
+    "local_domain": "mastodon.online",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 164671
+  },
+  "mastodon.wickflix.online": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "mastodon.wickflix.online",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "social.tylerjfisher.com": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.tylerjfisher.com",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "allistodon.xyz": {
+    "part_of_fediverse": 1,
+    "local_domain": "allistodon.xyz",
+    "software_name": "pleroma",
+    "software_version": "2.4.4",
+    "users_total": 1
+  },
+  "kvalhe.im": {
+    "part_of_fediverse": 1,
+    "local_domain": "mastodon.kvalhe.im",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "goto.fi": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "goto.fi",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "pleroma.debian.social": {
+    "part_of_fediverse": 1,
+    "local_domain": "pleroma.debian.social",
+    "software_name": "pleroma",
+    "software_version": "2.4.51-339-g753a9b3f",
+    "users_total": 53
+  },
+  "dmaus.name": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "openbiblio.social",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 760
+  },
+  "io.mwl.io": {
+    "part_of_fediverse": 1,
+    "local_domain": "io.mwl.io",
+    "software_name": "hometown",
+    "software_version": "1.0.7+3.5.5",
+    "users_total": 1
+  },
+  "ivor.org": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.ivor.org",
+    "software_name": "mastodon",
+    "software_version": "4.0.1+glitch",
+    "users_total": 1
+  },
+  "mastodon.tty.cat": {
+    "part_of_fediverse": 1,
+    "local_domain": "mastodon.tty.cat",
+    "software_name": "mastodon",
+    "software_version": "4.0.1+glitch",
+    "users_total": 2
+  },
+  "social.matteroffact.ca": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.matteroffact.ca",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 3
+  },
+  "hivemind.plus": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "hivemind.plus",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "thegathering.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "thegathering.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 7
+  },
+  "masto.nd2.uk": {
+    "part_of_fediverse": 1,
+    "local_domain": "masto.nd2.uk",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 3
+  },
+  "social.malolepszy.org": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.malolepszy.org",
+    "software_name": "gotosocial",
+    "software_version": "0.5.1-SNAPSHOT git-81c1fe0"
+  },
+  "social.linuxburken.se": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.linuxburken.se",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "yearg.in": {
+    "part_of_fediverse": 1,
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "toet.dnzm.nl": {
+    "part_of_fediverse": 1,
+    "local_domain": "toet.dnzm.nl",
+    "software_name": "gotosocial",
+    "software_version": "0.5.1-SNAPSHOT git-81c1fe0"
+  },
+  "posting.institute": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "posting.institute",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "mastodon.thebeeches.house": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "mastodon.thebeeches.house",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "guild.pmdcollab.org": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "guild.pmdcollab.org",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 83
+  },
+  "blasmusik.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "blasmusik.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 4
+  },
+  "robotconspirator.com": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "mastodon.robotconspirator.com",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "mastodon.ursinn.dev": {
+    "part_of_fediverse": 1,
+    "local_domain": "mastodon.ursinn.dev",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "clrk.space": {
+    "part_of_fediverse": 1,
+    "local_domain": "clrk.space",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "animeforlife.eu": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "animeforlife.eu",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "pinksection.xyz": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "pinksection.xyz",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 3
+  },
+  "retrogaming.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "retrogaming.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 9
+  },
+  "hawaiidiff.com": {
+    "part_of_fediverse": 1,
+    "local_domain": "hawaiidiff.com",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 2
+  },
+  "bird.rodeo": {
+    "part_of_fediverse": 1,
+    "local_domain": "bird.rodeo",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "social.openrightsgroup.org": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.openrightsgroup.org",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 3
+  },
+  "washcaps.fans": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "washcaps.fans",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 2
+  },
+  "misskey.shoro.no": {
+    "part_of_fediverse": 1,
+    "local_domain": "misskey.shoro.no",
+    "software_name": "misskey",
+    "software_version": "12.119.0",
+    "users_total": 2
+  },
+  "fortunaexmachina.com": {
+    "part_of_fediverse": 1,
+    "local_domain": "fortunaexmachina.com",
+    "software_name": "mastodon",
+    "software_version": "4.0.1",
+    "users_total": 1
+  },
+  "vanjacosic.com": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "infosec.exchange",
+    "software_name": "mastodon",
+    "software_version": "4.0.2+glitch",
+    "users_total": 30722
+  },
+  "superheronecromancer.games": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "superheronecromancer.games",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "fim.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "fim.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 60
+  },
+  "geekhaven.social": {
+    "part_of_fediverse": 1,
+    "local_domain": "geekhaven.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2+glitch",
+    "users_total": 5
+  },
+  "piou.foolbazar.eu": {
+    "part_of_fediverse": 1,
+    "local_domain": "piou.foolbazar.eu",
+    "software_name": "gotosocial",
+    "software_version": "0.5.2"
+  },
+  "slackworks.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "slackworks.social",
+    "software_name": "pleroma",
+    "software_version": "2.4.53-883-g1b0e47b7-develop",
+    "users_total": 9
+  },
+  "arthropod.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "arthropod.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.1",
+    "users_total": 10
+  },
+  "mastodon.prettyrequiem.com": {
+    "part_of_fediverse": 1,
+    "local_domain": "mastodon.prettyrequiem.com",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 2
+  },
+  "serenityos.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "serenityos.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 14
+  },
+  "evansims.com": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.evansims.com",
+    "software_name": "pleroma",
+    "software_version": "2.4.53-1957-g4f61f19f.develop+soapbox",
+    "users_total": 1
+  },
+  "masto.measure.chat": {
+    "part_of_fediverse": 1,
+    "local_domain": "masto.measure.chat",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 3
+  },
+  "mastodon.oysta.au": {
+    "part_of_fediverse": 1,
+    "local_domain": "mastodon.oysta.au",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 2
+  },
+  "mtdn.anyqn.com": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "mtdn.anyqn.com",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 3
+  },
+  "awesome.computer": {
+    "part_of_fediverse": 1,
+    "local_domain": "awesome.computer",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "meo.ws": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "awawa.meo.ws",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "x86.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "x86.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 3
+  },
+  "lauderdale.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "lauderdale.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 3
+  },
+  "artsculture.media": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "talk.artsculture.media",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 8
+  },
+  "mastodon.lwr.wtf": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "mastodon.lwr.wtf",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 9
+  },
+  "supertails.social": {
+    "part_of_fediverse": 1,
+    "local_domain": "supertails.social",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 5
+  },
+  "merkel.info": {
+    "part_of_fediverse": 1,
+    "local_domain": "mastodon.merkel.info",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "libori.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "libori.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 14
+  },
+  "parkpioneer.com": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "social.parkpioneer.com",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "knottywolf.sexy": {
+    "part_of_fediverse": 1,
+    "local_domain": "knottywolf.sexy",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "terere.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "terere.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 27
+  },
+  "mi.cbrx.io": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "mi.cbrx.io",
+    "software_name": "misskey",
+    "software_version": "12.119.0-CBR-2209.6plus",
+    "users_total": 82
+  },
+  "piupiupiu.com.br": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "piupiupiu.com.br",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 31
+  },
+  "ctx.red": {
+    "part_of_fediverse": 1,
+    "local_domain": "ctx.red",
+    "software_name": "mastodon",
+    "software_version": "4.0.2+glitch",
+    "users_total": 2
+  },
+  "dogsports.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "dogsports.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.1",
+    "users_total": 43
+  },
+  "latex.haus": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "latex.haus",
+    "software_name": "pixelfed",
+    "software_version": "0.11.4",
+    "users_total": 4
+  },
+  "topenddevs.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "topenddevs.social",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 2
+  },
+  "blackrock.city": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 124
+  },
+  "adtech.life": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "adtech.life",
+    "software_name": "mastodon",
+    "software_version": "4.0.1",
+    "users_total": 1
+  },
+  "arsenalfc.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "arsenalfc.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 25
+  },
+  "kijak.co": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "kijak.co",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 1
+  },
+  "hacktastic.org": {
+    "part_of_fediverse": 1,
+    "local_domain": "fed.hacktastic.org",
+    "software_name": "gotosocial",
+    "software_version": "0.5.1-SNAPSHOT git-4a95385"
+  },
+  "sokkah.net": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "sokkah.net",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "sandr.ca": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "social.vivaldi.net",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 7604
+  },
+  "techfieldday.net": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "techfieldday.net",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 14
+  },
+  "confraria.me": {
+    "part_of_fediverse": 1,
+    "local_domain": "fediverse.confraria.me",
+    "software_name": "gotosocial",
+    "software_version": "0.5.1-SNAPSHOT git-81c1fe0"
+  },
+  "toot.cloud": {
+    "part_of_fediverse": 1,
+    "local_domain": "toot.cloud",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "oldfriends.live": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "oldfriends.live",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "techie.community": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "techie.community",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 49
+  },
+  "saskodon.ca": {
+    "part_of_fediverse": 1,
+    "local_domain": "saskodon.ca",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 2
+  },
+  "mastodon.jiaworkspace.com": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "mastodon.jiaworkspace.com",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "left-tusk.com": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "left-tusk.com",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 9
+  },
+  "h-net.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "h-net.social",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 129
+  },
+  "toot.empathyintech.com": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "toot.empathyintech.com",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "halans.com": {
+    "part_of_fediverse": 1,
+    "local_domain": "mastodon.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 879473
+  },
+  "halans.com.au": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "aus.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 19450
+  },
+  "trans.enby.town": {
+    "part_of_fediverse": 1,
+    "local_domain": "trans.enby.town",
+    "software_name": "akkoma",
+    "software_version": "3.3.1-397-ge7487ad8-develop",
+    "users_total": 7
+  },
+  "nerd.net": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.nerd.net",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "community.digitalcollections.nyc": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "community.digitalcollections.nyc",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "is.a.horrific.dev": {
+    "part_of_fediverse": 1,
+    "local_domain": "is.a.horrific.dev",
+    "software_name": "mastodon",
+    "software_version": "4.0.2+glitch",
+    "users_total": 2
+  },
+  "linguists.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "linguists.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 3
+  },
+  "gamerscharisma.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "gamerscharisma.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 5
+  },
+  "jordanh.net": {
+    "part_of_fediverse": 1,
+    "local_domain": "fedi.jordanh.net",
+    "software_name": "mastodon",
+    "software_version": "4.0.1",
+    "users_total": 1
+  },
+  "rochelle.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "rochelle.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "zteo.com": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "social.zteo.com",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "vonsee.de": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "vonsee.de",
+    "software_name": "mastodon",
+    "software_version": "4.0.0",
+    "users_total": 2
+  },
+  "andoria.space": {
+    "part_of_fediverse": 1,
+    "local_domain": "andoria.space",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 3
+  },
+  "social.rverse.club": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.rverse.club",
+    "software_name": "misskey",
+    "software_version": "12.119.0",
+    "users_total": 2
+  },
+  "mastodon.transportevolved.com": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "mastodon.transportevolved.com",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 6
+  },
+  "faked.org": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "mastodon.faked.org",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "tooter.wishy.co.uk": {
+    "part_of_fediverse": 1,
+    "local_domain": "tooter.wishy.co.uk",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "social.kerkour.com": {
+    "part_of_fediverse": 1,
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "mastodon.dystroy.org": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "mastodon.dystroy.org",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 4
+  },
+  "social.full-cyber.com": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "social.full-cyber.com",
+    "software_name": "pleroma",
+    "software_version": "2.4.4",
+    "users_total": 3
+  },
+  "kade.photos": {
+    "part_of_fediverse": 1,
+    "local_domain": "chaos.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 10315
+  },
+  "social.g5t.de": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.g5t.de",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "datastory.cz": {
+    "part_of_fediverse": 1,
+    "local_domain": "gts.datastory.cz",
+    "software_name": "gotosocial",
+    "software_version": "0.5.2 git-c31f219"
+  },
+  "babb.be": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "mastodon.babb.be",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 13
+  },
+  "mastodon.thirring.org": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "mastodon.thirring.org",
+    "software_name": "mastodon",
+    "software_version": "4.0.1",
+    "users_total": 26
   }
 }
