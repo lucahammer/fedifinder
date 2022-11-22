@@ -521,10 +521,10 @@ async function update_data(domain, handle = null, force = false) {
   let local_domain, wellknown, nodeinfo, error;
 
   local_domain = await get_local_domain(domain);
-  
+
   if (typeof local_domain === "object" && "status" in local_domain) {
     wellknown = await get_nodeinfo_url(domain);
-    if (wellknown && "status" in wellknown) {
+    if (wellknown == null || (wellknown && "status" in wellknown)) {
       let nodeinfo = {
         domain: domain,
         part_of_fediverse: 0,
@@ -536,9 +536,9 @@ async function update_data(domain, handle = null, force = false) {
     } else {
       local_domain = null;
     }
+  } else {
+    wellknown = await get_nodeinfo_url(local_domain);
   }
-  
-  wellknown = await get_nodeinfo_url(local_domain);
 
   if (wellknown && "nodeinfo_url" in wellknown) {
     let nodeinfo = await get_nodeinfo(wellknown.nodeinfo_url);
