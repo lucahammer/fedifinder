@@ -559,7 +559,8 @@ async function update_data(domain, handle = null, force = false) {
     };
     db_add(nodeinfo, force);
     return nodeinfo;
-  }
+  } else if (local_domain != null)
+    return { domain: domain, part_of_fediverse: 1, status: "no nodeinfo" };
   return { domain: domain, part_of_fediverse: 0, retries: 1 };
 }
 
@@ -713,7 +714,7 @@ async function get_local_domain(host_domain, redirect_count = 0) {
                   });
                 }
               } catch (err) {
-                console.log(err)
+                console.log(err);
                 resolve({ status: "well-known/host-meta broken" });
               }
             } else resolve({ status: ".well-known/host-meta not found" });
