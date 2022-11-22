@@ -43,31 +43,33 @@ function handleFromUrl(urlstring) {
 }
 
 function findHandles(text) {
+  console.log(text);
   // split text into string and check them for handles
 
   // remove weird characters and unicode font stuff
   text = text
     .replace(/[^\p{L}\p{N}\p{P}\p{Z}\n@\.^$]/gu, " ")
     .toLowerCase()
-    .normalize("NFKD");
+    .normalize("NFKD")
 
   // different separators people use
-  let words = text.split(/,|\s|“|#|\(|\)|'|》|\?|\n|\r|\t|・|\||…|\.\s|\s$/);
+  let words = text.split(/,|\s|“|#|\(|\)\|'|》|\?|\n|\r|\t|・|丨|\||…|\.\s|\s$/);
 
   // remove common false positives
   let unwanted_domains =
-    /gmail\.com(?:$|\/)|mixcloud|linktr\.ee(?:$|\/)|pinboard\.com(?:$|\/)|tutanota\.de(?:$|\/)|xing\.com(?:$|\/)|researchgate|about|bit\.ly(?:$|\/)|imprint|impressum|patreon|donate|blog|facebook|news|github|instagram|t\.me(?:$|\/)|medium\.com(?:$|\/)|t\.co(?:$|\/)|tiktok\.com(?:$|\/)|youtube\.com(?:$|\/)|pronouns\.page(?:$|\/)|mail@|observablehq|twitter\.com(?:$|\/)|contact@|kontakt@|protonmail|traewelling\.de(?:$|\/)|press@|support@|info@|pobox|hey\.com(?:$|\/)/;
+    /gmail\.com(?:$|\/)|mixcloud|linktr\.ee(?:$|\/)|pinboard\.com(?:$|\/)|tutanota\.de(?:$|\/)|xing\.com(?:$|\/)|researchgate|about|bit\.ly(?:$|\/)|imprint|impressum|patreon|donate|facebook|github|instagram|t\.me(?:$|\/)|medium\.com(?:$|\/)|t\.co(?:$|\/)|tiktok\.com(?:$|\/)|youtube\.com(?:$|\/)|pronouns\.page(?:$|\/)|mail@|observablehq|twitter\.com(?:$|\/)|contact@|kontakt@|protonmail|traewelling\.de(?:$|\/)|press@|support@|info@|pobox|hey\.com(?:$|\/)/;
   words = words.filter((word) => !unwanted_domains.test(word));
   words = words.filter((w) => w);
 
   let handles = [];
-
+  console.log(words);
   words.map((word) => {
     // @username@server.tld
-    if (/^@[a-zA-Z0-9_\-]+@.+\.[a-zA-Z]+$/.test(word)) handles.push(word);
+    if (/^@[a-zA-Z0-9_\-]+@.+\.[a-zA-Z]+$/.test(word))
+      handles.push(word.replace(":", " "));
     // some people don't include the initial @
-    else if (/^[a-zA-Z0-9_\-]+@.+\.[a-zA-Z|]+$/.test(word))
-      handles.push(`@${word}`);
+    else if (/^[a-zA-Z0-9_\-]+@.+\.[a-zA-Z|]+$/.test(word.replace(":", " ")))
+      handles.push(`@${word.replace(":", " ")}`);
     // server.tld/@username
     // friendica: sub.domain.tld/profile/name
     else if (
@@ -427,8 +429,7 @@ const app = Vue.createApp({
       this.known_instances = await cached_data.json();
       this.twitter_auth = true;
       this.loadProfile();
-      if (/^(staging|localhost|127\.0\.0\.1)/.test(location.hostname))
-        this.loadFollowings();
+      //this.loadFollowings();
       this.loadLists();
     }
   },
