@@ -393,7 +393,7 @@
               <div class="content">
                 <ol>
                   <li v-for="handle in data.handles">
-                    <a
+                    <a 
                       target="_blank"
                       :href="`https://${domains[handle.handle.split('@')[2]].local_domain?domains[handle.handle.split('@')[2]].local_domain:handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
                       >{{handle.handle}}</a

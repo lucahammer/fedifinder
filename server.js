@@ -518,15 +518,31 @@ function remove_domains_by_status(status) {
 }
 
 async function update_data(domain, handle = null, force = false) {
-  let local_domain, wellknown, nodeinfo;
+  let local_domain, wellknown, nodeinfo, error;
 
-  local_domain = await get_hostmeta(domain);
-  local_domain = local_domain.split("//")[1].split("/")[0];
-
+  local_domain = await get_local_domain(domain);
+  
+  if (typeof local_domain === "object" && "status" in local_domain) {
+    wellknown = await get_nodeinfo_url(domain);
+    if (wellknown && "status" in wellknown) {
+      let nodeinfo = {
+        domain: domain,
+        part_of_fediverse: 0,
+        retries: 1,
+        status: local_domain.status,
+      };
+      db_add(nodeinfo, force);
+      return nodeinfo;
+    } else {
+      local_domain = null;
+    }
+  }
+  
   wellknown = await get_nodeinfo_url(local_domain);
 
   if (wellknown && "nodeinfo_url" in wellknown) {
     let nodeinfo = await get_nodeinfo(wellknown.nodeinfo_url);
+
     if (nodeinfo) {
       if (local_domain) nodeinfo["local_domain"] = local_domain;
       nodeinfo["domain"] = domain;
@@ -640,8 +656,8 @@ async function url_from_handle(handle) {
   }
 }
 
-async function get_hostmeta(host_domain, redirect_count = 0) {
-  // get url of nodeinfo json
+async function get_local_domain(host_domain, redirect_count = 0) {
+  // get local domain from webfinger in host-meta
   return new Promise((resolve) => {
     let options = {
       method: "GET",
@@ -661,12 +677,17 @@ async function get_hostmeta(host_domain, redirect_count = 0) {
             (res.statusCode == 302 ||
               res.statusCode == 301 ||
               res.statusCode == 303) &&
-            redirect_count <= 3 // limit redirects to prevent circular ones
+            redirect_count <= 10 // limit redirects to prevent circular ones
           ) {
             redirect_count += 1;
             resolve(
-              get_hostmeta(res.headers.location.split("/")[2], redirect_count)
+              get_local_domain(
+                res.headers.location.split("/")[2],
+                redirect_count
+              )
             );
+          } else {
+            resolve({ status: res.statusCode });
           }
         } else {
           res.on("data", (d) => {
@@ -684,12 +705,17 @@ async function get_hostmeta(host_domain, redirect_count = 0) {
                   arrayNotation: false,
                   alternateTextNode: false,
                 });
-                resolve(data.XRD.Link.template);
+                try {
+                  resolve(data.XRD.Link.template.split("//")[1].split("/")[0]);
+                } catch (err) {
+                  resolve({
+                    status: "no webfinger template in .well-known/host-meta",
+                  });
+                }
               } catch (err) {
-                console.log(err);
-                resolve(null);
+                resolve({ status: err });
               }
-            } else resolve(null);
+            } else resolve({ status: ".well-known/host-meta not found" });
           });
         }
       })
@@ -725,7 +751,7 @@ async function get_nodeinfo_url(host_domain, redirect_count = 0) {
             (res.statusCode == 302 ||
               res.statusCode == 301 ||
               res.statusCode == 303) &&
-            redirect_count <= 3 // limit redirects to prevent circular ones
+            redirect_count <= 10 // limit redirects to prevent circular ones
           ) {
             redirect_count += 1;
             resolve(

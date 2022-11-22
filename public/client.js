@@ -246,7 +246,6 @@ const app = Vue.createApp({
         }
       }
       if (this.unchecked_domains.length > 0) {
-        console.log(this.unchecked_domains)
         this.unchecked_domains.forEach((domain) =>
           fetch(
             `${this.lookup_server}/api/check?handle=${domain.handle}&domain=${domain.domain}`

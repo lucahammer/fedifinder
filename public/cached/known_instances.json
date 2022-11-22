@@ -4,43 +4,5 @@
     "software_name": "wordpress",
     "software_version": "6.1.1",
     "users_total": 1
-  },
-  "systerserver.town": {
-    "part_of_fediverse": 1,
-    "openRegistrations": 1,
-    "local_domain": "systerserver.town",
-    "software_name": "mastodon",
-    "software_version": "4.0.2",
-    "users_total": 70
-  },
-  "botsin.space": {
-    "part_of_fediverse": 1,
-    "openRegistrations": 1,
-    "local_domain": "botsin.space",
-    "software_name": "mastodon",
-    "software_version": "4.0.2",
-    "users_total": 6234
-  },
-  "vis.social": {
-    "part_of_fediverse": 1,
-    "local_domain": "vis.social",
-    "software_name": "mastodon",
-    "software_version": "4.0.2",
-    "users_total": 6119
-  },
-  "det.social": {
-    "part_of_fediverse": 1,
-    "openRegistrations": 1,
-    "local_domain": "det.social",
-    "software_name": "mastodon",
-    "software_version": "4.0.2",
-    "users_total": 13247
-  },
-  "dlitz.net": {
-    "part_of_fediverse": 1,
-    "local_domain": "mastodon.dlitz.net",
-    "software_name": "mastodon",
-    "software_version": "4.0.2",
-    "users_total": 1
   }
 }
