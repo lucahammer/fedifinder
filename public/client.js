@@ -43,18 +43,16 @@ function handleFromUrl(urlstring) {
 }
 
 function findHandles(text) {
-  console.log(text);
   // split text into string and check them for handles
 
   // remove weird characters and unicode font stuff
   text = text
     .replace(/[^\p{L}\p{N}\p{P}\p{Z}\n@\.^$]/gu, " ")
     .toLowerCase()
-    .normalize("NFKD")
+    .normalize("NFKD");
 
   // different separators people use
-  let words = text.split(/,|\s|“|#|\(|\)\|'|》|\?|\n|\r|\t|・|丨|\||…|\.\s|\s$/);
-
+  let words = text.split(/,|\s|“|#|\(|\)|'|》|\?|\n|\r|\t|・|丨|\||…|\.\s|\s$/);
   // remove common false positives
   let unwanted_domains =
     /gmail\.com(?:$|\/)|mixcloud|linktr\.ee(?:$|\/)|pinboard\.com(?:$|\/)|tutanota\.de(?:$|\/)|xing\.com(?:$|\/)|researchgate|about|bit\.ly(?:$|\/)|imprint|impressum|patreon|donate|facebook|github|instagram|t\.me(?:$|\/)|medium\.com(?:$|\/)|t\.co(?:$|\/)|tiktok\.com(?:$|\/)|youtube\.com(?:$|\/)|pronouns\.page(?:$|\/)|mail@|observablehq|twitter\.com(?:$|\/)|contact@|kontakt@|protonmail|traewelling\.de(?:$|\/)|press@|support@|info@|pobox|hey\.com(?:$|\/)/;
@@ -62,7 +60,6 @@ function findHandles(text) {
   words = words.filter((w) => w);
 
   let handles = [];
-  console.log(words);
   words.map((word) => {
     // @username@server.tld
     if (/^@[a-zA-Z0-9_\-]+@.+\.[a-zA-Z]+$/.test(word))
