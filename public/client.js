@@ -60,6 +60,7 @@ function findHandles(text) {
   words = words.filter((w) => w);
 
   let handles = [];
+
   words.map((word) => {
     // @username@server.tld
     if (/^@[a-zA-Z0-9_\-]+@.+\.[a-zA-Z]+$/.test(word))
@@ -334,8 +335,12 @@ const app = Vue.createApp({
           }
         });
     },
-    loadList() {
-      fetch("/api/getList?listid=" + this.selected_list.id_str)
+    loadList(next_token = "", listid = "") {
+      if (next_token == "") {
+        listid = this.selected_list.id_str;
+        this.skipList();
+      }
+      fetch(`/api/getList?listid=${listid}&next_token=${next_token}`)
         .then((response) => response.json())
         .then((data) => {
           if ("error" in data) {
@@ -351,7 +356,9 @@ const app = Vue.createApp({
             this.scanned.push(
               ", " + data.accounts.length + " " + this.selected_list.name
             );
-            this.skipList();
+            data.next_token && data.ratelimit_remaining > 0
+              ? this.loadList((next_token = data.next_token), (listid = listid))
+              : void 0;
           }
         });
     },

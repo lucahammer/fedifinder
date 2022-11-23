@@ -714,7 +714,7 @@ async function get_local_domain(host_domain, redirect_count = 0) {
                   });
                 }
               } catch (err) {
-                console.log('xml error: ' + host_domain);
+                console.log("xml error: " + host_domain);
                 resolve({ status: "well-known/host-meta broken" });
               }
             } else resolve({ status: ".well-known/host-meta not found" });
@@ -914,13 +914,27 @@ app.get("/api/getList", async (req, res) => {
     ? (list_id = req.query.listid)
     : res.json({ error: "no list provided" });
   if ("user" in req) {
-    let client = create_twitter_client(req.user);
-    const data = await client.v2.listMembers(list_id, {
-      "user.fields": ["name", "description", "url", "location", "entities"],
-      expansions: ["pinned_tweet_id"],
-      "tweet.fields": ["text", "entities"],
-    });
-    processRequests({ type: "list", list_id: list_id }, data, res);
+    try {
+      let client = create_twitter_client(req.user);
+      let params = {
+        max_results: 100,
+        "user.fields": ["name", "description", "url", "location", "entities"],
+        expansions: ["pinned_tweet_id"],
+        "tweet.fields": ["text", "entities"],
+      };
+      "next_token" in req.query && req.query.next_token.length > 2
+        ? (params["pagination_token"] = req.query.next_token)
+        : void 0;
+      
+      const twitres = await client.v2.get(
+        `lists/${req.query.listid}/members`,
+        params,
+        { fullResponse: true }
+      );
+      processData({ type: "list", list_id: list_id }, twitres, res);
+    } catch (err) {
+      res.json(err);
+    }
   } else {
     res.json({ error: "not logged in" });
   }
@@ -988,10 +1002,10 @@ function processData(type, twitres, cb) {
     let pinned_tweet;
 
     if ("pinned_tweet_id" in user) {
-      const pinnedTweetInclude = twitres.data.includes.tweets.find(
+      let pinnedTweetInclude = twitres.data.includes.tweets.find(
         (tweet) => tweet.id == user.pinned_tweet_id
       );
-      if (pinned_tweet) {
+      if (pinnedTweetInclude) {
         pinned_tweet = pinnedTweetInclude.text;
         if (
           "entities" in pinnedTweetInclude &&
@@ -1023,6 +1037,7 @@ function processData(type, twitres, cb) {
       pinned_tweet: pinned_tweet,
     });
   });
+
 
   let ratelimit_remaining = twitres.rateLimit.remaining;
 
