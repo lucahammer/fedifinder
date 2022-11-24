@@ -12,7 +12,13 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-
+    <script>
+      if (location.protocol != "https:") {
+        location.href =
+          "https:" +
+          window.location.href.substring(window.location.protocol.length);
+      }
+    </script>
     <script src="/js/json2csv.js" type="text/javascript"></script>
     <script src="/js/tinytest.js" type="text/javascript"></script>
     <script src="/js/vue.prod.js" type="text/javascript"></script>
@@ -29,7 +35,7 @@
     >
       <div class="navbar-brand">
         <div class="navbar-item">
-          <a class="title" href="https://fedifinder.glitch.me/"
+          <a class="title" href="/"
             >Fedifinder<br />
             <h3 class="subtitle is-4">Join the Fediverse in 5 easy steps</h3>
           </a>
@@ -91,7 +97,7 @@
       </a>
     </div>
     <div>
-      <div v-if="error_message.length > 0" id="error" class="section">
+      <div v-if="error_message" id="error" class="section">
         <article class="message is-warning">
           <div class="message-header">
             <p>Error</p>
@@ -101,7 +107,15 @@
               aria-label="delete"
             ></button>
           </div>
-          <div class="message-body">{{error_message}}</div>
+          <div class="message-body">
+            {{error_message}}
+            <a href="/Auth/twitter" class="button is-small is-info">
+              <span class="icon">
+                <i class="fab fa-twitter"></i>
+              </span>
+              <strong class="has-text-white">Authorize Twitter</strong>
+            </a>
+          </div>
         </article>
       </div>
       <section class="section">
@@ -134,13 +148,17 @@
         <div
           v-if="(twitter_auth && unique_count <= 1) | unchecked_domains_count > 0"
         >
-          <progress class="progress is-large is-info" max="100">
+          <progress
+            v-if="!error_message"
+            class="progress is-large is-info"
+            max="100"
+          >
             Scanning accounts
           </progress>
         </div>
         <div v-if="domains">
           <ul>
-            <li v-for="data in sorted_domains">
+            <li v-for="data in sorted_domains.slice(0,10)">
               <span
                 v-if="data[0].openRegistrations === 1 && data[0].part_of_fediverse === 1"
               >
@@ -156,20 +174,50 @@
                 <span v-else>registration closed</span>
               </span>
             </li>
-            <li v-for="[domain, data] of Object.entries(domains)">
+            <li
+              v-if="show_all_instances"
+              v-for="data in sorted_domains.slice(10,sorted_domains.length+1)"
+            >
               <span
-                v-if="data.openRegistrations === 0 && data.part_of_fedivers === 1"
+                v-if="data[0].openRegistrations === 1 && data[0].part_of_fediverse === 1"
               >
-                <a class="title is-5" :href="`https://${domain}`">{{domain}}</a>
-                {{data.software_name}} {{data.software_version}},
-                {{data.users_total}} users, {{data.handles.length}} of your
+                <a class="title is-5" :href="`https://${data[0].local_domain}`"
+                  >{{data[0].domain}}</a
+                >
+                {{data[0].software_name}} {{data[0].software_version}},
+                {{data[0].users_total}} users, {{data[0].contacts}} of your
                 contacts,
-                <span v-if="data.openRegistration == 1"
-                  ><strong>registration open</strong></span
-                ><span v-else>registration closed</span></span
+                <span v-if="data[0].openRegistrations == 1">
+                  <strong>registration open</strong>
+                </span>
+                <span v-else>registration closed</span>
+              </span>
+            </li>
+            <li v-if="show_all_instances" v-for="data in sorted_domains">
+              <span
+                v-if="!(data[0]?.openRegistrations) && data[0].part_of_fediverse === 1"
               >
+                <a class="title is-5" :href="`https://${data[0].local_domain}`"
+                  >{{data[0].domain}}</a
+                >
+                {{data[0].software_name}} {{data[0].software_version}},
+                {{data[0].users_total}} users, {{data[0].contacts}} of your
+                contacts,
+                <span v-if="data[0].openRegistrations == 1">
+                  <strong>registration open</strong>
+                </span>
+                <span v-else>registration closed</span>
+              </span>
             </li>
           </ul>
+          <button
+            v-if="sorted_domains.length >= 10"
+            @click="toggleShowInstances()"
+            class="button is-success is-outlined"
+          >
+            <span v-if="show_all_instances">Show less</span>
+            <span v-else>Show more</span>
+          </button>
         </div>
       </section>
 
@@ -320,7 +368,7 @@
       <section class="section">
         <h2 class="title is-4">5. Import your network</h2>
         <h3 class="subtitle is-5">
-          Go to the settings of your Fediverse account and import your whole
+          Go to the preferences of your Fediverse account and import your whole
           network at once.
         </h3>
         <div v-if="profile">
@@ -393,12 +441,15 @@
               <div class="content">
                 <ol>
                   <li v-for="handle in data.handles">
-                    <a 
+                    <a
                       target="_blank"
                       :href="`https://${domains[handle.handle.split('@')[2]].local_domain?domains[handle.handle.split('@')[2]].local_domain:handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
                       >{{handle.handle}}</a
                     >
-                    (<a target="_blank" :href="`https://twitter.com/${handle.username}`">{{handle.username}}</a
+                    (<a
+                      target="_blank"
+                      :href="`https://twitter.com/${handle.username}`"
+                      >{{handle.username}}</a
                     >)
                     <div v-if="show_follow_buttons" class="buttons">
                       <span
@@ -508,7 +559,7 @@
             not).<br />
             It then shows you a list of the instances it found as well as the
             individual accounts. You can export that list and import it in the
-            settings of the web app of your instance.
+            preferences of the web app of your instance.
           </p>
           <br />
           <h2 class="title is-4">Privacy and Security</h2>
