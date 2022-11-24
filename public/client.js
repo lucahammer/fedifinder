@@ -278,7 +278,8 @@ const app = Vue.createApp({
         .then((response) => response.json())
         .then((data) => {
           if ("error" in data) {
-            this.error_message = data;
+            console.log(data)
+            this.error_message = data.error;
           } else {
             this.profile = data;
             this.processAccount("me", data);
@@ -292,7 +293,7 @@ const app = Vue.createApp({
         .then((response) => response.json())
         .then((data) => {
           if ("error" in data) {
-            this.error_message = data;
+            this.error_message = data.error;
           } else {
             data.accounts.map((user) =>
               this.processAccount("followings", user)
@@ -312,7 +313,7 @@ const app = Vue.createApp({
         .then((response) => response.json())
         .then((data) => {
           if ("error" in data) {
-            this.error_message = data;
+            this.error_message = data.error;
           } else {
             data.accounts.map((user) => this.processAccount("followers", user));
             this.checkDomains();
@@ -431,11 +432,15 @@ const app = Vue.createApp({
         ? (this.lookup_server = "https://" + window.location.hostname)
         : (this.lookup_server = lookup_data.lookup_server);
       let cached_data = await fetch("/cached/known_instances.json");
-      this.known_instances = await cached_data.json();
-      this.twitter_auth = true;
-      this.loadProfile();
-      this.loadFollowings();
-      this.loadLists();
+      try {
+        this.known_instances = await cached_data.json();
+        this.twitter_auth = true;
+        this.loadProfile();
+        this.loadFollowings();
+        this.loadLists();
+      } catch (err) {
+        this.logoff();
+      }
     }
   },
 });

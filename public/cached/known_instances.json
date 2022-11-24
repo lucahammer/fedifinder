@@ -32437,5 +32437,91 @@
     "software_name": "mastodon",
     "software_version": "4.0.2",
     "users_total": 1
+  },
+  "maique.lol": {
+    "part_of_fediverse": 1,
+    "local_domain": "maique.lol",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "quent1.fr": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.quent1.fr",
+    "software_name": "akkoma",
+    "software_version": "3.4.0-0-gf91b89673",
+    "users_total": 1
+  },
+  "tusker.social": {
+    "part_of_fediverse": 1,
+    "local_domain": "tusker.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "dje.li": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.dje.li",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "misskey.space": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "misskey.space",
+    "software_name": "misskey",
+    "software_version": "12.119.0",
+    "users_total": 35
+  },
+  "social.bitfolk.com": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.bitfolk.com",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1
+  },
+  "ajar.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "ajar.social",
+    "software_name": "mastodon",
+    "software_version": "3.5.3",
+    "users_total": 2
+  },
+  "dutchcaribbean.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "dutchcaribbean.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.1",
+    "users_total": 2
+  },
+  "www.emojiency.com": {
+    "part_of_fediverse": 1,
+    "software_name": "wordpress",
+    "software_version": "6.1.1",
+    "users_total": 3
+  },
+  "www.zipbangwow.com": {
+    "part_of_fediverse": 1,
+    "software_name": "wordpress",
+    "software_version": "6.1.1",
+    "users_total": 2
+  },
+  "screenshake.io": {
+    "part_of_fediverse": 1,
+    "local_domain": "screenshake.io",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
+  },
+  "poststoffarm.de": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "poststoffarm.de",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 2
   }
 }

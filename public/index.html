@@ -97,7 +97,7 @@
       </a>
     </div>
     <div>
-      <div v-if="error_message.length > 0" id="error" class="section">
+      <div v-if="error_message" id="error" class="section">
         <article class="message is-warning">
           <div class="message-header">
             <p>Error</p>
@@ -107,7 +107,15 @@
               aria-label="delete"
             ></button>
           </div>
-          <div class="message-body">{{error_message}}</div>
+          <div class="message-body">
+            {{error_message}}
+            <a href="/Auth/twitter" class="button is-small is-info">
+              <span class="icon">
+                <i class="fab fa-twitter"></i>
+              </span>
+              <strong class="has-text-white">Authorize Twitter</strong>
+            </a>
+          </div>
         </article>
       </div>
       <section class="section">
@@ -140,7 +148,7 @@
         <div
           v-if="(twitter_auth && unique_count <= 1) | unchecked_domains_count > 0"
         >
-          <progress class="progress is-large is-info" max="100">
+          <progress v-if="!error_message" class="progress is-large is-info" max="100">
             Scanning accounts
           </progress>
         </div>
