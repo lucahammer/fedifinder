@@ -148,13 +148,17 @@
         <div
           v-if="(twitter_auth && unique_count <= 1) | unchecked_domains_count > 0"
         >
-          <progress v-if="!error_message" class="progress is-large is-info" max="100">
+          <progress
+            v-if="!error_message"
+            class="progress is-large is-info"
+            max="100"
+          >
             Scanning accounts
           </progress>
         </div>
         <div v-if="domains">
           <ul>
-            <li v-for="data in sorted_domains">
+            <li v-for="data in sorted_domains.slice(0,10)">
               <span
                 v-if="data[0].openRegistrations === 1 && data[0].part_of_fediverse === 1"
               >
@@ -170,20 +174,50 @@
                 <span v-else>registration closed</span>
               </span>
             </li>
-            <li v-for="[domain, data] of Object.entries(domains)">
+            <li
+              v-if="show_all_instances"
+              v-for="data in sorted_domains.slice(10,sorted_domains.length+1)"
+            >
               <span
-                v-if="data.openRegistrations === 0 && data.part_of_fedivers === 1"
+                v-if="data[0].openRegistrations === 1 && data[0].part_of_fediverse === 1"
               >
-                <a class="title is-5" :href="`https://${domain}`">{{domain}}</a>
-                {{data.software_name}} {{data.software_version}},
-                {{data.users_total}} users, {{data.handles.length}} of your
+                <a class="title is-5" :href="`https://${data[0].local_domain}`"
+                  >{{data[0].domain}}</a
+                >
+                {{data[0].software_name}} {{data[0].software_version}},
+                {{data[0].users_total}} users, {{data[0].contacts}} of your
                 contacts,
-                <span v-if="data.openRegistration == 1"
-                  ><strong>registration open</strong></span
-                ><span v-else>registration closed</span></span
+                <span v-if="data[0].openRegistrations == 1">
+                  <strong>registration open</strong>
+                </span>
+                <span v-else>registration closed</span>
+              </span>
+            </li>
+            <li v-if="show_all_instances" v-for="data in sorted_domains">
+              <span
+                v-if="!(data[0]?.openRegistrations) && data[0].part_of_fediverse === 1"
               >
+                <a class="title is-5" :href="`https://${data[0].local_domain}`"
+                  >{{data[0].domain}}</a
+                >
+                {{data[0].software_name}} {{data[0].software_version}},
+                {{data[0].users_total}} users, {{data[0].contacts}} of your
+                contacts,
+                <span v-if="data[0].openRegistrations == 1">
+                  <strong>registration open</strong>
+                </span>
+                <span v-else>registration closed</span>
+              </span>
             </li>
           </ul>
+          <button
+            v-if="sorted_domains.length >= 10"
+            @click="toggleShowInstances()"
+            class="button is-success is-outlined"
+          >
+            <span v-if="show_all_instances">Show less</span>
+            <span v-else>Show more</span>
+          </button>
         </div>
       </section>
 

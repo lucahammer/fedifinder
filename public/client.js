@@ -103,6 +103,7 @@ const app = Vue.createApp({
       display_accounts: false,
       show_follow_buttons: false,
       error_message: "",
+      show_all_instances: false,
     };
   },
   computed: {
@@ -278,7 +279,7 @@ const app = Vue.createApp({
         .then((response) => response.json())
         .then((data) => {
           if ("error" in data) {
-            console.log(data)
+            console.log(data);
             this.error_message = data.error;
           } else {
             this.profile = data;
@@ -417,6 +418,9 @@ const app = Vue.createApp({
     },
     toggleFollowButtons() {
       this.show_follow_buttons = !this.show_follow_buttons;
+    },
+    toggleShowInstances() {
+      this.show_all_instances = !this.show_all_instances;
     },
   },
   async mounted() {
