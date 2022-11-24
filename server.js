@@ -879,33 +879,41 @@ app.get("/api/lookupServer", async (req, res) => {
 });
 
 app.get("/api/loadLists", async (req, res) => {
-  let client = create_twitter_client(req.user);
-  let lists = [];
+  if ("user" in req) {
+    try {
+      let client = create_twitter_client(req.user);
+      let lists = [];
 
-  // get lists owned by user
-  const ownedLists = await client.v2.listsOwned(req.user.id, {
-    "list.fields": ["member_count"],
-  });
-  for await (const list of ownedLists) {
-    lists.push({
-      name: list["name"],
-      id_str: list["id"],
-      member_count: list["member_count"],
-    });
-  }
+      // get lists owned by user
+      const ownedLists = await client.v2.listsOwned(req.user.id, {
+        "list.fields": ["member_count"],
+      });
+      for await (const list of ownedLists) {
+        lists.push({
+          name: list["name"],
+          id_str: list["id"],
+          member_count: list["member_count"],
+        });
+      }
 
-  // get subscribed lists of user
-  const followedLists = await client.v2.listFollowed(req.user.id, {
-    "list.fields": ["member_count"],
-  });
-  for await (const list of followedLists) {
-    lists.push({
-      name: list["name"],
-      id_str: list["id"],
-      member_count: list["member_count"],
-    });
+      // get subscribed lists of user
+      const followedLists = await client.v2.listFollowed(req.user.id, {
+        "list.fields": ["member_count"],
+      });
+      for await (const list of followedLists) {
+        lists.push({
+          name: list["name"],
+          id_str: list["id"],
+          member_count: list["member_count"],
+        });
+      }
+      res.json(lists);
+    } catch (err) {
+      res.json(err);
+    }
+  } else {
+    res.json({ error: "not logged in" });
   }
-  res.json(lists);
 });
 
 app.get("/api/getList", async (req, res) => {
@@ -925,7 +933,7 @@ app.get("/api/getList", async (req, res) => {
       "next_token" in req.query && req.query.next_token.length > 2
         ? (params["pagination_token"] = req.query.next_token)
         : void 0;
-      
+
       const twitres = await client.v2.get(
         `lists/${req.query.listid}/members`,
         params,
@@ -1037,7 +1045,6 @@ function processData(type, twitres, cb) {
       pinned_tweet: pinned_tweet,
     });
   });
-
 
   let ratelimit_remaining = twitres.rateLimit.remaining;
 
