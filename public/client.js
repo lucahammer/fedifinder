@@ -338,12 +338,13 @@ const app = Vue.createApp({
           }
         });
     },
-    loadList(next_token = "", listid = "") {
+    loadList(next_token = "", list_id = "", list_name) {
       if (next_token == "") {
-        listid = this.selected_list.id_str;
+        list_id = this.selected_list.id_str;
+        list_name = this.selected_list.name;
         this.skipList();
       }
-      fetch(`/api/getList?listid=${listid}&next_token=${next_token}`)
+      fetch(`/api/getList?listid=${list_id}&next_token=${next_token}`)
         .then((response) => response.json())
         .then((data) => {
           if ("error" in data) {
@@ -351,16 +352,20 @@ const app = Vue.createApp({
           } else {
             data.accounts.map((user) => {
               this.processAccount(
-                { type: "list", list_name: this.selected_list.name },
+                { type: "list", list_name: list_name },
                 user
               );
             });
             this.checkDomains();
             this.scanned.push(
-              ", " + data.accounts.length + " " + this.selected_list.name
+              ", " + data.accounts.length + " " + list_name
             );
             data.next_token && data.ratelimit_remaining > 0
-              ? this.loadList((next_token = data.next_token), (listid = listid))
+              ? this.loadList(
+                  (next_token = data.next_token),
+                  (list_id = list_id),
+                  (list_name = list_name)
+                )
               : void 0;
           }
         });
