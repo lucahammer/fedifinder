@@ -338,7 +338,7 @@ const app = Vue.createApp({
           }
         });
     },
-    loadList(next_token = "", list_id = "", list_name) {
+    loadList(next_token = "", list_id = "", list_name="") {
       if (next_token == "") {
         list_id = this.selected_list.id_str;
         list_name = this.selected_list.name;
