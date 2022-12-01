@@ -170,7 +170,7 @@
         </div>
         <div v-if="domains">
           <ul>
-            <li v-for="data in sorted_domains.slice(0,10)">
+            <li v-for="data in sorted_domains.slice(0,20)">
               <span
                 v-if="data[0].openRegistrations === 1 && data[0].part_of_fediverse === 1"
               >
@@ -188,7 +188,7 @@
             </li>
             <li
               v-if="show_all_instances"
-              v-for="data in sorted_domains.slice(10,sorted_domains.length+1)"
+              v-for="data in sorted_domains.slice(20,sorted_domains.length+1)"
             >
               <span
                 v-if="data[0].openRegistrations === 1 && data[0].part_of_fediverse === 1"
@@ -413,7 +413,7 @@
         </div>
       </section>
 
-      <section class="section">
+      <section v-if="profile" class="section">
         <h2 class="title is-4">Your network in the Fediverse</h2>
         <h3 class="subtitle is-5">
           Here are the found handles sorted by their instance.

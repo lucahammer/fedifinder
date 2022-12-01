@@ -56,7 +56,7 @@ function findHandles(text) {
   words = words.map((w) => w.replace(/^:|\/$/g, ""));
   // remove common false positives
   let unwanted_domains =
-    /gmail\.com(?:$|\/)|mixcloud|linktr\.ee(?:$|\/)|pinboard\.com(?:$|\/)|tutanota\.de(?:$|\/)|xing\.com(?:$|\/)|researchgate|about|bit\.ly(?:$|\/)|imprint|impressum|patreon|donate|facebook|github|instagram|t\.me(?:$|\/)|medium\.com(?:$|\/)|t\.co(?:$|\/)|tiktok\.com(?:$|\/)|youtube\.com(?:$|\/)|pronouns\.page(?:$|\/)|mail@|observablehq|twitter\.com(?:$|\/)|contact@|kontakt@|protonmail|traewelling\.de(?:$|\/)|press@|support@|info@|pobox|hey\.com(?:$|\/)/;
+    /gmail\.com(?:$|\/)|mixcloud|linktr\.ee(?:$|\/)|pinboard\.com(?:$|\/)|tutanota\.de(?:$|\/)|xing\.com(?:$|\/)|researchgate|about|bit\.ly(?:$|\/)|imprint|impressum|patreon|donate|facebook|github|instagram|medium\.com(?:$|\/)|t\.co(?:$|\/)|tiktok\.com(?:$|\/)|youtube\.com(?:$|\/)|pronouns\.page(?:$|\/)|mail@|observablehq|twitter\.com(?:$|\/)|contact@|kontakt@|protonmail|traewelling\.de(?:$|\/)|press@|support@|info@|pobox|hey\.com(?:$|\/)/;
   words = words.filter((word) => !unwanted_domains.test(word));
   words = words.filter((w) => w);
 
@@ -338,7 +338,7 @@ const app = Vue.createApp({
           }
         });
     },
-    loadList(next_token = "", list_id = "", list_name="") {
+    loadList(next_token = "", list_id = "", list_name = "") {
       if (next_token == "") {
         list_id = this.selected_list.id_str;
         list_name = this.selected_list.name;
@@ -351,15 +351,10 @@ const app = Vue.createApp({
             console.log(data);
           } else {
             data.accounts.map((user) => {
-              this.processAccount(
-                { type: "list", list_name: list_name },
-                user
-              );
+              this.processAccount({ type: "list", list_name: list_name }, user);
             });
             this.checkDomains();
-            this.scanned.push(
-              ", " + data.accounts.length + " " + list_name
-            );
+            this.scanned.push(", " + data.accounts.length + " " + list_name);
             data.next_token && data.ratelimit_remaining > 0
               ? this.loadList(
                   (next_token = data.next_token),
@@ -445,7 +440,9 @@ const app = Vue.createApp({
         this.known_instances = await cached_data.json();
         this.twitter_auth = true;
         this.loadProfile();
-        this.loadFollowings();
+        if (!window.location.hostname.includes("staging")) {
+          this.loadFollowings();
+        }
         this.loadLists();
       } catch (err) {
         this.logoff();
