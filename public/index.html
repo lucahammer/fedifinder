@@ -170,7 +170,7 @@
         </div>
         <div v-if="domains">
           <ul>
-            <li v-for="data in sorted_domains.slice(0,10)">
+            <li v-for="data in sorted_domains.slice(0,20)">
               <span
                 v-if="data[0].openRegistrations === 1 && data[0].part_of_fediverse === 1"
               >
@@ -188,7 +188,7 @@
             </li>
             <li
               v-if="show_all_instances"
-              v-for="data in sorted_domains.slice(10,sorted_domains.length+1)"
+              v-for="data in sorted_domains.slice(20,sorted_domains.length+1)"
             >
               <span
                 v-if="data[0].openRegistrations === 1 && data[0].part_of_fediverse === 1"
