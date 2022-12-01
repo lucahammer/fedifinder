@@ -519,10 +519,14 @@ function remove_domains_by_status(status) {
 
 async function update_data(domain, handle = null, force = false) {
   let local_domain, wellknown, nodeinfo, error;
+  let part_of_fediverse = 0;
 
+  // check host-meta if it is redirected and contains a webfinger endpoint
   local_domain = await get_local_domain(domain);
 
   if (typeof local_domain === "object" && "status" in local_domain) {
+    // ugly. if it is an object instead of a string, getting host-meta failed
+    // try to get nodeinfo anyways
     wellknown = await get_nodeinfo_url(domain);
     if (wellknown == null || (wellknown && "status" in wellknown)) {
       let nodeinfo = {
@@ -537,6 +541,8 @@ async function update_data(domain, handle = null, force = false) {
       local_domain = null;
     }
   } else {
+    // found a webfinger URL, so it's propably fediverse
+    part_of_fediverse = 1;
     wellknown = await get_nodeinfo_url(local_domain);
   }
 
@@ -550,9 +556,10 @@ async function update_data(domain, handle = null, force = false) {
       return nodeinfo;
     }
   } else if (wellknown && "status" in wellknown) {
+    // ugly. status points at problem with nodeinfo. it could still be part of the fediverse.
     let nodeinfo = {
       domain: domain,
-      part_of_fediverse: 0,
+      part_of_fediverse: part_of_fediverse,
       retries: 1,
       status: wellknown.status,
       local_domain: local_domain,
@@ -561,7 +568,7 @@ async function update_data(domain, handle = null, force = false) {
     return nodeinfo;
   } else if (local_domain != null)
     return { domain: domain, part_of_fediverse: 1, status: "no nodeinfo" };
-  return { domain: domain, part_of_fediverse: 0, retries: 1 };
+  return { domain: domain, part_of_fediverse: part_of_fediverse, retries: 1 };
 }
 
 async function populate_db(seed_url, refresh = false) {

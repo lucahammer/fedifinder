@@ -423,6 +423,10 @@ const app = Vue.createApp({
       this.show_all_instances = !this.show_all_instances;
     },
   },
+  errorCaptured: function (err) {
+    console.log("Caught error", err.message);
+    return false;
+  },
   async mounted() {
     if (window.location.href.indexOf("#t") !== -1) {
       localStorage.setItem("twitterAuth", true);
