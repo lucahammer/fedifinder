@@ -521,7 +521,7 @@ async function update_data(domain, handle = null, force = false) {
   let local_domain, wellknown, nodeinfo, error;
   let part_of_fediverse = 0;
 
-  // check host-meta if it is redirected and contains a webfinger endpoint
+  // check host-meta for a webfinger endpoint -> that's used as the local_domain
   local_domain = await get_local_domain(domain);
 
   if (typeof local_domain === "object" && "status" in local_domain) {
@@ -529,14 +529,26 @@ async function update_data(domain, handle = null, force = false) {
     // try to get nodeinfo anyways
     wellknown = await get_nodeinfo_url(domain);
     if (wellknown == null || (wellknown && "status" in wellknown)) {
-      let nodeinfo = {
-        domain: domain,
-        part_of_fediverse: 0,
-        retries: 1,
-        status: local_domain.status,
-      };
-      db_add(nodeinfo, force);
-      return nodeinfo;
+      // if host-meta failed, try to guess the webfinger url
+      local_domain = await get_local_domain_from_guessed_webfinger(domain);
+      if (typeof local_domain === "object" && "status" in local_domain) {
+        // ugly. if it is an object instead of a string, getting host-meta failed
+        // try to get nodeinfo anyways
+        wellknown = await get_nodeinfo_url(domain);
+        if (wellknown == null || (wellknown && "status" in wellknown)) {
+          let nodeinfo = {
+            domain: domain,
+            part_of_fediverse: 0,
+            retries: 1,
+            status: local_domain.status,
+          };
+          db_add(nodeinfo, force);
+          return nodeinfo;
+        } else {
+          part_of_fediverse = 1;
+          wellknown = await get_nodeinfo_url(local_domain);
+        }
+      }
     } else {
       local_domain = null;
     }
@@ -545,6 +557,8 @@ async function update_data(domain, handle = null, force = false) {
     part_of_fediverse = 1;
     wellknown = await get_nodeinfo_url(local_domain);
   }
+  console.log(local_domain)
+  console.log(wellknown)
 
   if (wellknown && "nodeinfo_url" in wellknown) {
     let nodeinfo = await get_nodeinfo(wellknown.nodeinfo_url);
@@ -664,6 +678,49 @@ async function url_from_handle(handle) {
   }
 }
 
+async function get_local_domain_from_guessed_webfinger(
+  host_domain,
+  redirect_count = 0
+) {
+  // get local domain from webfinger in host-meta
+  return new Promise((resolve) => {
+    let options = {
+      method: "GET",
+      host: encodeURI(host_domain),
+      path: "/.well-known/webfinger",
+      timeout: 5000,
+      headers: {
+        "User-Agent": "fedifinder.glitch.me",
+      },
+    };
+
+    https.get(options, (res) => {
+      if (res.statusCode != 400) {
+        if (
+          (res.statusCode == 302 ||
+            res.statusCode == 301 ||
+            res.statusCode == 303) &&
+          redirect_count <= 10 // limit redirects to prevent circular ones
+        ) {
+          redirect_count += 1;
+          resolve(
+            get_local_domain_from_guessed_webfinger(
+              res.headers.location.split("/")[2],
+              redirect_count
+            )
+          );
+        } else {
+          resolve({ status: res.statusCode });
+        }
+      } else {
+        resolve(host_domain);
+      }
+    });
+  }).catch((err) => {
+    console.log(err);
+  });
+}
+
 async function get_local_domain(host_domain, redirect_count = 0) {
   // get local domain from webfinger in host-meta
   return new Promise((resolve) => {
@@ -739,6 +796,7 @@ async function get_local_domain(host_domain, redirect_count = 0) {
 }
 
 async function get_nodeinfo_url(host_domain, redirect_count = 0) {
+  console.log(host_domain)
   // get url of nodeinfo json
   return new Promise((resolve) => {
     let options = {
@@ -1189,5 +1247,5 @@ async function tests() {
 }
 
 write_cached_files();
-if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
+//if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
 //DB().run("DELETE from mastodonapps");
