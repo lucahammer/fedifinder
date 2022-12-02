@@ -1,1 +1,39 @@
-{}
+{
+  "botsin.space": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "botsin.space",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 6330
+  },
+  "det.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "det.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 14001
+  },
+  "vis.social": {
+    "part_of_fediverse": 1,
+    "local_domain": "vis.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 6121
+  },
+  "lucahammer.com": {
+    "part_of_fediverse": 1,
+    "software_name": "wordpress",
+    "software_version": "6.1.1",
+    "users_total": 1
+  },
+  "sciences.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "sciences.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 1833
+  }
+}
