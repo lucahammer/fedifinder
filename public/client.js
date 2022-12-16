@@ -253,7 +253,18 @@ const app = Vue.createApp({
             `${this.lookup_server}/api/check?handle=${domain.handle}&domain=${domain.domain}`
           )
             .then((response) => response.json())
-            .then((data) => this.processCheckedDomain(data))
+            .then((data) => {
+              if (data.error) {
+                console.error(
+                  "got error processing domain to check",
+                  domain,
+                  data
+                );
+                return;
+              }
+
+              this.processCheckedDomain(data);
+            })
         );
       }
     },
