@@ -445,10 +445,6 @@ const app = Vue.createApp({
       this.show_all_instances = !this.show_all_instances;
     },
   },
-  errorCaptured: function (err) {
-    console.log("Caught error", err.message);
-    return false;
-  },
   async mounted() {
     if (window.location.href.indexOf("#t") !== -1) {
       localStorage.setItem("twitterAuth", true);
@@ -466,7 +462,6 @@ const app = Vue.createApp({
         this.known_instances = await cached_data.json();
         this.twitter_auth = true;
         this.loadProfile();
-        this.loadFollowings();
         if (!window.location.hostname.includes("staging")) {
           this.loadFollowings();
         }
@@ -477,4 +472,10 @@ const app = Vue.createApp({
     }
   },
 });
+app.config.errorHandler = function (err, vm, info) {
+  console.log({
+    error: err,
+    params: { info: info },
+  });
+};
 app.mount("#fedifinder");
