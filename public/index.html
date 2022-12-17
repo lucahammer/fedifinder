@@ -285,24 +285,10 @@
           </span>
         </h2>
         <h3 class="subtitle is-5">
-          In addition to the accounts you follow, you can scan lists and
-          followers.
+          The accounts your follow got scanned already. Optionally, you can scan
+          accounts on lists and followers for fediverse handles.
         </h3>
         <div v-if="scanned.length > 0">
-          <div class="content">
-            <p>
-              Already scanned:
-              <span v-for="item in scanned">{{item}}&nbsp;</span><br /><br />
-              {{scan_count}} unique accounts scanned <br />
-              {{unique_count}} unique handles from working fediverse domains
-              found
-              <br />
-              {{broken_count}} handles from other services (eg. mail) or
-              unresponsive servers
-              <br />{{unchecked_domains_count}} domains are still being checked
-            </p>
-          </div>
-
           <div class="level">
             <div class="level-left">
               <div v-if="user_lists.length > 0" class="level-item">
@@ -349,7 +335,7 @@
                 <button
                   id="loadFollowers"
                   @click="loadFollowers()"
-                  class="button is-success is-outlined"
+                  class="button is-success"
                 >
                   <span class="icon">
                     <i class="fa fa-users-viewfinder"></i> </span
@@ -358,6 +344,19 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <div class="content">
+          <p>
+            Already scanned:
+            <span v-for="item in scanned">{{item}}&nbsp;</span><br /><br />
+            {{scan_count}} unique accounts scanned <br />
+            {{unique_count}} unique handles from working fediverse domains found
+            <br />
+            {{broken_count}} handles from other services (eg. mail) or
+            unresponsive servers
+            <br />{{unchecked_domains_count}} domains are still being checked
+          </p>
         </div>
       </section>
 
