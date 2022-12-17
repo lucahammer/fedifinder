@@ -391,9 +391,9 @@
                   <strong>{{handle}}</strong> import the CSV file at
                   <a
                     target="_blank"
-                    :href="`https://${domains[handle.split('@')[2]].local_domain?domains[handle.split('@')[2]].local_domain:handle.split('@')[2]}/settings/import`"
+                    :href="`https://${handle.split('@')[2]}/settings/import`"
                   >
-                    {{domains[handle.split('@')[2]].local_domain?domains[handle.split('@')[2]].local_domain:handle.split('@')[2]}}/settings/import</a
+                    {{handle.split('@')[2]}}/settings/import</a
                   ></span
                 >
               </li>
@@ -452,11 +452,7 @@
               <div class="content">
                 <ol>
                   <li v-for="handle in data.handles">
-                    <a
-                      target="_blank"
-                      :href="`https://${domains[handle.handle.split('@')[2]].local_domain?domains[handle.handle.split('@')[2]].local_domain:handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
-                      >{{handle.handle}}</a
-                    >
+                    <a target="_blank" :href="handle.url">{{handle.handle}}</a>
                     (<a
                       target="_blank"
                       :href="`https://twitter.com/${handle.username}`"
@@ -468,7 +464,7 @@
                       >
                         <a
                           target="_blank"
-                          :href="`https://${domains[profilehandle.split('@')[2]].local_domain?domains[profilehandle.split('@')[2]].local_domain:profilehandle.split('@')[2]}/authorize_interaction?uri=https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
+                          :href="`https://${profilehandle.split('@')[2]}/authorize_interaction?uri=${handle.url}`"
                           class="button is-link is-small"
                         >
                           <span class="icon">
@@ -494,7 +490,7 @@
                   <span v-for="handle in data.handles">
                     <a
                       target="_blank"
-                      :href="`https://${handle.handle.split('@')[2]}/@${handle.handle.split('@')[1]}`"
+                      :href="handle.url"
                       >{{handle.handle}}</a
                     >
                     (<a :href="`https://twitter.com/${handle.username}`"></a
