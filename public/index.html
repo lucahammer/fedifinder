@@ -493,8 +493,11 @@
                       :href="handle.url"
                       >{{handle.handle}}</a
                     >
-                    (<a :href="`https://twitter.com/${handle.username}`"></a
-                    >{{handle.username}})<br />
+                    (<a
+                      target="_blank"
+                      :href="`https://twitter.com/${handle.username}`"
+                      >{{handle.username}}</a
+                    >)<br />
                   </span>
                 </p>
               </div>
