@@ -101,7 +101,7 @@ const app = Vue.createApp({
       twitter_auth: false,
       scanned_followers: false,
       display_accounts: false,
-      show_follow_buttons: false,
+      show_follow_buttons: true,
       error_message: "",
       show_all_instances: false,
     };
@@ -197,17 +197,27 @@ const app = Vue.createApp({
       // add handles to domains list
       if (handles.length > 0) {
         handles.forEach((handle) => {
+          let url = "";
           let domain = handle.split("@").slice(-1)[0];
+
+          if (domain in this.domains && "local_domain" in this.domains[domain]) {
+            url = `https://${this.domains[domain]}/@${
+              handle.split("@")[1]
+            }`;
+          } else {
+            url = `https://${domain}/@${handle.split("@")[1]}`;
+          }
 
           // add to domains obj
           if (domain in this.domains) {
             this.domains[domain]["handles"].push({
               username: username,
               handle: handle,
+              url: url,
             });
           } else
             this.domains[domain] = {
-              handles: [{ username: username, handle: handle }],
+              handles: [{ username: username, handle: handle, url: url }],
             };
         });
       }
