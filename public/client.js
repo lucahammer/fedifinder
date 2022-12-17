@@ -138,11 +138,11 @@ const app = Vue.createApp({
             software_name: data.software_name,
             software_version: data.software_version,
             users_total: data.users_total,
-            contacts: data.handles.length,
+            contacts: "handles" in data ? data.handles.length : 0,
             openRegistrations: data.openRegistrations,
             part_of_fediverse: data.part_of_fediverse,
           },
-          data.handles.length,
+          "handles" in data ? data.handles.length : 0,
         ]);
       }
       sorted.sort(function (a, b) {
@@ -200,10 +200,11 @@ const app = Vue.createApp({
           let url = "";
           let domain = handle.split("@").slice(-1)[0];
 
-          if (domain in this.domains && "local_domain" in this.domains[domain]) {
-            url = `https://${this.domains[domain]}/@${
-              handle.split("@")[1]
-            }`;
+          if (
+            domain in this.domains &&
+            "local_domain" in this.domains[domain]
+          ) {
+            url = `https://${this.domains[domain]}/@${handle.split("@")[1]}`;
           } else {
             url = `https://${domain}/@${handle.split("@")[1]}`;
           }
@@ -465,6 +466,7 @@ const app = Vue.createApp({
         this.known_instances = await cached_data.json();
         this.twitter_auth = true;
         this.loadProfile();
+        this.loadFollowings();
         if (!window.location.hostname.includes("staging")) {
           this.loadFollowings();
         }
