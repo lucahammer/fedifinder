@@ -1,3 +1,20 @@
+.link {
+  text-decoration: none;
+  color: inherit;
+  color: forestgreen;
+}
+p {
+  line-height: 1.7em;
+}
+td {
+  padding: 10px;
+  border: 2px solid lightgrey;
+}
+table {
+  table-layout: auto;
+  border-collapse: collapse;
+}
+
 .followbutton {
   display: block;
   max-width: 400px;
@@ -24,4 +41,114 @@
 .followbutton:focus {
   background-color: #1e83cc;
   color: #ffffff;
+}
+ol > li > a:last-of-type {
+  margin-bottom: 30px;
+}
+
+#urlList {
+  list-style: none;
+  padding-left: 0;
+}
+
+/* Glitch.com CSS*/
+* {
+  box-sizing: border-box;
+}
+body {
+  font-family: "Benton Sans", -apple-system, system-ui, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", helvetica, arial, sans-serif;
+  margin: 25px;
+}
+h1 {
+  font-weight: 700;
+  color: #373fff;
+}
+.bold {
+  font-weight: 700;
+}
+p {
+  max-width: 600px;
+}
+form {
+  margin-bottom: 25px;
+  padding: 15px;
+  background-color: #0ff;
+  display: inline-block;
+  width: 100%;
+  max-width: 340px;
+  border-radius: 3px;
+}
+input {
+  display: block;
+  margin-bottom: 10px;
+  padding: 5px;
+  width: 100%;
+  border: 1px solid #d3d3d3;
+  border-radius: 3px;
+  font-size: 16px;
+}
+button {
+  font-size: 16px;
+  border-radius: 3px;
+  background-color: #d3d3d3;
+  border: 1px solid grey;
+  box-shadow: 2px 2px teal;
+  cursor: pointer;
+}
+button:hover {
+  background-color: #ff0;
+}
+button:active {
+  box-shadow: none;
+}
+li {
+  margin-bottom: 5px;
+}
+footer {
+  margin-top: 50px;
+  padding-top: 25px;
+  border-top: 1px solid #d3d3d3;
+}
+footer > a {
+  color: #bbb;
+}
+.nicejob {
+  text-decoration: line-through;
+}
+.add-to-slack {
+  background-color: #25e1a5;
+  padding: 2em;
+  border-radius: 0.3em;
+  margin-bottom: 2em;
+}
+.add-to-slack h1 {
+  color: #fff;
+  background: url(https://glitch.com/slack-icon.png) no-repeat;
+  padding: 0 0 0 3em;
+  line-height: 2.5em;
+  margin: 0;
+}
+.add-to-slack h2 {
+  font-weight: 400;
+  margin: 0.5em 0;
+}
+.slack-support {
+  padding: 0 2em;
+}
+.add-to-slack h2,
+.add-to-slack p,
+.slack-support h4,
+.slack-support p {
+  max-width: 700px;
+  line-height: 1.5em;
+}
+.slack-flag {
+  padding: 1em;
+  color: #fff;
+  max-width: 100%;
+  background-color: #454bfb;
+}
+.slack-flag.error {
+  background-color: #fd696f;
 }

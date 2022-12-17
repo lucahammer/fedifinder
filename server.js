@@ -7,6 +7,8 @@ const url = require("url");
 const https = require("https");
 const bodyParser = require("body-parser");
 const TwitterApi = require("twitter-api-v2").TwitterApi;
+const TwitterV2IncludesHelper =
+  require("twitter-api-v2").TwitterV2IncludesHelper;
 const WebFinger = require("webfinger.js");
 const sqlite = require("better-sqlite3");
 const DB = require("better-sqlite3-helper");
@@ -14,8 +16,6 @@ const fs = require("fs");
 const cookieSession = require("cookie-session");
 const cors = require("cors");
 const parser = require("xml2json");
-const { decrypt, encrypt } = require("./encryption.js");
-const { getApp, getFollowings, toToken } = require("./mastodon.js");
 
 const webfinger = new WebFinger({
   webfist_fallback: false,
@@ -28,8 +28,6 @@ const sessionMiddleware = cookieSession({
   name: "session",
   keys: [process.env.SECRET],
   proxy: true,
-  sameSite: "lax",
-  saveUninitialized: false,
   secure: true,
   maxAge: 24 * 60 * 60 * 1000,
 });
@@ -52,7 +50,7 @@ passport.use(
         ? process.env.PROJECT_DOMAIN
         : `https://${process.env.PROJECT_DOMAIN}.glitch.me/login/twitter/return`,
     },
-    (token, tokenSecret, profile, cb) => {
+    function (token, tokenSecret, profile, cb) {
       profile["tokenSecret"] = tokenSecret;
       profile["accessToken"] = token;
 
@@ -67,7 +65,6 @@ passport.use(
                 "url",
                 "location",
                 "entities",
-                "public_metrics",
               ],
               expansions: ["pinned_tweet_id"],
               "tweet.fields": ["text", "entities"],
@@ -118,7 +115,6 @@ passport.use(
                   description: user.description,
                   urls: urls,
                   pinned_tweet: pinned_tweet,
-                  public_metrics: user.public_metrics,
                 },
                 id: profile.id,
                 tokenSecret: tokenSecret,
@@ -140,11 +136,11 @@ passport.use(
   )
 );
 
-passport.serializeUser((user, cb) => {
+passport.serializeUser(function (user, cb) {
   cb(null, user);
 });
 
-passport.deserializeUser((obj, cb) => {
+passport.deserializeUser(function (obj, cb) {
   cb(null, obj);
 });
 
@@ -176,8 +172,7 @@ app.use((err, req, res, next) => {
 // Define routes.
 app.all("*", checkHttps);
 
-app.get("/logoff", (req, res) => {
-  //todo: clear localstorage in frontend
+app.get("/logoff", function (req, res) {
   req.session = null;
   res.clearCookie("session", { path: "/" });
   res.redirect("/");
@@ -186,7 +181,9 @@ app.get("/logoff", (req, res) => {
 app.get("/auth/twitter", (req, res) => {
   //delete old session cookie
   res.clearCookie("connect.sid", { path: "/" });
-  "user" in req ? res.redirect("/") : res.redirect("/actualAuth/twitter");
+  "user" in req
+    ? res.redirect("/success")
+    : res.redirect("/actualAuth/twitter");
 });
 
 app.get("/actualAuth/twitter", passport.authenticate("twitter"));
@@ -197,26 +194,27 @@ app.get(
     failureRedirect: "/",
     failureMessage: false,
   }),
-  (req, res) => {
-    req.session.save(() => {
-      res.redirect("/#t");
+  function (req, res) {
+    req.session.save(function () {
+      res.redirect("/success");
     });
   }
 );
 
-/*app.get("/", (req, res) => {
-  "code" in req.query
-    ? res.redirect("/index.html#c=" + req.query.code)
-    : res.redirect("/index.html");
-});*/
+app.get(
+  "/success",
+  require("connect-ensure-login").ensureLoggedIn("/"),
+  (req, res, next) => {
+    res.header(
+      "Cache-Control",
+      "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0"
+    );
 
-app.get("/success.html", (req, res) => {
-  // redirect people who come over an link for fedifinder-original
+    res.redirect("/success.html");
+  }
+);
 
-  res.redirect("/");
-});
-
-app.get(process.env.DB_CLEAR + "_all", (req, res) => {
+app.get(process.env.DB_CLEAR + "_all", function (req, res) {
   // visit this URL to reset the DB
   DB().run("DELETE from domains");
   res.redirect("/");
@@ -298,9 +296,9 @@ app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
     504,
     301,
     302,
-    "ECONNRESET",
+    //"ECONNRESET",
     "ETIMEDOUT",
-    "ENOTFOUND",
+    //"ENOTFOUND",
   ];
   to_remove.forEach((status) => remove_domains_by_status(status));
   res.send(`Removed ${JSON.stringify(to_remove, null, 4)}`);
@@ -310,13 +308,14 @@ app.get(process.env.DB_CLEAR + "_cleanup", async (req, res) => {
 
 app.get("/api/check", async (req, res) => {
   // force update a single domain
+
   let domain = req.query.domain
     ? req.query.domain.match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)
     : "";
   domain = domain ? domain[0].toLowerCase() : "";
 
   let handle = req.query.handle
-    ? req.query.handle.match(/^@?[a-zA-Z0-9_\-]+@[a-zA-Z0-9\-\.]+\.[a-zA-Z]+$/)
+    ? req.query.handle.match(/^@?[a-zA-Z0-9_]+@[a-zA-Z0-9\-\.]+\.[a-zA-Z]+$/)
     : "";
   handle = handle ? handle[0].replace(/^@/, "").toLowerCase() : "";
 
@@ -324,75 +323,22 @@ app.get("/api/check", async (req, res) => {
 
   if (domain) {
     if ("force" in req.query) {
-      if (process.env.LOOKUP_SERVER) {
-        https
-          .get(
+      process.env.LOOKUP_SERVER
+        ? https.get(
             `${process.env.LOOKUP_SERVER}/api/check?handle=${domain}&domain=${
               handle ? handle : ""
             }&force`
           )
-          .then((data) => res.json(data));
-      } else {
-        try {
-          let info = await update_data(domain, handle, true);
-          res.json(info);
-        } catch (err) {
-          console.log(err);
-          res.json(err);
-        }
+        : void 0;
+
+      try {
+        let info = await update_data(domain, handle, true);
+        res.json(info);
+      } catch (err) {
+        res.json(err);
       }
     } else res.json(await check_instance(domain, handle));
   } else res.json({ error: "not a handle or not a domain" });
-});
-
-app.get("/api/app", async (req, res) => {
-  // send app id for a domain back
-
-  let domain = req.query.domain
-    ? req.query.domain.match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)
-    : "";
-  domain = domain ? domain[0].toLowerCase() : "";
-
-  let remote_domain = req.query.remote_domain
-    ? req.query.remote_domain.match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)
-    : "";
-  remote_domain = remote_domain ? remote_domain[0].toLowerCase() : "";
-
-  if (domain && remote_domain) {
-    let data = await getApp(domain, remote_domain);
-    data
-      ? data.working != 0
-        ? res.json({ client_id: data.client_id })
-        : res.json({})
-      : res.json({});
-  } else if (domain) {
-    let data = await getApp(domain);
-    data
-      ? data.working != !0
-        ? res.json({ client_id: data.client_id })
-        : res.json({})
-      : res.json({});
-  } else res.json({ error: "not valid" });
-});
-
-app.get("/api/totoken", async (req, res) => {
-  // send app id for a domain back
-
-  let domain = req.query.domain
-    ? req.query.domain.match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)
-    : "";
-  domain = domain ? domain[0].toLowerCase() : "";
-
-  let auth_domain = req.query.auth_domain
-    ? req.query.auth_domain.match(/[a-zA-Z0-9\-\.]+\.[a-zA-Z]+/)
-    : "";
-  auth_domain = auth_domain ? auth_domain[0].toLowerCase() : "";
-
-  if (auth_domain && domain && req.query.code) {
-    let app = await getApp(auth_domain, true);
-    let auth_token = await toToken(domain, app, req.query.code);
-    res.json(auth_token);
-  } else res.json({ error: "not valid" });
 });
 
 app.get(process.env.DB_CLEAR + "_wcache", async (req, res) => {
@@ -423,13 +369,13 @@ app.get(process.env.DB_CLEAR + "_popfresh", async (req, res) => {
   );
 });
 
-const server = app.listen(process.env.PORT, () => {
+const server = app.listen(process.env.PORT, function () {
   // listen for requests
   console.log("Your app is listening on port " + server.address().port);
 });
 
 // WARNING: THIS IS BAD. DON'T TURN OFF TLS
-//process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 // setup a new database
 // using database credentials set in .env
@@ -516,51 +462,19 @@ function remove_domains_by_status(status) {
 }
 
 async function update_data(domain, handle = null, force = false) {
-  let local_domain, wellknown, nodeinfo, error;
-  let part_of_fediverse = 0;
-
-  // check host-meta for a webfinger endpoint -> that's used as the local_domain
-  local_domain = await get_local_domain(domain);
-
-  if (typeof local_domain === "object" && "status" in local_domain) {
-    // ugly. if it is an object instead of a string, getting host-meta failed
-    // try to get nodeinfo anyways
-    wellknown = await get_nodeinfo_url(domain);
-
-    if (wellknown == null || (wellknown && "status" in wellknown)) {
-      // if host-meta failed, try to guess the webfinger url
-      local_domain = await get_local_domain_from_guessed_webfinger(domain);
-
-      if (typeof local_domain === "object" && "status" in local_domain) {
-        // ugly. if it is an object instead of a string, getting host-meta failed
-        // try to get nodeinfo anyways
-        wellknown = await get_nodeinfo_url(domain);
-        if (wellknown == null || (wellknown && "status" in wellknown)) {
-          let nodeinfo = {
-            domain: domain,
-            part_of_fediverse: 0,
-            retries: 1,
-            status: local_domain.status,
-          };
-          db_add(nodeinfo, force);
-          return nodeinfo;
-        } else {
-          part_of_fediverse = 1;
-          wellknown = await get_nodeinfo_url(local_domain);
-        }
-      }
-    } else {
-      local_domain = null;
+  let local_domain, wellknown, nodeinfo;
+  if (handle) {
+    // get local domain
+    let profile_url = await url_from_handle(handle);
+    if (profile_url) {
+      local_domain = profile_url.split("//")[1].split("/")[0];
+      wellknown = await get_nodeinfo_url(local_domain);
     }
-  } else {
-    // found a webfinger URL, so it's propably fediverse
-    part_of_fediverse = 1;
-    wellknown = await get_nodeinfo_url(local_domain);
   }
+  if (wellknown == null) wellknown = await get_nodeinfo_url(domain);
 
   if (wellknown && "nodeinfo_url" in wellknown) {
     let nodeinfo = await get_nodeinfo(wellknown.nodeinfo_url);
-
     if (nodeinfo) {
       if (local_domain) nodeinfo["local_domain"] = local_domain;
       nodeinfo["domain"] = domain;
@@ -568,19 +482,17 @@ async function update_data(domain, handle = null, force = false) {
       return nodeinfo;
     }
   } else if (wellknown && "status" in wellknown) {
-    // ugly. status points at problem with nodeinfo. it could still be part of the fediverse.
     let nodeinfo = {
       domain: domain,
-      part_of_fediverse: part_of_fediverse,
+      part_of_fediverse: 0,
       retries: 1,
       status: wellknown.status,
       local_domain: local_domain,
     };
     db_add(nodeinfo, force);
     return nodeinfo;
-  } else if (local_domain != null)
-    return { domain: domain, part_of_fediverse: 1, status: "no nodeinfo" };
-  return { domain: domain, part_of_fediverse: part_of_fediverse, retries: 1 };
+  }
+  return { domain: domain, part_of_fediverse: 0, retries: 1 };
 }
 
 async function populate_db(seed_url, refresh = false) {
@@ -648,17 +560,17 @@ async function check_instance(domain, handle = null) {
 
 function get_webfinger(handle) {
   // get webfinger data for a handle
-  return new Promise((resolve) => {
-    webfinger.lookup(encodeURI(handle), (err, info) => {
+  return new Promise(function (resolve) {
+    webfinger.lookup(encodeURI(handle), function (err, info) {
       if (err) {
-        console.log("error: ", err.message);
+        //console.log("error: ", err.message);
         resolve(null);
       } else {
         resolve(info);
       }
     });
   }).catch((err) => {
-    console.log(err);
+    //console.log(err);
   });
 }
 
@@ -676,125 +588,28 @@ async function url_from_handle(handle) {
   }
 }
 
-async function get_local_domain_from_guessed_webfinger(
-  host_domain,
-  redirect_count = 0
-) {
-  // get local domain from webfinger in host-meta
+async function get_hostmeta(domain) {
   return new Promise((resolve) => {
-    let options = {
-      method: "GET",
-      host: encodeURI(host_domain),
-      path: "/.well-known/webfinger",
-      timeout: 5000,
-      headers: {
-        "User-Agent": "fedifinder.glitch.me",
-      },
-    };
-
-    https
-      .get(options, (res) => {
-        if (res.statusCode != 400) {
-          if (
-            (res.statusCode == 302 ||
-              res.statusCode == 301 ||
-              res.statusCode == 303) &&
-            redirect_count <= 10 // limit redirects to prevent circular ones
-          ) {
-            redirect_count += 1;
-            resolve(
-              get_local_domain_from_guessed_webfinger(
-                res.headers.location.split("/")[2],
-                redirect_count
-              )
-            );
-          } else {
-            resolve({ status: res.statusCode });
+    https.get("https://" + domain, (res) => {
+      if (res.statusCode == 200) {
+        let host_body = "";
+        res.on("data", (d) => {
+          host_body += d;
+        });
+        res.on("end", () => {
+          try {
+            console.log(parser.toJson(host_body));
+          } catch (err) {
+            console.log(err);
+            resolve(null);
           }
-        } else {
-          resolve(host_domain);
-        }
-      })
-      .on("error", (err) => {
-        //console.log(err);
-        resolve({ status: err["code"] });
-      });
-  }).catch((err) => {
-    console.log(err);
-  });
-}
-
-async function get_local_domain(host_domain, redirect_count = 0) {
-  // get local domain from webfinger in host-meta
-  return new Promise((resolve) => {
-    let options = {
-      method: "GET",
-      host: encodeURI(host_domain),
-      path: "/.well-known/host-meta",
-      timeout: 5000,
-      headers: {
-        "User-Agent": "fedifinder.glitch.me",
-      },
-    };
-
-    https
-      .get(options, (res) => {
-        let body = "";
-        if (res.statusCode != 200) {
-          if (
-            (res.statusCode == 302 ||
-              res.statusCode == 301 ||
-              res.statusCode == 303) &&
-            redirect_count <= 10 // limit redirects to prevent circular ones
-          ) {
-            redirect_count += 1;
-            resolve(
-              get_local_domain(
-                res.headers.location.split("/")[2],
-                redirect_count
-              )
-            );
-          } else {
-            resolve({ status: res.statusCode });
-          }
-        } else {
-          res.on("data", (d) => {
-            body += d;
-          });
-          res.on("end", () => {
-            if (body.startsWith("<") === true) {
-              try {
-                let data = parser.toJson(body, {
-                  object: true,
-                  reversible: false,
-                  coerce: false,
-                  sanitize: true,
-                  trim: true,
-                  arrayNotation: false,
-                  alternateTextNode: false,
-                });
-                try {
-                  resolve(data.XRD.Link.template.split("//")[1].split("/")[0]);
-                } catch (err) {
-                  resolve({
-                    status: "no webfinger template in .well-known/host-meta",
-                  });
-                }
-              } catch (err) {
-                console.log("xml error: " + host_domain);
-                resolve({ status: "well-known/host-meta broken" });
-              }
-            } else resolve({ status: ".well-known/host-meta not found" });
-          });
-        }
-      })
-      .on("error", (err) => {
-        //console.log(err);
-        resolve({ status: err["code"] });
-        //todo: resolve unknown status
-      });
-  }).catch((err) => {
-    console.log(err);
+        });
+        res.on("error", (err) => {
+          //console.log(err);
+          resolve({ status: err["code"] });
+        });
+      }
+    });
   });
 }
 
@@ -807,9 +622,6 @@ async function get_nodeinfo_url(host_domain, redirect_count = 0) {
       json: true,
       path: "/.well-known/nodeinfo",
       timeout: 5000,
-      headers: {
-        "User-Agent": "fedifinder.glitch.me",
-      },
     };
 
     https
@@ -817,10 +629,8 @@ async function get_nodeinfo_url(host_domain, redirect_count = 0) {
         let body = "";
         if (res.statusCode != 200) {
           if (
-            (res.statusCode == 302 ||
-              res.statusCode == 301 ||
-              res.statusCode == 303) &&
-            redirect_count <= 10 // limit redirects to prevent circular ones
+            (res.statusCode == 302 || res.statusCode == 301) &&
+            redirect_count <= 2 // only follow two redirects deep to prevent circular ones
           ) {
             redirect_count += 1;
             resolve(
@@ -858,14 +668,8 @@ async function get_nodeinfo_url(host_domain, redirect_count = 0) {
 function get_nodeinfo(nodeinfo_url) {
   // get fresh nodeinfo and save to db
   return new Promise((resolve) => {
-    const options = {
-      headers: {
-        "User-Agent": "fedifinder.glitch.me",
-      },
-      timeout: 5000,
-    };
     https
-      .get(encodeURI(nodeinfo_url), options, (res) => {
+      .get(encodeURI(nodeinfo_url), { timeout: 5000 }, (res) => {
         let body = "";
         if (res.statusCode != 200) {
           resolve({ part_of_fediverse: 0 });
@@ -903,6 +707,7 @@ function get_nodeinfo(nodeinfo_url) {
                 openRegistrations: nodeinfo["openRegistrations"] ? 1 : 0,
               });
             } catch (err) {
+              console.log(nodeinfo_url);
               console.log(err);
               resolve({ part_of_fediverse: 0 });
             }
@@ -920,38 +725,126 @@ function get_nodeinfo(nodeinfo_url) {
 
 function checkHttps(req, res, next) {
   // protocol check, if http, redirect to https
-  const forwardedProto = req.get("X-Forwarded-Proto");
-  if (forwardedProto && forwardedProto.indexOf("https") != -1) {
+  if (req.get("X-Forwarded-Proto").indexOf("https") != -1) {
     return next();
   } else {
     res.redirect("https://" + req.hostname + req.url);
   }
 }
 
-app.get("/api/getProfile", async (req, res) => {
-  if ("user" in req) {
-    res.json(req.user._json);
+const { Server } = require("socket.io");
+const io = new Server(server);
+write_cached_files();
+
+const wrap = (middleware) => (socket, next) =>
+  middleware(socket.request, {}, next);
+
+io.use(wrap(sessionMiddleware));
+io.use(wrap(passport.initialize()));
+io.use(wrap(passport.session()));
+
+io.use((socket, next) => {
+  if (socket.request.user && socket.request.user.accessToken) {
+    next();
   } else {
-    res.json({ error: "not logged in" });
+    next(new Error("SessionError"));
   }
 });
 
-app.get("/api/lookupServer", async (req, res) => {
-  if (process.env.LOOKUP_SERVER) {
-    res.json({ lookup_server: process.env.LOOKUP_SERVER });
-  } else {
-    res.json({ error: "no lookup server" });
-  }
-});
+io.sockets.on("connection", function (socket) {
+  if (process.env.LOOKUP_SERVER)
+    socket.emit("lookup_server", process.env.LOOKUP_SERVER);
 
-app.get("/api/loadLists", async (req, res) => {
-  if ("user" in req) {
+  socket.on("checkDomains", (data) => {
+    data.domains.forEach(async (domain) => {
+      let data = await check_instance(domain.domain, domain.handle ?? null);
+      socket.emit("checkedDomains", data);
+    });
+  });
+
+  socket.on("getProfile", function () {
+    socket.emit("profile", socket.request.user._json);
+  });
+
+  const errorHandler = (handler) => {
+    const handleError = (err) => {
+      console.log(err);
+      socket.emit("Error", { Error: "SessionError" });
+    };
+  };
+
+  async function processRequests(type, data) {
+    // get accounts from Twitter and sent relevant parts to frontend
+    let accounts = [];
+    let batch_size = 1000;
+
     try {
-      let client = create_twitter_client(req.user);
+      for await (const user of data) {
+        let urls = [];
+        let pinned_tweet;
+
+        const pinnedTweetInclude = data.includes.pinnedTweet(user);
+
+        if (pinnedTweetInclude) {
+          pinned_tweet = pinnedTweetInclude.text;
+          if (
+            "entities" in pinnedTweetInclude &&
+            "urls" in pinnedTweetInclude["entities"]
+          ) {
+            pinnedTweetInclude["entities"]["urls"].map((url) =>
+              urls.push(url.expanded_url)
+            );
+          }
+        }
+
+        "entities" in user && "url" in user.entities
+          ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
+          : null;
+
+        "entities" in user &&
+        "description" in user.entities &&
+        "urls" in user.entities.description
+          ? user.entities.description.urls.map((url) =>
+              urls.push(url.expanded_url)
+            )
+          : null;
+
+        accounts.push({
+          username: user.username,
+          name: user.name,
+          location: user.location,
+          description: user.description,
+          urls: urls,
+          pinned_tweet: pinned_tweet,
+        });
+
+        if (accounts.length >= batch_size) {
+          // don't wait until all accounts are loaded
+          accounts.length > 0
+            ? socket.emit("newAccounts", { type: type, accounts: accounts })
+            : null;
+          accounts = [];
+        }
+      }
+      accounts.length > 0
+        ? socket.emit("newAccounts", { type: type, accounts: accounts })
+        : null;
+    } catch (err) {
+      socket.emit("Error", err);
+      accounts.length > 0
+        ? socket.emit("newAccounts", { type: type, accounts: accounts })
+        : null;
+    }
+  }
+
+  let client = create_twitter_client(socket.request.user);
+
+  socket.on("loadLists", async (username) => {
+    try {
       let lists = [];
 
       // get lists owned by user
-      const ownedLists = await client.v2.listsOwned(req.user.id, {
+      const ownedLists = await client.v2.listsOwned(socket.request.user.id, {
         "list.fields": ["member_count"],
       });
       for await (const list of ownedLists) {
@@ -963,9 +856,12 @@ app.get("/api/loadLists", async (req, res) => {
       }
 
       // get subscribed lists of user
-      const followedLists = await client.v2.listFollowed(req.user.id, {
-        "list.fields": ["member_count"],
-      });
+      const followedLists = await client.v2.listFollowed(
+        socket.request.user.id,
+        {
+          "list.fields": ["member_count"],
+        }
+      );
       for await (const list of followedLists) {
         lists.push({
           name: list["name"],
@@ -973,208 +869,58 @@ app.get("/api/loadLists", async (req, res) => {
           member_count: list["member_count"],
         });
       }
-      res.json(lists);
+      socket.emit("userLists", lists);
     } catch (err) {
-      res.json(err);
+      socket.emit("Error", err);
     }
-  } else {
-    res.json({ error: "not logged in" });
-  }
-});
-
-app.get("/api/getList", async (req, res) => {
-  let list_id;
-  "listid" in req.query
-    ? (list_id = req.query.listid)
-    : res.json({ error: "no list provided" });
-  if ("user" in req) {
-    try {
-      let client = create_twitter_client(req.user);
-      let params = {
-        max_results: 100,
-        "user.fields": ["name", "description", "url", "location", "entities"],
-        expansions: ["pinned_tweet_id"],
-        "tweet.fields": ["text", "entities"],
-      };
-      "next_token" in req.query && req.query.next_token.length > 2
-        ? (params["pagination_token"] = req.query.next_token)
-        : void 0;
-
-      const twitres = await client.v2.get(
-        `lists/${req.query.listid}/members`,
-        params,
-        { fullResponse: true }
-      );
-      processData({ type: "list", list_id: list_id }, twitres, res);
-    } catch (err) {
-      res.json(err);
-    }
-  } else {
-    res.json({ error: "not logged in" });
-  }
-});
-
-app.get("/api/getFollowings", async (req, res) => {
-  if ("user" in req) {
-    try {
-      let client = create_twitter_client(req.user);
-      let params = {
-        max_results: 1000,
-        "user.fields": ["name", "description", "url", "location", "entities"],
-        expansions: ["pinned_tweet_id"],
-        "tweet.fields": ["text", "entities"],
-      };
-      "next_token" in req.query && req.query.next_token.length > 2
-        ? (params["pagination_token"] = req.query.next_token)
-        : void 0;
-      const twitres = await client.v2.get(
-        `users/${req.user.id}/following`,
-        params,
-        { fullResponse: true }
-      );
-      processData({ type: "followings" }, twitres, res);
-    } catch (err) {
-      res.json(err);
-    }
-  } else {
-    res.json({ error: "not logged in" });
-  }
-});
-
-app.get("/api/getFollowers", async (req, res) => {
-  if ("user" in req) {
-    try {
-      let client = create_twitter_client(req.user);
-      let params = {
-        max_results: 1000,
-        "user.fields": ["name", "description", "url", "location", "entities"],
-        expansions: ["pinned_tweet_id"],
-        "tweet.fields": ["text", "entities"],
-      };
-      "next_token" in req.query && req.query.next_token.length > 2
-        ? (params["pagination_token"] = req.query.next_token)
-        : void 0;
-      const twitres = await client.v2.get(
-        `users/${req.user.id}/followers`,
-        params,
-        { fullResponse: true }
-      );
-      processData({ type: "followers" }, twitres, res);
-    } catch (err) {
-      res.json(err);
-    }
-  } else {
-    res.json({ error: "not logged in" });
-  }
-});
-
-function processData(type, twitres, cb) {
-  // extract information from API response and sent relevant parts to frontend
-  let accounts = [];
-  twitres.data.data.forEach((user) => {
-    let urls = [];
-    let pinned_tweet;
-
-    if ("pinned_tweet_id" in user) {
-      let pinnedTweetInclude = twitres.data.includes.tweets.find(
-        (tweet) => tweet.id == user.pinned_tweet_id
-      );
-      if (pinnedTweetInclude) {
-        pinned_tweet = pinnedTweetInclude.text;
-        if (
-          "entities" in pinnedTweetInclude &&
-          "urls" in pinnedTweetInclude["entities"]
-        ) {
-          pinnedTweetInclude["entities"]["urls"].map((url) =>
-            urls.push(url.expanded_url)
-          );
-        }
-      }
-    }
-
-    "entities" in user && "url" in user.entities
-      ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
-      : null;
-
-    "entities" in user &&
-    "description" in user.entities &&
-    "urls" in user.entities.description
-      ? user.entities.description.urls.map((url) => urls.push(url.expanded_url))
-      : "";
-
-    accounts.push({
-      username: user.username,
-      name: user.name,
-      location: user.location,
-      description: user.description,
-      urls: urls,
-      pinned_tweet: pinned_tweet,
-    });
   });
 
-  let ratelimit_remaining = twitres.rateLimit.remaining;
-
-  let next_token =
-    "next_token" in twitres.data.meta ? twitres.data.meta.next_token : "";
-
-  cb.json({
-    type: type,
-    accounts: accounts,
-    ratelimit_remaining: ratelimit_remaining,
-    next_token: next_token,
-  });
-}
-
-async function processRequests(type, data, cb) {
-  // get accounts from Twitter and sent relevant parts to frontend
-  let accounts = [];
-
-  try {
-    for await (const user of data) {
-      let urls = [];
-      let pinned_tweet;
-
-      const pinnedTweetInclude = data.includes.pinnedTweet(user);
-
-      if (pinnedTweetInclude) {
-        pinned_tweet = pinnedTweetInclude.text;
-        if (
-          "entities" in pinnedTweetInclude &&
-          "urls" in pinnedTweetInclude["entities"]
-        ) {
-          pinnedTweetInclude["entities"]["urls"].map((url) =>
-            urls.push(url.expanded_url)
-          );
-        }
-      }
-
-      "entities" in user && "url" in user.entities
-        ? user.entities.url.urls.map((url) => urls.push(url.expanded_url))
-        : null;
-
-      "entities" in user &&
-      "description" in user.entities &&
-      "urls" in user.entities.description
-        ? user.entities.description.urls.map((url) =>
-            urls.push(url.expanded_url)
-          )
-        : null;
-
-      accounts.push({
-        username: user.username,
-        name: user.name,
-        location: user.location,
-        description: user.description,
-        urls: urls,
-        pinned_tweet: pinned_tweet,
+  socket.on("getList", async (list_id) => {
+    // get list members from Twitter
+    try {
+      const data = await client.v2.listMembers(list_id, {
+        "user.fields": ["name", "description", "url", "location", "entities"],
+        expansions: ["pinned_tweet_id"],
+        "tweet.fields": ["text", "entities"],
       });
+      processRequests({ type: "list", list_id: list_id }, data);
+    } catch (err) {
+      socket.emit("Error", err);
     }
-    cb.json({ type: type, accounts: accounts });
-  } catch (err) {
-    console.log(err);
-    cb.json({ type: type, accounts: accounts });
-  }
-}
+  });
+
+  socket.on("getFollowings", async () => {
+    // get followings from Twitter
+    try {
+      const data = await client.v2.following(socket.request.user.id, {
+        asPaginator: true,
+        max_results: 1000,
+        "user.fields": ["name", "description", "url", "location", "entities"],
+        expansions: ["pinned_tweet_id"],
+        "tweet.fields": ["text", "entities"],
+      });
+      processRequests({ type: "followings" }, data);
+    } catch (err) {
+      socket.emit("Error", err);
+    }
+  });
+
+  socket.on("getFollowers", async () => {
+    // get followings from Twitter
+    try {
+      const data = await client.v2.followers(socket.request.user.id, {
+        asPaginator: true,
+        max_results: 1000,
+        "user.fields": ["name", "description", "url", "location", "entities"],
+        expansions: ["pinned_tweet_id"],
+        "tweet.fields": ["text", "entities"],
+      });
+      processRequests({ type: "followers" }, data);
+    } catch (err) {
+      socket.emit("Error", err);
+    }
+  });
+});
 
 async function tests() {
   //DB().run("DELETE from domains");
@@ -1227,26 +973,11 @@ async function tests() {
     assert(info.users_total == 1);
   });
 
-  it("should get url from handle (webfinger)", async () => {
+  it("get url from handle (webfinger)", async () => {
     let url = await url_from_handle("@luca@vis.social");
     assert("https://vis.social/@Luca" == url);
     url = await url_from_handle("luca@lucahammer.com");
     assert("https://lucahammer.com/author/luca" == url);
   });
-
-  it("should encrypt and decrypt a string", () => {
-    let message = "message";
-    let encrypted = encrypt(message);
-    assert(encrypted != message);
-    assert(message == decrypt(encrypted));
-  });
-
-  it("get or create app for a mastodon instance", async () => {
-    let app = await getApp("vis.social");
-    assert(app.domain == "vis.social");
-  });
 }
-
-write_cached_files();
-//if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
-//DB().run("DELETE from mastodonapps");
+if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();

@@ -4,14 +4,16 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Fedifinder</title>
+    <title>Find Fediverse accounts of your Twitter followings</title>
     <meta
       name="description"
-      content="Fediverse accounts of your Twitter followings"
+      content="Extract the fediverse handles and urls of your Twitter followings."
     />
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" type="text/css" href="/style.css" />
+
     <script>
       if (location.protocol != "https:") {
         location.href =
@@ -19,651 +21,87 @@
           window.location.href.substring(window.location.protocol.length);
       }
     </script>
-    <script src="/js/json2csv.js" type="text/javascript"></script>
-    <script src="/js/tinytest.js" type="text/javascript"></script>
-    <script src="/js/vue.prod.js" type="text/javascript"></script>
-    <script src="/js/font-awesome.min.js" type="text/javascript"></script>
-    <script src="/client.js" type="text/javascript" defer></script>
-    <link rel="stylesheet" type="text/css" href="/style.css" />
-    <link rel="stylesheet" type="text/css" href="/css/bulma.min.css" />
   </head>
-  <body class="has-navbar-fixed-top" id="fedifinder">
-    <nav
-      class="navbar is-fixed-top"
-      role="navigation"
-      aria-label="main navigation"
-    >
-      <div class="navbar-brand">
-        <div class="navbar-item">
-          <a class="title" href="/"
-            >Fedifinder<br />
-            <h3 class="subtitle is-4">Join the Fediverse in 5 easy steps</h3>
-          </a>
-        </div>
-      </div>
+  <body>
+    <header>
+      <h2>Fedifinder</h2>
+      <p>
+        Extract the fediverse handles of your Twitter followings or list members
+        and import them on Mastodon to follow them all at once.
+      </p>
 
-      <div class="navbar-menu">
-        <div class="navbar-end">
-          <div class="navbar-item">
-            <div class="buttons">
-              <a
-                href="https://fedifinder-v1.glitch.me"
-                class="button is-light is-primary"
-              >
-                Old version
-              </a>
-              <button
-                onclick="document.getElementById('modal-about').classList.add('is-active')"
-                class="button is-light"
-              >
-                About
-              </button>
-              <button
-                v-if="twitter_auth"
-                @click="logoff"
-                class="button is-danger is-light"
-              >
-                <strong>Logout</strong>
-              </button>
-              <a
-                v-if="twitter_auth"
-                target="_blank"
-                href="https://twitter.com/settings/connected_apps"
-                class="button is-danger is-outlined"
-              >
-                <strong>Revoke Permissions</strong>
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </nav>
-
-    <div class="section buttons is-flex-touch is-hidden-desktop">
-      <a
-        href="https://fedifinder-v1.glitch.me"
-        class="button is-light is-primary"
-      >
-        Old version
-      </a>
-      <button
-        onclick="document.getElementById('modal-about').classList.add('is-active')"
-        class="button is-light"
-      >
-        About
-      </button>
-      <button
-        v-if="twitter_auth"
-        @click="logoff()"
-        class="button is-danger is-light"
-      >
-        <strong>Logout</strong>
-      </button>
-      <a
-        v-if="twitter_auth"
-        target="_blank"
-        href="https://twitter.com/settings/connected_apps"
-        class="button is-danger is-outlined"
-      >
-        <strong>Revoke Permissions</strong>
-      </a>
-    </div>
-    <div>
-      <div v-if="error_message" id="error" class="section">
-        <article class="message is-warning">
-          <div class="message-header">
-            <p>Error</p>
-            <button
-              class="delete"
-              @click="error_message = ''"
-              aria-label="delete"
-            ></button>
-          </div>
-          <div class="message-body">
-            {{error_message}}
-            <a href="/ActualAuth/twitter" class="button is-small is-info">
-              <span class="icon">
-                <i class="fab fa-twitter"></i>
-              </span>
-              <strong class="has-text-white">Authorize Twitter</strong>
-            </a>
-          </div>
-        </article>
-      </div>
-      <section class="section">
-        <h2 class="title is-4">
-          1. Find an instance
-          <span v-if="twitter_auth" class="icon has-text-success">
-            <i class="fas fa-check"></i>
-          </span>
-        </h2>
-        <h3 v-if="!twitter_auth" class="subtitle is-5">
-          <div class="level">
-            <div class="level-left">
-              <div class="level-item">
-                <a href="/Auth/twitter" class="button is-info">
-                  <span class="icon">
-                    <i class="fab fa-twitter"></i>
-                  </span>
-                  <strong class="has-text-white">Authorize Twitter</strong>
-                </a>
-              </div>
-              <div class="level-item">
-                to see on which instances your Twitter contacts are.
-              </div>
-            </div>
-          </div>
-        </h3>
-        <h3 v-else class="subtitle is-5">
-          Your Twitter contacts are on these instances.
-        </h3>
-        <div
-          v-if="(twitter_auth && unique_count <= 1) | unchecked_domains_count > 0"
-        >
-          <progress
-            v-if="!error_message"
-            class="progress is-large is-info"
-            max="100"
-          >
-            Scanning accounts
-          </progress>
-        </div>
-        <div v-if="domains">
-          <ul>
-            <li v-for="data in sorted_domains.slice(0,20)">
-              <span
-                v-if="data[0].openRegistrations === 1 && data[0].part_of_fediverse === 1"
-              >
-                <a class="title is-5" :href="`https://${data[0].local_domain}`"
-                  >{{data[0].domain}}</a
-                >
-                {{data[0].software_name}} {{data[0].software_version}},
-                {{data[0].users_total}} users, {{data[0].contacts}} of your
-                contacts,
-                <span v-if="data[0].openRegistrations == 1">
-                  <strong>registration open</strong>
-                </span>
-                <span v-else>registration closed</span>
-              </span>
-            </li>
-            <li
-              v-if="show_all_instances"
-              v-for="data in sorted_domains.slice(20,sorted_domains.length+1)"
-            >
-              <span
-                v-if="data[0].openRegistrations === 1 && data[0].part_of_fediverse === 1"
-              >
-                <a class="title is-5" :href="`https://${data[0].local_domain}`"
-                  >{{data[0].domain}}</a
-                >
-                {{data[0].software_name}} {{data[0].software_version}},
-                {{data[0].users_total}} users, {{data[0].contacts}} of your
-                contacts,
-                <span v-if="data[0].openRegistrations == 1">
-                  <strong>registration open</strong>
-                </span>
-                <span v-else>registration closed</span>
-              </span>
-            </li>
-            <li v-if="show_all_instances" v-for="data in sorted_domains">
-              <span
-                v-if="!(data[0]?.openRegistrations) && data[0].part_of_fediverse === 1"
-              >
-                <a class="title is-5" :href="`https://${data[0].local_domain}`"
-                  >{{data[0].domain}}</a
-                >
-                {{data[0].software_name}} {{data[0].software_version}},
-                {{data[0].users_total}} users, {{data[0].contacts}} of your
-                contacts,
-                <span v-if="data[0].openRegistrations == 1">
-                  <strong>registration open</strong>
-                </span>
-                <span v-else>registration closed</span>
-              </span>
-            </li>
-          </ul>
-          <button
-            v-if="sorted_domains.length >= 10"
-            @click="toggleShowInstances()"
-            class="button is-success is-outlined"
-          >
-            <span v-if="show_all_instances">Show less</span>
-            <span v-else>Show more</span>
-          </button>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2 class="title is-4">
-          2. Publish your handle
-          <span
-            v-if="profile && accounts[profile.username]['handles'].length > 0"
-            class="icon has-text-success"
-          >
-            <i class="fas fa-check"></i>
-          </span>
-          <span v-else-if="profile" class="icon has-text-danger">
-            <i class="fas fa-xmark"></i>
-          </span>
-        </h2>
-        <h3
-          class="subtitle is-5"
-          v-if="profile && (profile && accounts[profile.username]['handles'].length > 0)"
-        >
-          These handles were found in your profile @{{profile.username}}.
-        </h3>
-        <h3 class="subtitle is-5" v-else>
-          Sign up for a Fediverse account and add the handle to your Twitter
-          profile (description, location, url or pinned Tweet).
-        </h3>
-        <div v-if="profile">
-          <div v-if="(accounts[profile.username]['handles'].length > 0)">
-            <ul>
-              <li v-for="handle in accounts[profile.username]['handles']">
-                <strong>{{handle}}</strong>
-              </li>
-            </ul>
-          </div>
-          <div v-else>
-            <p>
-              No handles were found on your profile @{{profile.username}}.
-              Please use the format @name@host.tld or https://host.tld/@name. If
-              you added it after authorizing Fedifinder,
-              <a href="/ActualAuth/twitter" class="is-info is-small">
-                <strong>rescan your profile</strong> </a
-              >.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2 class="title is-4">
-          3. Scan your network
-          <span v-if="scanned.length > 1" class="icon has-text-success">
-            <i class="fas fa-check"></i>
-          </span>
-        </h2>
-        <h3 class="subtitle is-5">
-          The accounts your follow got scanned already. Optionally, you can scan
-          accounts on lists and followers for fediverse handles.
-        </h3>
-        <div v-if="scanned.length > 0">
-          <div class="level">
-            <div class="level-left">
-              <div v-if="user_lists.length > 0" class="level-item">
-                <div class="field has-addons">
-                  <div class="control has-icons-left">
-                    <div class="select">
-                      <select v-model="selected_list" name="list">
-                        <option v-for="item in user_lists" :value="item">
-                          {{item.name}} ({{item.member_count}})
-                        </option>
-                      </select>
-                    </div>
-                    <div class="icon is-small is-left">
-                      <i class="fas fa-list"></i>
-                    </div>
-                  </div>
-                  <div class="control">
-                    <button
-                      @click="loadList()"
-                      type="submit"
-                      class="button is-success"
-                    >
-                      <span class="icon">
-                        <i class="fa fa-users-viewfinder"></i>
-                      </span>
-                      <span>Scan list</span>
-                    </button>
-                  </div>
-                  <div class="control">
-                    <button
-                      @click="skipList()"
-                      type="submit"
-                      class="button is-black is-outlined"
-                    >
-                      <span class="icon">
-                        <i class="fas fa-xmark"></i>
-                      </span>
-                      <span>Skip list</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div v-if="!scanned_followers" class="level-item">
-                <button
-                  id="loadFollowers"
-                  @click="loadFollowers()"
-                  class="button is-success"
-                >
-                  <span class="icon">
-                    <i class="fa fa-users-viewfinder"></i> </span
-                  ><span>Scan Followers</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="content">
-          <p>
-            Already scanned:
-            <span v-for="item in scanned">{{item}}&nbsp;</span><br /><br />
-            {{scan_count}} unique accounts scanned <br />
-            {{unique_count}} unique handles from working fediverse domains found
-            <br />
-            {{broken_count}} handles from other services (eg. mail) or
-            unresponsive servers
-            <br />{{unchecked_domains_count}} domains are still being checked
-          </p>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2 class="title is-4">4. Export your network</h2>
-        <h3 class="subtitle is-5">Get all the handles in one CSV file</h3>
-        <a
-          v-if="scanned.length > 0"
-          class="button is-success"
-          @click="exportHandles()"
-          id="downloadlink"
-        >
-          <span class="icon">
-            <i class="fas fa-file-export"></i>
-          </span>
-          <span>Export CSV with found handles</span>
-        </a>
-      </section>
-
-      <section class="section">
-        <h2 class="title is-4">5. Import your network</h2>
-        <h3 class="subtitle is-5">
-          Go to the preferences of your Fediverse account and import your whole
-          network at once.
-        </h3>
-        <div v-if="profile">
-          <div v-if="(accounts[profile.username]['handles'].length > 0)">
-            <ul>
-              <li v-for="handle in accounts[profile.username]['handles']">
-                <span v-if="handle && handle.split('@')[2] in domains">
-                  {{handle.split('@')[2]}} For
-                  <strong>{{handle}}</strong> import the CSV file at
-                  <a
-                    target="_blank"
-                    :href="`https://${handle.split('@')[2]}/settings/import`"
-                  >
-                    {{handle.split('@')[2]}}/settings/import</a
-                  ></span
-                >
-              </li>
-            </ul>
-          </div>
-          <div v-else>
-            <p>
-              No handles were found on your profile @{{profile.username}}.
-              Please use the format @name@host.tld or https://host.tld/@name. If
-              you added it after authorizing Fedifinder,
-              <a href="/ActualAuth/twitter" class="is-info is-small">
-                <strong>rescan your profile</strong> </a
-              >.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section v-if="profile" class="section">
-        <h2 class="title is-4">Your network in the Fediverse</h2>
-        <h3 class="subtitle is-5">
-          Here are the found handles sorted by their instance.
-        </h3>
-
-        <div class="buttons">
-          <button
-            v-if="profile && unique_count > 100"
-            @click="toggleDisplayAccounts()"
-            class="button"
-          >
-            <span v-if="display_accounts | unique_count < 100"
-              >Hide network</span
-            ><span v-else>Show network</span>
-          </button>
-
-          <button
-            v-if="profile && (display_accounts | unique_count < 100)"
-            @click="toggleFollowButtons()"
-            class="button"
-          >
-            <span v-if="show_follow_buttons">Hide follow buttons</span
-            ><span v-else>Show follow buttons</span>
-          </button>
-        </div>
-
-        <div v-if="profile && (display_accounts | unique_count < 100)">
-          <div v-for="[domain, data] of Object.entries(domains)">
-            <div v-if="data.part_of_fediverse == 1" style="padding-bottom: 2em">
-              <h4 class="title is-5">{{domain}}</h4>
-              <h5 class="subtitle is-6">
-                {{data.software_name}} {{data.software_version}},
-                <span v-if="data.openRegistrations == 1"
-                  ><strong>registration open</strong></span
-                ><span v-else>registration closed</span>
-              </h5>
-              <div class="content">
-                <ol>
-                  <li v-for="handle in data.handles">
-                    <a target="_blank" :href="handle.url">{{handle.handle}}</a>
-                    (<a
-                      target="_blank"
-                      :href="`https://twitter.com/${handle.username}`"
-                      >{{handle.username}}</a
-                    >)
-                    <div v-if="show_follow_buttons" class="buttons">
-                      <span
-                        v-for="profilehandle in accounts[profile.username]['handles']"
-                      >
-                        <a
-                          target="_blank"
-                          :href="`https://${profilehandle.split('@')[2]}/authorize_interaction?uri=${handle.url}`"
-                          class="button is-link is-small"
-                        >
-                          <span class="icon">
-                            <i class="fa-brands fa-mastodon"></i>
-                          </span>
-                          <span>Follow from {{profilehandle}} </span></a
-                        >&nbsp;
-                      </span>
-                    </div>
-                  </li>
-                </ol>
-              </div>
-            </div>
-          </div>
-          <div v-for="[domain, data] of Object.entries(domains)">
-            <div v-if="data.part_of_fediverse == 0">
-              <p>
-                <strong>{{domain}}</strong> Maybe down, maybe not Fediverse.
-                Error: {{data.status}}
-              </p>
-              <div class="content">
-                <p>
-                  <span v-for="handle in data.handles">
-                    <a
-                      target="_blank"
-                      :href="handle.url"
-                      >{{handle.handle}}</a
-                    >
-                    (<a
-                      target="_blank"
-                      :href="`https://twitter.com/${handle.username}`"
-                      >{{handle.username}}</a
-                    >)<br />
-                  </span>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <h2 class="title is-4">Bonus: Backup all accounts</h2>
-        <h3 class="subtitle is-5">
-          You can download a CSV or JSON with information about all the scanned
-          accounts. Including those that haven't joined the Fediverse yet.
-        </h3>
-        <div v-if="profile" class="level">
-          <div class="level-left">
-            <div class="level-item">
-              <a
-                class="button is-success"
-                id="allaccountscsv"
-                @click="exportAccountsCsv()"
-              >
-                <span class="icon">
-                  <i class="fas fa-file-export"></i>
-                </span>
-                <span>Export CSV with all accounts</span>
-              </a>
-            </div>
-            <div class="level-item">
-              <a
-                class="button is-success"
-                id="allaccountsjson"
-                @click="exportAccountsJson()"
-              >
-                <span class="icon">
-                  <i class="fas fa-file-export"></i>
-                </span>
-                <span>Export JSON with all accounts</span>
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-
-    <div id="modal-about" class="modal">
-      <div class="modal-background"></div>
-
-      <div class="modal-content">
-        <div class="box">
-          <h1 class="title">About Fedifinder</h1>
-          <p>
-            Fedifinder helps you find the Fediverse accounts of your Twitter
-            contacts.
-          </p>
-          <br />
-          <h2 class="title is-4">How does it work?</h2>
-          <p>
-            It is based on consent and does not give you handles of people who
-            do not want to be found. After authorizing it to access your Twitter
-            account, Fedifinder retreives up to 15.000 of your Followings
-            (accounts which you follow). It then scans the profiles and pinned
-            Tweets of those accounts for Fediverse handles and links. Because
-            handles can look exactly like mail addresses it cross-checks them
-            with a cached list of domains. For domains it doesn't know, it tries
-            to do a webfinger lookup and collect information through the
-            /.well-known/nodeinfo file. The results of the lookup are cached on
-            a domain level (domain x is part of the fediverse, domain y is
-            not).<br />
-            It then shows you a list of the instances it found as well as the
-            individual accounts. You can export that list and import it in the
-            preferences of the web app of your instance.
-          </p>
-          <br />
-          <h2 class="title is-4">Privacy and Security</h2>
-          <p>
-            This is a hobby project by
-            <a href="https://vis.social/@luca">@Luca@vis.social</a>. While I try
-            to follow best practice and am as open about the process as
-            possible, I can't guarantee the safety of your data. Because
-            Fedifinder mostly handles public data, the risk is low, but still
-            there.
-          </p>
-          <p>
-            You can run Fedifinder on your own server and look at the source
-            code and suggest improvements on
-            <a target="_blank" href="https://github.com/lucahammer/fedifinder"
-              >Github</a
-            >.
-          </p>
-          <div class="content">
-            <ul>
-              <li>
-                The Twitter keys are stored in the client in an encrypted cookie
-                that is transferred only over an secured connection.
-              </li>
-              <li>
-                The decryption key and Twitter app key is stored in an
-                environment variable on the server. Access to the Twitter
-                account is only possible with all three of them.
-              </li>
-              <li>
-                No information that identifies individuals is stored on the
-                server. No account data either. The only thing that is cached is
-                the information about domains. If they are part of the
-                fediverse, which software they run and some other information,
-                that's available through /.well-known/nodeinfo on each instance.
-              </li>
-              <li>
-                Some data is stored in the local storage of the client. For
-                example the fediverse auth code. That isn't encrypted at the
-                moment. The feature is still experimental and not available on
-                the main server.
-              </li>
-              <li>
-                Fedifinder is hosted on
-                <a target="_blank" href="https://glitch.com">Glitch</a> which is
-                part of <a href="https://www.fastly.com/">fastly</a>. They
-                collect some usage data:
-                <a target="_blank" href="https://glitch.com/legal/privacy"
-                  >https://glitch.com/legal/privacy</a
-                >. If you are concerned about that, please run it on your own
-                machine.
-              </li>
-            </ul>
-            <p>
-              If you have more questions, feel free to comment on this
-              <a
-                target="_blank"
-                href="https://github.com/lucahammer/fedifinder/issues/135"
-                >issue</a
-              >.
-            </p>
-            <h2 class="title is-4">Alternatives</h2>
-            <a href="https://pruvisto.org/debirdify/">Debirdify</a> works
-            similar to Fedifinder, but has some additional options. <br />
-            <a href="https://twitodon.com/">Twitodon</a> needs you and the
-            accounts to find to be signed up there.
-          </div>
-        </div>
-      </div>
-
-      <button
-        onclick="document.getElementById('modal-about').classList.remove('is-active')"
-        class="modal-close is-large"
-        aria-label="close"
-      ></button>
-    </div>
-
-    <footer class="footer">
-      <div class="content has-text-centered">
-        <p>
-          <strong>Fedifinder</strong> by
-          <a target="_blank" href="https://vis.social/@luca">@luca@vis.social</a
-          >. The source code is licensed
-          <a href="http://opensource.org/licenses/mit-license.php">MIT</a>. You
-          can create your own version by remixing it on
-          <a target="_blank" href="https://glitch.com/edit/#!/fedifinder"
-            >Glitch</a
-          >
+      <p>This is the old version of fedifinder.
+        <strong
+          >Please try the new version at
+          <a href="https://fedifinder.glitch.me/">Fedifinder</a>
           or
-          <a target="_blank" href="https://github.com/lucahammer/fedifinder"
-            >Github</a
-          >.
+          <a href="https://fedifinder-backup.glitch.me/"
+            >Fedifinder Backup</a
+          >
+          for a better experience.</strong>
+      </p>
+    </header>
+
+    <main>
+      <form method="GET" action="/auth/twitter">
+        <h3>Find fediverse handles of Twitter contacts</h3>
+        <button style="height: 50px" type="submit">
+          Authorize to extract handles
+        </button>
+        <p>
+          <small
+            >Fedifinder looks for @user@host.tld, user@host.tld and
+            host.tld/@user in the name, description, location, url field and
+            pinned Tweet.
+          </small>
         </p>
-      </div>
-    </footer>
+      </form>
+    </main>
+
+    <p>
+      Made by <a rel="me" href="https://vis.social/@luca">@Luca@vis.social</a>.
+      <a href="https://glitch.com/edit/#!/fedifinder">Source code</a> in the
+      fish menu (top right). If something doesn't work, please post an issue on
+      <a href="https://github.com/lucahammer/fedifinder">Github</a> or discuss
+      the tool in the
+      <a href="https://vis.social/@Luca/109253908218072543">fediverse</a>.
+    </p>
+
+    <h4>Other options</h4>
+    <ul>
+      <li>
+        <a href="https://pruvisto.org/debirdify/">debirdify</a> by
+        <a href="https://graz.social/@pruvisto">@pruvisto@graz.social</a> works
+        very similarly.
+      </li>
+      <li>
+        <a href="https://twitodon.com/">twitodon</a> needs you and your
+        followers to be signed up there to match you.
+      </li>
+      <li>
+        <a href="https://fedifinder-backup.glitch.me/">Fedifinder Backup</a>
+        when Fedifinder is down.
+      </li>
+    </ul>
+
+    <h4>Donations</h4>
+    <p>
+      I don't want your money. But if you want to express your gratitude through
+      it, please donate to the following entities and sent me a message about
+      it: The admins of your fediverse instance, the developers of the Fediverse
+      software, that you use, or an organization that fights for civil
+      liberties. I like
+      <a href="https://freiheitsrechte.org/en/unterstuetzen">GFF</a>.
+    </p>
+
+    <script
+      async
+      src="https://button.glitch.me/button.js"
+      data-style="glitch"
+    ></script>
+    <div
+      class="glitchButton"
+      style="position: fixed; top: 20px; right: 20px"
+    ></div>
   </body>
 </html>

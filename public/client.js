@@ -1,4 +1,572 @@
-/* globals tests, eq json2csv, Vue*/
+/* globals io, tests, eq json2csv*/
+
+const socket = io();
+let accounts = {},
+  domains = {},
+  known_instances = {},
+  user_lists,
+  unchecked_domains = [],
+  checked_accounts = 0,
+  display_brokenList = "none",
+  displayBroken = "inline",
+  displayButtons = true,
+  profile,
+  lookup_server;
+
+fetch("/cached/known_instances.json")
+  .then((response) => response.json())
+  .then((data) => (known_instances = data));
+
+$(function () {
+  // run after everything is loaded
+  socket.emit("getProfile");
+  socket.on("profile", function (data) {
+    profile = data;
+
+    processAccount("me", profile);
+    checkDomains();
+
+    if (accounts[profile.username]["handles"].length > 0) {
+      $("#userHandles").append(
+        $("<p>").text(
+          `These handles were found in your profile @${profile.username}`
+        )
+      );
+      $("#userHandles").append($("<ul>"));
+
+      accounts[profile.username]["handles"].forEach((handle) => {
+        let import_url = handle.split("@")[2] + "/settings/import";
+        $("#userHandles ul").append(
+          $("<li>")
+            .text(handle)
+            .append("<br>(After exporting the CSV, import it at ")
+            .append(
+              $("<a>")
+                .attr("href", "https://" + import_url)
+                .attr("target", "_blank")
+                .text(import_url)
+            )
+            .append(")")
+        );
+        $("#download").css("display", "block");
+      });
+      $("#displayFollowButtons").css("display", "block");
+    } else {
+      $("#userHandles")
+        .text(
+          `No handles were found on your profile @${profile.username}. \
+        Please use the format @name@host.tld or https://host.tld/@name. \
+        If you added it after authorizing Fedifinder, please re-authorize to get new data. `
+        )
+        .append(
+          $("<a>").attr("href", "/actualAuth/twitter").text("Re-authorize")
+        )
+        .append(".");
+    }
+  });
+
+  let script = document.createElement("script");
+  script["data-style"] = "glitch";
+  script.src = "https://button.glitch.me/button.js";
+  document.body.append(script);
+});
+
+function removeDuplicates() {
+  for (const [domain, data] of Object.entries(domains)) {
+    if ("handles" in domains[domain]) {
+      domains[domain]["handles"] = [
+        ...new Map(
+          domains[domain]["handles"].map((v) => [v.handle, v])
+        ).values(),
+      ];
+    }
+  }
+}
+
+function addHandles(username, handles) {
+  // add handles to domains list
+  if (handles.length > 0) {
+    handles.forEach((handle) => {
+      let domain = handle.split("@").slice(-1)[0];
+
+      // add to domains obj
+      if (domain in domains) {
+        domains[domain]["handles"].push({
+          username: username,
+          handle: handle,
+        });
+      } else
+        domains[domain] = {
+          handles: [{ username: username, handle: handle }],
+        };
+    });
+  }
+}
+
+function retryDomains() {
+  let to_check = [];
+  unchecked_domains.forEach((domain) =>
+    to_check.push({
+      domain: domain,
+    })
+  );
+
+  lookup_server
+    ? to_check.forEach((domain) =>
+        fetch(
+          `${lookup_server}/api/check?handle=${domain.handle}&${domain.domain}`
+        )
+          .then((response) => response.json())
+          .then((data) => processCheckedDomain(data))
+      )
+    : socket.emit("checkDomains", { domains: to_check });
+  $("#retry").css("display", "none");
+}
+
+function checkDomains() {
+  // send unchecked domains to server to get more info
+  let domains_to_check = [];
+  for (const [domain, data] of Object.entries(domains)) {
+    if ("part_of_fediverse" in data === false) {
+      if (domain in known_instances) {
+        // add info from cached instance data
+        domains[domain] = Object.assign(
+          {},
+          domains[domain],
+          known_instances[domain]
+        );
+      } else {
+        // get new info from server
+        unchecked_domains.push(domain);
+        domains_to_check.push({
+          domain: domain,
+          handle: data["handles"][0]["handle"],
+        });
+      }
+    }
+  }
+  updateCounts();
+  displayAccounts();
+  if (domains_to_check.length > 0) {
+    lookup_server
+      ? domains_to_check.forEach((domain) =>
+          fetch(
+            `${lookup_server}/api/check?handle=${domain.handle}&${domain.domain}`
+          )
+            .then((response) => response.json())
+            .then((data) => processCheckedDomain(data))
+        )
+      : socket.emit("checkDomains", { domains: domains_to_check });
+  }
+}
+
+function generateCSV() {
+  addConfirmedToAccounts();
+  let csv = "";
+  csv = "Account address,Show boosts\n";
+
+  for (const [domain, data] of Object.entries(domains)) {
+    if ("part_of_fediverse" in data && data["part_of_fediverse"]) {
+      data["handles"].forEach(
+        (handle) => (csv += handle.handle.replace("@", "") + ",true\n")
+      );
+    }
+  }
+
+  let download = new Blob([csv], { type: "text/plain" });
+  let link = document.getElementById("downloadlink");
+  link.href = window.URL.createObjectURL(download);
+  link.download = "fedifinder_accounts.csv";
+}
+
+function displayAllAccounts() {
+  addConfirmedToAccounts();
+  $("#allAccounts").css("display", "block");
+  $accountTable = $("<table>");
+  $tableHead = $("<tr>");
+  $tableHead.append("<th>username</th>");
+  Object.keys(Object.values(accounts)[0]).forEach((key) =>
+    $tableHead.append($("<th>").text(key))
+  );
+  $accountTable.append($tableHead);
+  for (const [username, data] of Object.entries(accounts)) {
+    $tr = $("<tr>");
+    $tr.append($("<td>").text(username));
+    for (const [key, value] of Object.entries(data)) {
+      Array.isArray(value)
+        ? $tr.append($("<td>").text(value.join("\n")))
+        : value
+        ? $tr.append($("<td>").text(value))
+        : $tr.append($("<td>"));
+    }
+    $accountTable.append($tr);
+  }
+  $("#allAccounts table").replaceWith($accountTable);
+}
+
+function addConfirmedToAccounts() {
+  // add confirmed handles to accounts obj
+  for (const [domain, data] of Object.entries(domains)) {
+    if (data.part_of_fediverse && data.handles.length > 0) {
+      data.handles.forEach((handle) => {
+        if ("confirmed" in accounts[handle.username]) {
+          accounts[handle.username]["confirmed"].push(handle.handle);
+          // remove duplicates
+          accounts[handle.username]["confirmed"] = [
+            ...new Set(accounts[handle.username]["confirmed"]),
+          ];
+        } else accounts[handle.username]["confirmed"] = [handle.handle];
+      });
+    }
+  }
+}
+
+function generateAccountsCSV() {
+  addConfirmedToAccounts();
+  let output = [];
+  for (const [username, data] of Object.entries(accounts)) {
+    output.push({ username: username, ...data });
+  }
+  const json2csvParser = new json2csv.Parser();
+  const csv = json2csvParser.parse(output);
+
+  let download = new Blob([csv], { type: "text/plain" });
+  let link = document.getElementById("csvAccountsDownload");
+  link.href = window.URL.createObjectURL(download);
+  link.download = "accounts.csv";
+}
+
+function generateAccountsJSON() {
+  let json_string = JSON.stringify(accounts, null, 2);
+  let download = new Blob([json_string], { type: "application/json" });
+  let link = document.getElementById("jsonAccountsDownload");
+  link.href = window.URL.createObjectURL(download);
+  link.download = "accounts.json";
+}
+
+function checkListsLeft() {
+  if ($("#lists option").length < 1) {
+    $("#lists").remove();
+    $("#listLoader").prop("disabled", true);
+    $("#listSkipper").prop("disabled", true);
+  }
+}
+
+function loadListMembers() {
+  socket.emit("getList", $("#lists option:selected").val());
+  $("#lists option:selected").remove();
+  checkListsLeft();
+}
+
+function getFollowings() {
+  socket.emit("getFollowings");
+  $("#followingsLoader").prop("disabled", true);
+}
+
+function getFollowers() {
+  socket.emit("getFollowers");
+  $("#followersLoader").prop("disabled", true);
+}
+
+function loadLists() {
+  socket.emit("loadLists", profile.username);
+  $("#listLoader").prop("disabled", true);
+}
+
+function skipList() {
+  // remove the selected list from the menu
+  $("#lists option:selected").remove();
+  checkListsLeft();
+}
+
+function showBroken() {
+  $("#brokenList").css("display", "block");
+  $("#displayBroken").css("display", "none");
+  display_brokenList = "block";
+  displayBroken = "none";
+}
+
+function displayFollowButtons() {
+  displayButtons ? (displayButtons = false) : (displayButtons = true);
+
+  displayButtons
+    ? $("#displayFollowButtons").text("hide follow buttons")
+    : $("#displayFollowButtons").text("show follow buttons");
+
+  displayAccounts();
+}
+
+function updateCounts() {
+  // calculate scanned accounts and found handles
+
+  let counter = 0;
+  let broken_counter = 0;
+  for (const [domain, data] of Object.entries(domains)) {
+    if ("part_of_fediverse" in data && data["part_of_fediverse"])
+      counter += data["handles"].length;
+    if ("status" in data && "handles" in data && data["status"] != null) {
+      broken_counter += data["handles"].length;
+      $("#broken").css("display", "block");
+    }
+    if (unchecked_domains.length > 0) $("#retry").css("display", "inline");
+  }
+
+  counter > 0 ? $("#displayFollowButtons").css("visibility", "visible") : null;
+
+  $("#nr_working").text(counter);
+  $("#nr_checked").text(checked_accounts);
+  $("#nr_broken").text(broken_counter);
+  $("#domains_waiting").text(unchecked_domains.length);
+}
+
+function followButton(username, user_instance, target_url) {
+  // https://domain.tld/authorize_interaction?uri=https%3A%2F%domain.tld%2F%40name
+  return $("<a>")
+    .addClass("followbutton")
+    .attr("target", "_blank")
+    .attr(
+      "href",
+      "https://" + user_instance + "/authorize_interaction?uri=" + target_url
+    )
+    .text("Follow @" + target_url.split("@")[1] + " from " + username);
+}
+
+function displayAccounts() {
+  // replace the list of handles
+  $list = $("<ul id='urlList'></ul>");
+  for (const [domain, data] of Object.entries(domains)) {
+    if ("part_of_fediverse" in data && data["part_of_fediverse"]) {
+      let openStatus = data.openRegistrations
+        ? "<b>registration open</b>"
+        : "registration closed";
+
+      let local_domain = data.local_domain ? data.local_domain : domain;
+
+      let domain_info =
+        data.software_name +
+        " " +
+        data.software_version +
+        ", " +
+        (data.users_total
+          ? data.users_total.toLocaleString() + " users, "
+          : "") +
+        (data.localPosts ? data.localPosts.toLocaleString() + " posts, " : "") +
+        openStatus;
+      $domain = $(
+        "<li id='" +
+          local_domain +
+          "'><h3 style='margin-bottom:0'><a target='_blank' href='https://" +
+          local_domain +
+          "'>" +
+          local_domain +
+          "</a></h3><span>" +
+          domain_info +
+          "</span></li>"
+      );
+      $ol = $("<ol></ol>");
+
+      data["handles"].forEach((handle) => {
+        $li = $("<li>");
+        let target_url =
+          "https://" + local_domain + "/@" + handle.handle.split("@")[1];
+        $li.append(
+          $("<a>")
+            .attr("href", target_url)
+            .text(handle["handle"])
+            .addClass("link")
+        );
+
+        $li.append(" (");
+
+        $li.append(
+          $("<a>")
+            .attr("href", "https://twitter.com/" + handle.username)
+            .text("@" + handle.username)
+            .addClass("link")
+        );
+
+        $li.append(")<br>");
+
+        if (displayButtons) {
+          accounts[profile.username]["handles"].map((user_handle) => {
+            let user_domain = domains[user_handle.split("@")[2]].local_domain
+              ? domains[user_handle.split("@")[2]].local_domain
+              : user_handle.split("@")[2];
+            $li.append(followButton(user_handle, user_domain, target_url));
+          });
+        }
+
+        $ol.append($li);
+      });
+      $domain.append($ol);
+
+      $list.append($domain);
+    }
+  }
+  $("#urlList").replaceWith($list);
+
+  $list = $("<ul id='brokenList' style='font-size: .9em;'></ul>").css(
+    "display",
+    display_brokenList
+  );
+  for (const [domain, data] of Object.entries(domains)) {
+    if ("status" in data && data["status"] != null) {
+      //remove domains with client error: && (/4../.test(data["status"]) == false)
+      $domain = $(
+        "<li id='" +
+          domain +
+          "'><a target='_blank' href='https://" +
+          domain +
+          "'>" +
+          domain +
+          "</a><br><span>Maybe down, maybe not Fediverse. Error code: " +
+          data["status"] +
+          "</span></li>"
+      );
+      $ol = $("<ol></ol>");
+      if ("handles" in data) {
+        data["handles"].forEach((handle) => {
+          let acc = handle.handle + " (@" + handle.username + ")";
+          $ol.append($("<li>").text(acc).css("color", "darkred"));
+        });
+      }
+      $domain.append($ol);
+
+      $list.append($domain);
+    }
+  }
+  $("#brokenList").replaceWith($list);
+  $("#displayBroken").css("display", displayBroken);
+}
+
+function processCheckedDomain(data) {
+  // add info about domains
+  unchecked_domains = unchecked_domains.filter(
+    (item) => item != data["domain"]
+  );
+  domains[data["domain"]] = Object.assign({}, domains[data["domain"]], data);
+  updateCounts();
+  displayAccounts();
+  unchecked_domains.length < 1 ? $("#retry").css("display", "none") : void 0;
+}
+
+socket.on("checkedDomains", (data) => processCheckedDomain);
+
+socket.on("lookup_server", function (data) {
+  lookup_server = data;
+});
+
+socket.on("userLists", function (lists) {
+  // create menu to scan lists
+  user_lists = lists;
+  $("#listLoader").remove();
+  $select = $(
+    "<select id='lists' style='width:100%;margin-bottom:10px;'></select>"
+  );
+  lists.map((list) =>
+    $select.append(
+      '<option value="' +
+        list["id_str"] +
+        '">' +
+        list["name"] +
+        " (" +
+        list["member_count"] +
+        ")</option>"
+    )
+  );
+  $form = $("#choices");
+  $form.append($select);
+  $form.append(
+    '<input id="listLoader" type="button" onClick="loadListMembers();" value="Scan members">'
+  );
+  $form.append(
+    '<input id="listSkipper" type="button" onClick="skipList()" value="Skip list">'
+  );
+  $("#choices").append($form);
+});
+
+socket.on("newAccounts", async function (data) {
+  // receive new data from server
+  if (data) {
+    data.accounts.map((user) => processAccount(data.type, user));
+    checkDomains();
+    $("#infobox").css("visibility", "visible");
+    $("#download").css("display", "block");
+  }
+});
+
+socket.on("connect_error", (err) => handleErrors(err));
+socket.on("connect_failed", (err) => handleErrors(err));
+socket.on("disconnect", (err) => handleErrors(err));
+socket.on("Error", (err) => handleErrors(err));
+
+function handleErrors(data) {
+  console.log("Server sent an error message:");
+  console.log(data);
+  if (typeof data === "string") {
+    $("#error")
+      .append(
+        $("<span>").text(
+          "An unexpected error occured. \
+Please try reloading or reauthorizing.\n\n"
+        )
+      )
+      .append(" ")
+      .append($("<a>").attr("href", "/actualAuth/twitter").text("Re-authorize"))
+      .append(". " + data);
+    $("#error").css("background-color", "orange");
+    $("#error").css("padding", "5px");
+  } else if ("code" in data && data.code == 429) {
+    // rate limit error
+    // todo: differentiate between endpoints
+    $("#error").text(
+      "The Twitter API returned an error because of rate limiting. \
+Please wait 15 minutes before trying again. You can still use the other options."
+    );
+    $("#error").css("background-color", "orange");
+    $("#error").css("padding", "5px");
+
+    let timer = new Date(0);
+    timer.setUTCSeconds(data.rateLimit.reset);
+
+    let countdown = setInterval(function () {
+      let seconds = Math.floor((timer - new Date()) / 1000);
+      $("#followingsLoader").prop("disabled", true);
+      $("#followersLoader").prop("disabled", true);
+      $("#followingsLoader").val("wait " + seconds + " seconds");
+      $("#followersLoader").val("wait " + seconds + " seconds");
+      if (seconds < 0) {
+        clearInterval(countdown);
+        $("#error").text("");
+        $("#error").removeAttr("style");
+        $("#followingsLoader").prop("disabled", false);
+        $("#followingsLoader").val("Scan followings");
+        $("#followersLoader").prop("disabled", false);
+        $("#followersLoader").val("Scan followers");
+      }
+    }, 1000);
+  } else if ("Error" in data && data.Error == "SessionError") {
+    $("#error").text(
+      "The Twitter API returned an error because of rate limiting. \
+Please wait 15 minutes before trying again. You can still use the other options."
+    );
+    $("#error").css("background-color", "orange");
+    $("#error").css("padding", "5px");
+  } else {
+    $("#error")
+      .append(
+        $("<span>").text(
+          "An unexpected error occured. \
+Please try reloading or reauthorizing.\n\n"
+        )
+      )
+      .append(" ")
+      .append($("<a>").attr("href", "/actualAuth/twitter").text("Re-authorize"))
+      .append(". " + data);
+    $("#error").css("background-color", "orange");
+    $("#error").css("padding", "5px");
+  }
+}
 
 function nameFromUrl(urlstring) {
   // returns username without @
@@ -52,11 +620,11 @@ function findHandles(text) {
     .normalize("NFKD");
 
   // different separators people use
-  let words = text.split(/,|\s|“|#|\(|\)|'|》|\?|\n|\r|\t|・|丨|\||…|\.\s|\s$/);
-  words = words.map((w) => w.replace(/^:|\/$/g, ""));
+  let words = text.split(/,|\s|“|#|\(|\)|'|》|\?|\n|\r|\t|・|\||…|\.\s|\s$/);
+
   // remove common false positives
   let unwanted_domains =
-    /gmail\.com(?:$|\/)|mixcloud|linktr\.ee(?:$|\/)|pinboard\.com(?:$|\/)|tutanota\.de(?:$|\/)|xing\.com(?:$|\/)|researchgate|about|bit\.ly(?:$|\/)|imprint|impressum|patreon|donate|facebook|github|instagram|medium\.com(?:$|\/)|t\.co(?:$|\/)|tiktok\.com(?:$|\/)|youtube\.com(?:$|\/)|pronouns\.page(?:$|\/)|mail@|observablehq|twitter\.com(?:$|\/)|contact@|kontakt@|protonmail|traewelling\.de(?:$|\/)|press@|support@|info@|pobox|hey\.com(?:$|\/)/;
+    /gmail\.com(?:$|\/)|tutanota\.de(?:$|\/)|mixcloud|linktr\.ee(?:$|\/)|pinboard\.com(?:$|\/)|xing\.com(?:$|\/)|researchgate|about|bit\.ly(?:$|\/)|imprint|impressum|patreon|donate|blog|facebook|news|github|instagram|t\.me(?:$|\/)|medium\.com(?:$|\/)|t\.co(?:$|\/)|tiktok\.com(?:$|\/)|youtube\.com(?:$|\/)|pronouns\.page(?:$|\/)|mail@|observablehq|twitter\.com(?:$|\/)|contact@|kontakt@|protonmail|traewelling\.de(?:$|\/)|press@|support@|info@|pobox|hey\.com(?:$|\/)/;
   words = words.filter((word) => !unwanted_domains.test(word));
   words = words.filter((w) => w);
 
@@ -64,15 +632,14 @@ function findHandles(text) {
 
   words.map((word) => {
     // @username@server.tld
-    if (/^@[a-zA-Z0-9_\-]+@.+\.[a-zA-Z]+$/.test(word))
-      handles.push(word.replace(":", " "));
+    if (/^@[a-zA-Z0-9_]+@.+\.[a-zA-Z]+$/.test(word)) handles.push(word);
     // some people don't include the initial @
-    else if (/^[a-zA-Z0-9_\-]+@.+\.[a-zA-Z|]+$/.test(word.replace(":", " ")))
-      handles.push(`@${word.replace(":", " ")}`);
+    else if (/^[a-zA-Z0-9_]+@.+\.[a-zA-Z|]+$/.test(word))
+      handles.push(`@${word}`);
     // server.tld/@username
     // friendica: sub.domain.tld/profile/name
     else if (
-      /^.+\.[a-zA-Z]+.*\/(@|web\/|profile\/|\/u\/|\/c\/)[a-zA-Z0-9_\-]+\/*$/.test(
+      /^.+\.[a-zA-Z]+.*\/(@|web\/|profile\/|\/u\/|\/c\/)[a-zA-Z0-9_]+\/*$/.test(
         word
       )
     )
@@ -85,396 +652,109 @@ function findHandles(text) {
   return [...new Set(handles)];
 }
 
-const app = Vue.createApp({
-  data() {
-    return {
-      scanned: [],
-      scan_count: 0,
-      profile: null,
-      user_lists: [],
-      selected_list: null,
-      accounts: [],
-      domains: {},
-      known_instances: {},
-      unchecked_domains: [],
-      lookup_server: false,
-      twitter_auth: false,
-      scanned_followers: false,
-      display_accounts: false,
-      show_follow_buttons: true,
-      error_message: "",
-      show_all_instances: false,
-    };
-  },
-  computed: {
-    unique_count() {
-      let sum = 0;
-      for (const [domain, data] of Object.entries(this.domains)) {
-        "handles" in data && data.part_of_fediverse === 1
-          ? (sum = sum + data.handles.length)
-          : void 0;
-      }
-      return sum;
-    },
-    broken_count() {
-      let sum = 0;
-      for (const [domain, data] of Object.entries(this.domains)) {
-        "handles" in data && data.part_of_fediverse === 0
-          ? (sum = sum + data.handles.length)
-          : void 0;
-      }
-      return sum;
-    },
-    unchecked_domains_count() {
-      return this.unchecked_domains.length;
-    },
-    sorted_domains() {
-      let sorted = [];
-      for (const [domain, data] of Object.entries(this.domains)) {
-        sorted.push([
-          {
-            domain: domain,
-            local_domain: data.local_domain ? data.local_domain : domain,
-            software_name: data.software_name,
-            software_version: data.software_version,
-            users_total: data.users_total,
-            contacts: "handles" in data ? data.handles.length : 0,
-            openRegistrations: data.openRegistrations,
-            part_of_fediverse: data.part_of_fediverse,
-          },
-          "handles" in data ? data.handles.length : 0,
-        ]);
-      }
-      sorted.sort(function (a, b) {
-        return b[1] - a[1];
-      });
-      return sorted;
-    },
-  },
-  methods: {
-    processAccount(type, user) {
-      let followings, follower, list;
-      type.type == "followers" ? (follower = true) : null;
-      type.type == "followings" ? (followings = true) : null;
+function tweet_to_text(tweet) {
+  // combine tweet text and expanded_urls
+  let text = tweet["text"] + " ";
 
-      if (user.username in this.accounts) {
-        this.accounts[user.username].following = this.accounts[user.username]
-          .following
-          ? this.accounts[user.username].following
-          : followings;
-        this.accounts[user.username].follower = this.accounts[user.username]
-          .follower
-          ? this.accounts[user.username].follower
-          : follower;
-        type.type == "list"
-          ? this.accounts[user.username].lists.push(type.list_name)
-          : this.accounts[user.username].lists;
-      } else {
-        this.scan_count += 1;
+  if ("entities" in tweet && "urls" in tweet["entities"]) {
+    tweet["entities"]["urls"].map(
+      (url) => (text += ` ${url["expanded_url"]} `)
+    );
+  }
+  return text;
+}
 
-        let text = `${user["name"]} ${user["description"]} ${
-          user["location"]
-        } ${user["pinned_tweet"]} ${user["urls"].join(" ")}`;
-
-        let handles = findHandles(text);
-
-        this.accounts[user.username] = {
-          name: user.name,
-          following: followings,
-          follower: follower,
-          lists: [type.list_name],
-          handles: handles,
-          location: user.location,
-          description: user.description,
-          urls: user.urls,
-          pinned_tweet: user.pinned_tweet,
-        };
-        this.addHandles(user.username, handles);
-        this.removeDuplicates();
-      }
-    },
-    addHandles(username, handles) {
-      // add handles to domains list
-      if (handles.length > 0) {
-        handles.forEach((handle) => {
-          let url = "";
-          let domain = handle.split("@").slice(-1)[0];
-
-          if (
-            domain in this.domains &&
-            "local_domain" in this.domains[domain]
-          ) {
-            url = `https://${this.domains[domain]}/@${handle.split("@")[1]}`;
-          } else {
-            url = `https://${domain}/@${handle.split("@")[1]}`;
-          }
-
-          // add to domains obj
-          if (domain in this.domains) {
-            this.domains[domain]["handles"].push({
-              username: username,
-              handle: handle,
-              url: url,
-            });
-          } else
-            this.domains[domain] = {
-              handles: [{ username: username, handle: handle, url: url }],
-            };
-        });
-      }
-    },
-    removeDuplicates() {
-      for (const [domain, data] of Object.entries(this.domains)) {
-        if ("handles" in this.domains[domain]) {
-          this.domains[domain]["handles"] = [
-            ...new Map(
-              this.domains[domain]["handles"].map((v) => [v.handle, v])
-            ).values(),
-          ];
-        }
-      }
-    },
-    checkDomains() {
-      // send unchecked domains to server to get more info
-      for (const [domain, data] of Object.entries(this.domains)) {
-        if ("part_of_fediverse" in data === false) {
-          if (domain in this.known_instances) {
-            // add info from cached instance data
-            this.domains[domain] = Object.assign(
-              {},
-              this.domains[domain],
-              this.known_instances[domain]
-            );
-          } else {
-            // get new info from server
-            try {
-              this.unchecked_domains.push({
-                domain: domain,
-                handle: data["handles"][0]["handle"],
-              });
-            } catch (err) {
-              console.log(data);
-            }
-          }
-        }
-      }
-      if (this.unchecked_domains.length > 0) {
-        this.unchecked_domains.forEach((domain) =>
-          fetch(
-            `${this.lookup_server}/api/check?handle=${domain.handle}&domain=${domain.domain}`
-          )
-            .then((response) => response.json())
-            .then((data) => {
-              if (data.error) {
-                console.error(
-                  "got error processing domain to check",
-                  domain,
-                  data
-                );
-                return;
-              }
-
-              this.processCheckedDomain(data);
-            })
-        );
-      }
-    },
-    processCheckedDomain(data) {
-      // add info about domains
-      let index_of = this.unchecked_domains.findIndex((object) => {
-        return object === data["domain"];
-      });
-      this.unchecked_domains.splice(index_of, 1);
-
-      this.domains[data["domain"]] = Object.assign(
-        {},
-        this.domains[data["domain"]],
-        data
+function user_to_text(user) {
+  // where handles could be: name, description, location, entities url urls expanded_url, entities description urls expanded_url
+  let text = `${user["name"]} ${user["description"]} ${user["location"]}`;
+  if ("entities" in user) {
+    if ("url" in user["entities"] && "urls" in user["entities"]["url"]) {
+      user["entities"]["url"]["urls"].map(
+        (url) => (text += ` ${url["expanded_url"]} `)
       );
-    },
-    logoff() {
-      localStorage.clear();
-      window.location.href = "/logoff";
-    },
-    loadProfile() {
-      fetch("/api/getProfile")
-        .then((response) => response.json())
-        .then((data) => {
-          if ("error" in data) {
-            console.log(data);
-            this.error_message = data.error;
-          } else {
-            this.profile = data;
-            this.processAccount("me", data);
-            this.checkDomains();
-            this.scanned.push("Your profile");
-          }
-        });
-    },
-    loadFollowings(next_token = "") {
-      fetch(`/api/getFollowings?next_token=${next_token}`)
-        .then((response) => response.json())
-        .then((data) => {
-          if ("error" in data) {
-            this.error_message = data.error;
-          } else {
-            data.accounts.map((user) =>
-              this.processAccount("followings", user)
-            );
-            this.checkDomains();
-            this.scanned.push(", " + data.accounts.length + " followings");
-            data.next_token && data.ratelimit_remaining > 0
-              ? this.loadFollowings((next_token = data.next_token))
-              : void 0;
-          }
-        });
-    },
-    loadFollowers(next_token = "") {
-      if (document.getElementById("loadFollowers"))
-        document.getElementById("loadFollowers").classList.add("is-loading");
-      fetch(`/api/getFollowers?next_token=${next_token}`)
-        .then((response) => response.json())
-        .then((data) => {
-          if ("error" in data) {
-            this.error_message = data.error;
-          } else {
-            data.accounts.map((user) => this.processAccount("followers", user));
-            this.checkDomains();
-            this.scanned.push(", " + data.accounts.length + " followers");
-            this.scanned_followers = true;
-            data.next_token && data.ratelimit_remaining > 0
-              ? this.loadFollowers((next_token = data.next_token))
-              : void 0;
-          }
-        });
-    },
-    loadLists() {
-      fetch("/api/loadLists")
-        .then((response) => response.json())
-        .then((data) => {
-          if ("error" in data) {
-            console.log(data);
-          } else {
-            this.user_lists = data;
-            this.selected_list = data[0];
-          }
-        });
-    },
-    loadList(next_token = "", list_id = "", list_name = "") {
-      if (next_token == "") {
-        list_id = this.selected_list.id_str;
-        list_name = this.selected_list.name;
-        this.skipList();
-      }
-      fetch(`/api/getList?listid=${list_id}&next_token=${next_token}`)
-        .then((response) => response.json())
-        .then((data) => {
-          if ("error" in data) {
-            console.log(data);
-          } else {
-            data.accounts.map((user) => {
-              this.processAccount({ type: "list", list_name: list_name }, user);
-            });
-            this.checkDomains();
-            this.scanned.push(", " + data.accounts.length + " " + list_name);
-            data.next_token && data.ratelimit_remaining > 0
-              ? this.loadList(
-                  (next_token = data.next_token),
-                  (list_id = list_id),
-                  (list_name = list_name)
-                )
-              : void 0;
-          }
-        });
-    },
-    skipList() {
-      let index_of = this.user_lists.findIndex((object) => {
-        return object.id_str === this.selected_list.id_str;
-      });
-      this.user_lists.splice(index_of, 1);
-      this.selected_list = this.user_lists[0];
-    },
-    exportHandles() {
-      let csv = "";
-      csv = "Account address,Show boosts\n";
-
-      for (const [domain, data] of Object.entries(this.domains)) {
-        if ("part_of_fediverse" in data && data["part_of_fediverse"]) {
-          data["handles"].forEach(
-            (handle) => (csv += handle.handle.replace("@", "") + ",true\n")
-          );
-        }
-      }
-
-      let download = new Blob([csv], { type: "text/plain" });
-      let link = document.getElementById("downloadlink");
-      link.href = window.URL.createObjectURL(download);
-      link.download = "fedifinder_accounts.csv";
-    },
-    exportAccountsCsv() {
-      let output = [];
-      for (const [username, data] of Object.entries(this.accounts)) {
-        output.push({ username: username, ...data });
-      }
-      const json2csvParser = new json2csv.Parser();
-      const csv = json2csvParser.parse(output);
-
-      let download = new Blob([csv], { type: "text/plain" });
-      let link = document.getElementById("allaccountscsv");
-      link.href = window.URL.createObjectURL(download);
-      link.download = "accounts.csv";
-    },
-    exportAccountsJson() {
-      let output = {};
-      for (const [username, data] of Object.entries(this.accounts)) {
-        output[username] = data;
-      }
-      let json_string = JSON.stringify(output, null, 2);
-      let download = new Blob([json_string], { type: "application/json" });
-      let link = document.getElementById("allaccountsjson");
-      link.href = window.URL.createObjectURL(download);
-      link.download = "accounts.json";
-    },
-    toggleDisplayAccounts() {
-      this.display_accounts = !this.display_accounts;
-    },
-    toggleFollowButtons() {
-      this.show_follow_buttons = !this.show_follow_buttons;
-    },
-    toggleShowInstances() {
-      this.show_all_instances = !this.show_all_instances;
-    },
-  },
-  errorCaptured: function (err) {
-    console.log("Caught error", err.message);
-    return false;
-  },
-  async mounted() {
-    if (window.location.href.indexOf("#t") !== -1) {
-      localStorage.setItem("twitterAuth", true);
-      window.location.hash = "";
     }
-
-    if (localStorage.getItem("twitterAuth")) {
-      let lookup_data = await fetch("/api/lookupServer");
-      lookup_data = await lookup_data.json();
-      "error" in lookup_data
-        ? (this.lookup_server = "https://" + window.location.hostname)
-        : (this.lookup_server = lookup_data.lookup_server);
-      let cached_data = await fetch("/cached/known_instances.json");
-      try {
-        this.known_instances = await cached_data.json();
-        this.twitter_auth = true;
-        this.loadProfile();
-        this.loadFollowings();
-        if (!window.location.hostname.includes("staging")) {
-          this.loadFollowings();
-        }
-        this.loadLists();
-      } catch (err) {
-        this.logoff();
-      }
+    if (
+      "description" in user["entities"] &&
+      "urls" in user["entities"]["description"]
+    ) {
+      user["entities"]["description"]["urls"].map(
+        (url) => (text += ` ${url["expanded_url"]} `)
+      );
     }
-  },
-});
-app.mount("#fedifinder");
+  }
+  return text;
+}
+
+async function processAccount(type, user) {
+  let followings, follower, list;
+
+  // get list name from local user_lists
+  type.type == "list"
+    ? (list = user_lists.filter((list) => list.id_str == type.list_id)[0].name)
+    : null;
+  type.type == "followers" ? (follower = true) : null;
+  type.type == "followings" ? (followings = true) : null;
+
+  if (user.username in accounts) {
+    accounts[user.username].following = accounts[user.username].following
+      ? accounts[user.username].following
+      : followings;
+    accounts[user.username].follower = accounts[user.username].follower
+      ? accounts[user.username].follower
+      : follower;
+    type.type == "list"
+      ? accounts[user.username].lists.push(list)
+      : accounts[user.username].lists;
+  } else {
+    checked_accounts += 1;
+
+    let text = `${user["name"]} ${user["description"]} ${user["location"]} ${
+      user["pinned_tweet"]
+    } ${user["urls"].join(" ")}`;
+
+    let handles = findHandles(text);
+
+    accounts[user.username] = {
+      name: user.name,
+      following: followings,
+      follower: follower,
+      lists: [list],
+      handles: handles,
+      location: user.location,
+      description: user.description,
+      urls: user.urls,
+      pinned_tweet: user.pinned_tweet,
+    };
+    addHandles(user.username, handles);
+    removeDuplicates();
+  }
+  updateCounts();
+}
+
+if (/staging|localhost|127\.0\.0\.1/.test(location.hostname)) {
+  // Happy testing
+
+  tests({
+    tinytest: () => {
+      eq(2, 1 + 1);
+    },
+    "return handle based on URL string": () => {
+      eq("@luca@vis.social", handleFromUrl("https://vis.social/@luca"));
+      eq("@luca@vis.social", handleFromUrl("vis.social/@luca"));
+      eq("@luca@vis.social", handleFromUrl("http://vis.social/@luca"));
+    },
+    "list of handles from a text stringt": () => {
+      let text =
+        "Twitter was my special interest. Scientific Programmer @sfb1472 fedi \
+@luca@lucahammer.com \
+http://vis.social/web/@Luca/ \
+http://det.social/@luca \
+@pv@botsin.space";
+      let handles = findHandles(text);
+      eq(true, handles.includes("@luca@lucahammer.com"));
+      eq(true, handles.includes("@luca@vis.social"));
+      eq(true, handles.includes("@luca@det.social"));
+      eq(true, handles.includes("@pv@botsin.space"));
+    },
+  });
+}
