@@ -444,6 +444,7 @@ const app = Vue.createApp({
         this.known_instances = await cached_data.json();
         this.twitter_auth = true;
         this.loadProfile();
+        this.loadFollowings();
         if (!window.location.hostname.includes("staging")) {
           this.loadFollowings();
         }

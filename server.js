@@ -358,8 +358,6 @@ app.get("/api/app", async (req, res) => {
     : "";
   remote_domain = remote_domain ? remote_domain[0].toLowerCase() : "";
 
-  console.log(remote_domain);
-
   if (domain && remote_domain) {
     let data = await getApp(domain, remote_domain);
     data
@@ -431,7 +429,7 @@ const server = app.listen(process.env.PORT, () => {
 });
 
 // WARNING: THIS IS BAD. DON'T TURN OFF TLS
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+//process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 // setup a new database
 // using database credentials set in .env
@@ -528,9 +526,11 @@ async function update_data(domain, handle = null, force = false) {
     // ugly. if it is an object instead of a string, getting host-meta failed
     // try to get nodeinfo anyways
     wellknown = await get_nodeinfo_url(domain);
+
     if (wellknown == null || (wellknown && "status" in wellknown)) {
       // if host-meta failed, try to guess the webfinger url
       local_domain = await get_local_domain_from_guessed_webfinger(domain);
+
       if (typeof local_domain === "object" && "status" in local_domain) {
         // ugly. if it is an object instead of a string, getting host-meta failed
         // try to get nodeinfo anyways
@@ -557,8 +557,6 @@ async function update_data(domain, handle = null, force = false) {
     part_of_fediverse = 1;
     wellknown = await get_nodeinfo_url(local_domain);
   }
-  console.log(local_domain)
-  console.log(wellknown)
 
   if (wellknown && "nodeinfo_url" in wellknown) {
     let nodeinfo = await get_nodeinfo(wellknown.nodeinfo_url);
@@ -694,28 +692,33 @@ async function get_local_domain_from_guessed_webfinger(
       },
     };
 
-    https.get(options, (res) => {
-      if (res.statusCode != 400) {
-        if (
-          (res.statusCode == 302 ||
-            res.statusCode == 301 ||
-            res.statusCode == 303) &&
-          redirect_count <= 10 // limit redirects to prevent circular ones
-        ) {
-          redirect_count += 1;
-          resolve(
-            get_local_domain_from_guessed_webfinger(
-              res.headers.location.split("/")[2],
-              redirect_count
-            )
-          );
+    https
+      .get(options, (res) => {
+        if (res.statusCode != 400) {
+          if (
+            (res.statusCode == 302 ||
+              res.statusCode == 301 ||
+              res.statusCode == 303) &&
+            redirect_count <= 10 // limit redirects to prevent circular ones
+          ) {
+            redirect_count += 1;
+            resolve(
+              get_local_domain_from_guessed_webfinger(
+                res.headers.location.split("/")[2],
+                redirect_count
+              )
+            );
+          } else {
+            resolve({ status: res.statusCode });
+          }
         } else {
-          resolve({ status: res.statusCode });
+          resolve(host_domain);
         }
-      } else {
-        resolve(host_domain);
-      }
-    });
+      })
+      .on("error", (err) => {
+        //console.log(err);
+        resolve({ status: err["code"] });
+      });
   }).catch((err) => {
     console.log(err);
   });
@@ -796,7 +799,6 @@ async function get_local_domain(host_domain, redirect_count = 0) {
 }
 
 async function get_nodeinfo_url(host_domain, redirect_count = 0) {
-  console.log(host_domain)
   // get url of nodeinfo json
   return new Promise((resolve) => {
     let options = {
@@ -901,7 +903,6 @@ function get_nodeinfo(nodeinfo_url) {
                 openRegistrations: nodeinfo["openRegistrations"] ? 1 : 0,
               });
             } catch (err) {
-              console.log(nodeinfo_url);
               console.log(err);
               resolve({ part_of_fediverse: 0 });
             }
