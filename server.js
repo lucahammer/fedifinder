@@ -2,7 +2,7 @@ const express = require("express");
 let app = express();
 app.set("trust proxy", 1);
 const passport = require("passport");
-const Strategy = require("passport-twitter").Strategy;
+const TwitterStrategy = require("@superfaceai/passport-twitter-oauth2");
 const url = require("url");
 const https = require("https");
 const bodyParser = require("body-parser");
@@ -31,7 +31,7 @@ const sessionMiddleware = cookieSession({
   sameSite: "lax",
   saveUninitialized: false,
   secure: true,
-  maxAge: 24 * 60 * 60 * 1000,
+  maxAge: 2 * 60 * 1000, //two hours because Twitter token is only valid for that long
 });
 
 // Telling passport that cookies are fine and there is no need for server side sessions
@@ -43,20 +43,28 @@ const save = (callback) => {
   callback();
 };
 
+const twitter_scopes = [
+  "tweet.read",
+  "users.read",
+  "follows.read",
+  "list.read",
+];
+
 passport.use(
-  new Strategy(
+  new TwitterStrategy(
     {
-      consumerKey: process.env.TWITTER_CONSUMER_KEY,
-      consumerSecret: process.env.TWITTER_CONSUMER_SECRET,
+      clientID: process.env.TWITTER_CLIENT_ID,
+      clientSecret: process.env.TWITTER_CLIENT_SECRET,
       callbackURL: process.env.PROJECT_DOMAIN.includes("http")
         ? process.env.PROJECT_DOMAIN
         : `https://${process.env.PROJECT_DOMAIN}.glitch.me/login/twitter/return`,
+      clientType: "confidential",
     },
-    (token, tokenSecret, profile, cb) => {
-      profile["tokenSecret"] = tokenSecret;
-      profile["accessToken"] = token;
+    (accessToken, refreshToken, profile, cb) => {
+      profile["refreshToken"] = refreshToken;
+      profile["accessToken"] = accessToken;
 
-      if (tokenSecret && token) {
+      if (accessToken) {
         try {
           const client = create_twitter_client(profile);
           client.v2
@@ -121,8 +129,8 @@ passport.use(
                   public_metrics: user.public_metrics,
                 },
                 id: profile.id,
-                tokenSecret: tokenSecret,
-                accessToken: token,
+                refreshToken: refreshToken,
+                accessToken: accessToken,
               };
 
               return cb(null, profile);
@@ -189,13 +197,17 @@ app.get("/auth/twitter", (req, res) => {
   "user" in req ? res.redirect("/") : res.redirect("/actualAuth/twitter");
 });
 
-app.get("/actualAuth/twitter", passport.authenticate("twitter"));
+app.get(
+  "/actualAuth/twitter",
+  passport.authenticate("twitter", {
+    scope: twitter_scopes,
+  })
+);
 
 app.get(
   "/login/twitter/return",
   passport.authenticate("twitter", {
     failureRedirect: "/",
-    failureMessage: false,
   }),
   (req, res) => {
     req.session.save(() => {
@@ -447,13 +459,7 @@ DB({
 
 function create_twitter_client(user) {
   try {
-    const client = new TwitterApi({
-      appKey: process.env.TWITTER_CONSUMER_KEY,
-      appSecret: process.env.TWITTER_CONSUMER_SECRET,
-      accessToken: user.accessToken,
-      accessSecret: user.tokenSecret,
-    });
-
+    const client = new TwitterApi(user.accessToken);
     return client;
   } catch (err) {
     console.log("Error", err);

@@ -104,5 +104,33 @@
     "software_name": "mastodon",
     "software_version": "4.0.2",
     "users_total": 19178
+  },
+  "det.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "det.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 14677
+  },
+  "social.luca.run": {
+    "part_of_fediverse": 1,
+    "local_domain": "social.luca.run",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 6
+  },
+  "vis.social": {
+    "part_of_fediverse": 1,
+    "local_domain": "vis.social",
+    "software_name": "mastodon",
+    "software_version": "4.0.2",
+    "users_total": 6118
+  },
+  "lucahammer.com": {
+    "part_of_fediverse": 1,
+    "software_name": "wordpress",
+    "software_version": "6.1.1",
+    "users_total": 1
   }
 }
