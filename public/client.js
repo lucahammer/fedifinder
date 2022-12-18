@@ -31,13 +31,20 @@ function nameFromUrl(urlstring) {
 function handleFromUrl(urlstring) {
   // transform an URL-like string into a fediverse handle: @name@server.tld
   let name = nameFromUrl(urlstring);
-  if (urlstring.match(/^http/i)) {
+  let handleUrl;
+  try {
+    handleUrl = new URL(urlstring);
+  } catch (e) {
+    handleUrl = null;
+  }
+  if (handleUrl) {
     // proper url
-    let handleUrl = new URL(urlstring);
     return `@${name}@${handleUrl.host}`;
   } else {
     // not a proper URL
-    let domain = urlstring.split("/")[0];
+    // remove possible inproper http:// or https://
+    let pseudoSanitized = urlstring.replace(/^(http)?s?:*\/\//, "");
+    let domain = pseudoSanitized.split("/")[0];
     return `@${name}@${domain}`;
   }
 }
