@@ -22,8 +22,8 @@ The easiest way to run your own version of fedifinder is to use the remix option
    4. Important: Set the Callback URI to https://YOUR_PROJECT_NAME.glitch.me/login/twitter/return
    5. Copy API Key and API Secret for the next step
 5. Back in your Glitch project, go to the file .env and fill out the four variables.
-   - TWITTER_CONSUMER_KEY (from the Twitter Developer Portal)
-   - TWITTER_CONSUMER_SECRET (from the Twitter Developer Portal)
+   - TWITTER_CLIENT_ID (from the Twitter Developer Portal)
+   - TWITTER_CLIENT_SECRET (from the Twitter Developer Portal)
    - DB_CLEAR (Can be any string, but must start with / because it is used as an URL path for certain functionality)
    - SECRET (Any string. Is only used for the sessions.)
      ![.env file](https://cdn.glitch.global/e1cbae25-ccee-4849-a338-8c4c2be555a6/env-variables.png?v=1668102084373)
