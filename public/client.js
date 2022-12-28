@@ -71,7 +71,7 @@ function findHandles(text) {
 
   words.map((word) => {
     // @username@server.tld
-    if (/^@[a-zA-Z0-9_\-]+@.+\.[a-zA-Z]+$/.test(word))
+    if (/^@[a-zA-Z0-9_\-\.]+@.+\.[a-zA-Z]+$/.test(word))
       handles.push(word.replace(":", " "));
     // some people don't include the initial @
     else if (/^[a-zA-Z0-9_\-]+@.+\.[a-zA-Z|]+$/.test(word.replace(":", " ")))
