@@ -59,7 +59,7 @@ function findHandles(text) {
     .normalize("NFKD");
 
   // different separators people use
-  let words = text.split(/,|\s|“|#|\(|\)|'|》|\?|\n|\r|\t|・|丨|\||…|\.\s|\s$/);
+  let words = text.split(/,|;|\s|“|#|\(|\)|'|》|\?|\n|\r|\t|・|丨|\||…|\.\s|\s$/);
   words = words.map((w) => w.replace(/^:|\/$/g, ""));
   // remove common false positives
   let unwanted_domains =
