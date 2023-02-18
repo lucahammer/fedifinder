@@ -70,6 +70,9 @@ function findHandles(text) {
   let handles = [];
 
   words.map((word) => {
+    // strip leading, trailing dots from word
+    word = word.replace(/^\.*|\.*$/g, '');
+
     // @username@server.tld
     if (/^@[a-zA-Z0-9_\-\.]+@.+\.[a-zA-Z]+$/.test(word))
       handles.push(word.replace(":", " "));
