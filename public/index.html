@@ -488,11 +488,7 @@
               <div class="content">
                 <p>
                   <span v-for="handle in data.handles">
-                    <a
-                      target="_blank"
-                      :href="handle.url"
-                      >{{handle.handle}}</a
-                    >
+                    <a target="_blank" :href="handle.url">{{handle.handle}}</a>
                     (<a
                       target="_blank"
                       :href="`https://twitter.com/${handle.username}`"
@@ -606,6 +602,13 @@
                 fediverse, which software they run and some other information,
                 that's available through /.well-known/nodeinfo on each instance.
               </li>
+
+              <li>
+                The amount of checked accounts is stored with a timestamp to
+                understand how much the app is used. This information is not
+                linked to users.
+              </li>
+
               <li>
                 Some data is stored in the local storage of the client. For
                 example the fediverse auth code. That isn't encrypted at the
@@ -632,8 +635,18 @@
               >.
             </p>
             <h2 class="title is-4">Alternatives</h2>
-            <a href="https://pruvisto.org/debirdify/">Debirdify</a> works
-            similar to Fedifinder, but has some additional options. <br />
+            <s
+              ><a href="https://pruvisto.org/debirdify/">Debirdify</a> works
+              similar to Fedifinder, but has some additional options.</s
+            >
+            Debirdify got
+            <a
+              href="https://digitalcourage.social/@debirdify/110061384792399718"
+              >shut down</a
+            >
+            by Twitter.<br />
+            <a href="https://mastodon-flock.vercel.app/">Mastodon Flock</a>
+            works similar to Fedifinder.<br />
             <a href="https://twitodon.com/">Twitodon</a> needs you and the
             accounts to find to be signed up there.
           </div>
