@@ -16,6 +16,11 @@ const cors = require("cors");
 const parser = require("xml2json");
 const { decrypt, encrypt } = require("./encryption.js");
 const { getApp, getFollowings, toToken } = require("./mastodon.js");
+const fsp = require('fs/promises');
+
+async function write_stats(amount) {
+  fsp.appendFile('stats.csv', Date.now() + ',' + amount+'\n');
+}
 
 const webfinger = new WebFinger({
   webfist_fallback: false,
@@ -1123,6 +1128,8 @@ function processData(type, twitres, cb) {
   let next_token =
     "next_token" in twitres.data.meta ? twitres.data.meta.next_token : "";
 
+  write_stats(accounts.length)
+  
   cb.json({
     type: type,
     accounts: accounts,

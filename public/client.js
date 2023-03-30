@@ -31,13 +31,20 @@ function nameFromUrl(urlstring) {
 function handleFromUrl(urlstring) {
   // transform an URL-like string into a fediverse handle: @name@server.tld
   let name = nameFromUrl(urlstring);
-  if (urlstring.match(/^http/i)) {
+  let handleUrl;
+  try {
+    handleUrl = new URL(urlstring);
+  } catch (e) {
+    handleUrl = null;
+  }
+  if (handleUrl) {
     // proper url
-    let handleUrl = new URL(urlstring);
     return `@${name}@${handleUrl.host}`;
   } else {
     // not a proper URL
-    let domain = urlstring.split("/")[0];
+    // remove possible inproper http:// or https://
+    let pseudoSanitized = urlstring.replace(/^(http)?s?:*\/\//, "");
+    let domain = pseudoSanitized.split("/")[0];
     return `@${name}@${domain}`;
   }
 }
@@ -52,7 +59,7 @@ function findHandles(text) {
     .normalize("NFKD");
 
   // different separators people use
-  let words = text.split(/,|\s|“|#|\(|\)|'|》|\?|\n|\r|\t|・|丨|\||…|\.\s|\s$/);
+  let words = text.split(/,|;|\s|“|#|\(|\)|'|》|\?|\n|\r|\t|・|丨|\||…|\.\s|\s$/);
   words = words.map((w) => w.replace(/^:|\/$/g, ""));
   // remove common false positives
   let unwanted_domains =
@@ -63,8 +70,11 @@ function findHandles(text) {
   let handles = [];
 
   words.map((word) => {
+    // strip leading, trailing dots from word
+    word = word.replace(/^\.*|\.*$/g, '');
+
     // @username@server.tld
-    if (/^@[a-zA-Z0-9_\-]+@.+\.[a-zA-Z]+$/.test(word))
+    if (/^@[a-zA-Z0-9_\-\.]+@.+\.[a-zA-Z]+$/.test(word))
       handles.push(word.replace(":", " "));
     // some people don't include the initial @
     else if (/^[a-zA-Z0-9_\-]+@.+\.[a-zA-Z|]+$/.test(word.replace(":", " ")))
