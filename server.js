@@ -455,22 +455,21 @@ async function bskycheck(domain) {
   }
 
   domain = domain.split("/").slice(-1)[0];
-
+  let part_of_bsky = false;
+  
   try {
     const addresses = await dns.promises.resolveTxt("_atproto." + domain);
+
     //console.log("TXT records: %j", addresses);
-    if (addresses) {
-      return {
-        domain: domain,
-        part_of_bsky: true,
-      };
+    if (addresses.length > 0) {
+      part_of_bsky = true;
     }
-  } catch {
-    return {
-      domain: domain,
-      part_of_bsky: false,
-    };
-  }
+  } catch {}
+
+  return {
+    domain: domain,
+    part_of_bsky: part_of_bsky,
+  };
 }
 
 app.get("/api/bskycheck", async (req, res) => {
@@ -478,7 +477,7 @@ app.get("/api/bskycheck", async (req, res) => {
 
   const unresolvedPromises = handles.map(bskycheck);
   const results = await Promise.all(unresolvedPromises);
-  
+
   res.json(results);
 });
 
