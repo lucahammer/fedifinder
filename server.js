@@ -474,14 +474,12 @@ async function bskycheck(domain) {
 }
 
 app.get("/api/bskycheck", async (req, res) => {
-  let handle = req.query.handle
-    ? req.query.handle.match(/[\@]*[a-zA-Z0-9\-\.\/]+\.[a-zA-Z]+/)
-    : "";
-  handle = handle ? handle[0].toLowerCase().replace("@", "") : "";
+  let handles = req.query.handles.split(",");
 
-  if (handle) {
-    res.json(await bskycheck(handle));
-  } else res.json({ error: "not a handle or not a domain" });
+  const unresolvedPromises = handles.map(bskycheck);
+  const results = await Promise.all(unresolvedPromises);
+  
+  res.json(results);
 });
 
 const server = app.listen(process.env.PORT, () => {
@@ -1334,5 +1332,5 @@ async function tests() {
 
 write_cached_files();
 
-if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
+//if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
 //DB().run("DELETE from mastodonapps");
