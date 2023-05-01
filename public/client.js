@@ -116,6 +116,7 @@ const app = Vue.createApp({
       show_follow_buttons: true,
       error_message: "",
       show_all_instances: false,
+      bsky_accounts: {},
       unchecked_bskyhandles: [],
       bskyhandles: [],
     };
@@ -232,6 +233,10 @@ const app = Vue.createApp({
       let handles = [];
       let urls = [];
 
+      if (`${username}.bsky.social` in this.bsky_accounts) {
+        handles.push(username);
+      }
+
       words.map((word) => {
         // strip leading, trailing dots from word
         word = word.replace(/^\.*|\.*$/g, "");
@@ -253,10 +258,16 @@ const app = Vue.createApp({
           if (url) url = url[0];
 
           if (url) {
-            urls.push(url);
+            if (url in this.bsky_accounts) {
+              handles.push(url);
+            } else {
+              urls.push(url);
+            }
           }
         }
       });
+
+      handles = [...new Set(handles)];
 
       this.accounts[username]["bskyhandles"] = handles;
       this.addBskyHandles(username, handles);
@@ -558,6 +569,8 @@ const app = Vue.createApp({
         ? (this.lookup_server = "https://" + window.location.hostname)
         : (this.lookup_server = lookup_data.lookup_server);
       let cached_data = await fetch("/cached/known_instances.json");
+      let cached_bsky = await fetch("/cached/bsky_accounts.json");
+      this.bsky_accounts = await cached_bsky.json();
       try {
         this.known_instances = await cached_data.json();
         this.twitter_auth = true;
