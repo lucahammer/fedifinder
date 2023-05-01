@@ -234,7 +234,7 @@ const app = Vue.createApp({
       let urls = [];
 
       if (`${username}.bsky.social` in this.bsky_accounts) {
-        handles.push(username);
+        handles.push(`${username}.bsky.social`);
       }
 
       words.map((word) => {
