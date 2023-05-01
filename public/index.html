@@ -262,13 +262,22 @@
               <li v-for="handle in accounts[profile.username]['handles']">
                 <strong>{{handle}}</strong>
               </li>
+
+              <li v-for="handle in accounts[profile.username]['bskyhandles']">
+                <a href="https://staging.bsky.app/profile/{{handle}}"
+                  ><strong>@{{handle}}</strong></a
+                >
+                (Bluesky)
+              </li>
             </ul>
           </div>
           <div v-else>
             <p>
               No handles were found on your profile @{{profile.username}}.
-              Please use the format @name@host.tld or https://host.tld/@name. If
-              you added it after authorizing Fedifinder,
+              Please use the format @name@host.tld or https://host.tld/@name for
+              fediverse and sub.domain.tld or
+              https://staging.bsky.app/profile/username.bsky.social for bluesky.
+              If you added it after authorizing Fedifinder,
               <a href="/ActualAuth/twitter" class="is-info is-small">
                 <strong>rescan your profile</strong> </a
               >.
@@ -537,6 +546,30 @@
           </div>
         </div>
       </section>
+
+      <section class="section">
+        <h2 class="title is-4">New: Your contacts on Bluesky</h2>
+        <h3 class="subtitle is-5"></h3>
+        <div v-if="profile" class="level">
+          <div class="level-left">
+            <div class="level-item">
+              <div class="content">
+                <ol>
+                  <li v-for="handle in bskyhandles">
+                    <a target="_blank" :href="handle.url">@{{handle.handle}}</a>
+                    (<a
+                      target="_blank"
+                      :href="`https://twitter.com/${handle.username}`"
+                      >{{handle.username}}</a
+                    >)
+                  </li>
+                </ol>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
 
     <div id="modal-about" class="modal">
@@ -663,8 +696,11 @@
     <footer class="footer">
       <div class="content has-text-centered">
         <p>
-          <strong>Fedifinder</strong> by
+          <strong>Fedifinder</strong> by [fediverse]
           <a target="_blank" href="https://vis.social/@luca">@luca@vis.social</a
+          >, [bluesky]
+          <a target="_blank" href="https://staging.bsky.app/profile/luca.run"
+            >@luca.run</a
           >. The source code is licensed
           <a href="http://opensource.org/licenses/mit-license.php">MIT</a>. You
           can create your own version by remixing it on
