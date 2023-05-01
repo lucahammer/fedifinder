@@ -267,7 +267,6 @@ const app = Vue.createApp({
               .filter((handle) => handle.part_of_bsky == true)
               .map((handle) => handles.push(handle.domain));
             handles = [...new Set(handles)];
-            console.log(handles)
             this.accounts[username]["bskyhandles"] = handles;
             this.addBskyHandles(username, handles);
           }
