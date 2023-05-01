@@ -7,19 +7,20 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "@superfaceai/passport-twitter-oauth2": "^1.2.3",
+    "better-sqlite3": "^8.3.0",
+    "better-sqlite3-helper": "^3.1.6",
     "connect-ensure-login": "^0.1.1",
     "cookie-parser": "^1.4.6",
+    "cookie-session": "^2.0.0",
+    "cors": "^2.8.5",
+    "crypto-js": "^4.1.1",
     "express": "^4.18.2",
+    "npm": "^9.6.5",
     "passport": "^0.6.0",
-    "@superfaceai/passport-twitter-oauth2": "^1.2.3",
     "twitter-api-v2": "^1.14.2",
     "webfinger.js": "^2.7.1",
-    "better-sqlite3": "^8.2.0",
-    "better-sqlite3-helper": "^3.1.6",
-    "cookie-session": "^2.0.0",
-    "xml2json": "^0.12.0",
-    "crypto-js": "^4.1.1",
-    "cors": "^2.8.5"
+    "xml2json": "^0.12.0"
   },
   "engines": {
     "node": "16.x"
