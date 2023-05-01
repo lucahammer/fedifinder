@@ -41,7 +41,7 @@ const sessionMiddleware = cookieSession({
   sameSite: "lax",
   saveUninitialized: false,
   secure: true,
-  maxAge: 2 * 60 * 1000, //two hours because Twitter token is only valid for that long
+  maxAge: 2 * 60 * 60 * 1000, //two hours because Twitter token is only valid for that long
 });
 
 // Telling passport that cookies are fine and there is no need for server side sessions
