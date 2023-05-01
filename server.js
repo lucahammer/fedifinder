@@ -780,7 +780,6 @@ async function get_local_domain(host_domain, redirect_count = 0) {
             if (body.startsWith("<") === true) {
               try {
                 let data = parser.parse(body);
-                console.log(data.XRD.Link["@_template"]);
                 try {
                   resolve(
                     data.XRD.Link["@_template"].split("//")[1].split("/")[0]
@@ -1258,13 +1257,13 @@ async function tests() {
     assert(app.domain == "vis.social");
   });
   
-  it("get local domain", async () => {
-    let local_domain = await get_local_domain("social.luca.rund");
+  it("get local domain of instance", async () => {
+    let local_domain = await get_local_domain("social.luca.run");
     assert(local_domain == "social.luca.run");
   });
 }
 
 write_cached_files();
 
-//if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
+if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
 //DB().run("DELETE from mastodonapps");
