@@ -13,10 +13,15 @@ const DB = require("better-sqlite3-helper");
 const fs = require("fs");
 const cookieSession = require("cookie-session");
 const cors = require("cors");
-const parser = require("xml2json");
+const { XMLParser } = require("fast-xml-parser");
 const { decrypt, encrypt } = require("./encryption.js");
 const { getApp, getFollowings, toToken } = require("./mastodon.js");
 const fsp = require("fs/promises");
+const dns = require("dns");
+
+const parser = new XMLParser({
+  ignoreAttributes: false,
+});
 
 async function write_stats(amount) {
   fsp.appendFile("stats.csv", Date.now() + "," + amount + "\n");
@@ -36,7 +41,7 @@ const sessionMiddleware = cookieSession({
   sameSite: "lax",
   saveUninitialized: false,
   secure: true,
-  maxAge: 2 * 60 * 1000, //two hours because Twitter token is only valid for that long
+  maxAge: 2 * 60 * 60 * 1000, //two hours because Twitter token is only valid for that long
 });
 
 // Telling passport that cookies are fine and there is no need for server side sessions
@@ -440,6 +445,45 @@ app.get(process.env.DB_CLEAR + "_popfresh", async (req, res) => {
   );
 });
 
+async function bskycheck(domain) {
+  if (domain.includes("bsky.social")) {
+    let handle = domain.match(/[a-zA-Z0-9\-]+\.bsky\.social/);
+    return {
+      domain: handle[0],
+      part_of_bsky: true,
+    };
+  }
+
+  domain = domain.split("/").slice(-1)[0];
+
+  try {
+    const addresses = await dns.promises.resolveTxt("_atproto." + domain);
+    //console.log("TXT records: %j", addresses);
+    if (addresses) {
+      return {
+        domain: domain,
+        part_of_bsky: true,
+      };
+    }
+  } catch {
+    return {
+      domain: domain,
+      part_of_bsky: false,
+    };
+  }
+}
+
+app.get("/api/bskycheck", async (req, res) => {
+  let handle = req.query.handle
+    ? req.query.handle.match(/[\@]*[a-zA-Z0-9\-\.\/]+\.[a-zA-Z]+/)
+    : "";
+  handle = handle ? handle[0].toLowerCase().replace("@", "") : "";
+
+  if (handle) {
+    res.json(await bskycheck(handle));
+  } else res.json({ error: "not a handle or not a domain" });
+});
+
 const server = app.listen(process.env.PORT, () => {
   // listen for requests
   console.log("Your app is listening on port " + server.address().port);
@@ -775,17 +819,11 @@ async function get_local_domain(host_domain, redirect_count = 0) {
           res.on("end", () => {
             if (body.startsWith("<") === true) {
               try {
-                let data = parser.toJson(body, {
-                  object: true,
-                  reversible: false,
-                  coerce: false,
-                  sanitize: true,
-                  trim: true,
-                  arrayNotation: false,
-                  alternateTextNode: false,
-                });
+                let data = parser.parse(body);
                 try {
-                  resolve(data.XRD.Link.template.split("//")[1].split("/")[0]);
+                  resolve(
+                    data.XRD.Link["@_template"].split("//")[1].split("/")[0]
+                  );
                 } catch (err) {
                   resolve({
                     status: "no webfinger template in .well-known/host-meta",
@@ -1258,8 +1296,43 @@ async function tests() {
     let app = await getApp("vis.social");
     assert(app.domain == "vis.social");
   });
+
+  it("get local domain of instance", async () => {
+    let local_domain = await get_local_domain("social.luca.run");
+    assert(local_domain == "social.luca.run");
+  });
+
+  it("luca.run is part of bluesky", async () => {
+    let result = await bskycheck("luca.run");
+    assert(result.part_of_bsky == true);
+  });
+
+  it("social.luca.run is not part of bluesky", async () => {
+    let result = await bskycheck("social.luca.run");
+    assert(result.part_of_bsky == false);
+  });
+
+  it("staging url is part of bluesky", async () => {
+    let result = await bskycheck(
+      "https://staging.bsky.app/profile/makeithackin.bsky.social/"
+    );
+    assert(result.part_of_bsky == true);
+  });
+
+  it("app url is part of bluesky", async () => {
+    let result = await bskycheck(
+      "https://bsky.app/profile/makeithackin.bsky.social"
+    );
+    assert(result.part_of_bsky == true);
+  });
+
+  it("@user.bsky.social is part of bluesky", async () => {
+    let result = await bskycheck("@makeithackin.bsky.social");
+    assert(result.part_of_bsky == true);
+  });
 }
 
 write_cached_files();
-//if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
+
+if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
 //DB().run("DELETE from mastodonapps");

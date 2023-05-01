@@ -1,6 +1,6 @@
 {
   "name": "fedifinder",
-  "version": "2023.03.30",
+  "version": "2023.05.01",
   "description": "Extracts fediverse handles and URLS from Twitter accounts.",
   "main": "server.js",
   "scripts": {
@@ -16,11 +16,11 @@
     "cors": "^2.8.5",
     "crypto-js": "^4.1.1",
     "express": "^4.18.2",
+    "fast-xml-parser": "^4.2.2",
     "npm": "^9.6.5",
     "passport": "^0.6.0",
     "twitter-api-v2": "^1.14.2",
-    "webfinger.js": "^2.7.1",
-    "xml2json": "^0.12.0"
+    "webfinger.js": "^2.7.1"
   },
   "engines": {
     "node": "16.x"
