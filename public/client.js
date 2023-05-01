@@ -263,7 +263,7 @@ const app = Vue.createApp({
           if (data.error) {
             console.error("got error processing domains to check", data);
           } else {
-            data
+            handles = data
               .filter((handle) => handle.part_of_bsky == true)
               .map((handle) => handles.push(handle.domain));
             handles = [...new Set(handles)];
