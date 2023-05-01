@@ -17,6 +17,7 @@ const { XMLParser } = require("fast-xml-parser");
 const { decrypt, encrypt } = require("./encryption.js");
 const { getApp, getFollowings, toToken } = require("./mastodon.js");
 const fsp = require("fs/promises");
+const dns = require("dns");
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -442,6 +443,45 @@ app.get(process.env.DB_CLEAR + "_popfresh", async (req, res) => {
   res.send(
     "Started to populate the database with new records from " + source_url
   );
+});
+
+async function bskycheck(domain) {
+  if (domain.includes("bsky.social")) {
+    let handle = domain.match(/[a-zA-Z0-9\-]+\.bsky\.social/);
+    return {
+      domain: handle[0],
+      part_of_bsky: true,
+    };
+  }
+
+  domain = domain.split("/").slice(-1)[0];
+
+  try {
+    const addresses = await dns.promises.resolveTxt("_atproto." + domain);
+    //console.log("TXT records: %j", addresses);
+    if (addresses) {
+      return {
+        domain: domain,
+        part_of_bsky: true,
+      };
+    }
+  } catch {
+    return {
+      domain: domain,
+      part_of_bsky: false,
+    };
+  }
+}
+
+app.get("/api/bskycheck", async (req, res) => {
+  let handle = req.query.handle
+    ? req.query.handle.match(/[\@]*[a-zA-Z0-9\-\.\/]+\.[a-zA-Z]+/)
+    : "";
+  handle = handle ? handle[0].toLowerCase().replace("@", "") : "";
+
+  if (handle) {
+    res.json(await bskycheck(handle));
+  } else res.json({ error: "not a handle or not a domain" });
 });
 
 const server = app.listen(process.env.PORT, () => {
@@ -1256,10 +1296,39 @@ async function tests() {
     let app = await getApp("vis.social");
     assert(app.domain == "vis.social");
   });
-  
+
   it("get local domain of instance", async () => {
     let local_domain = await get_local_domain("social.luca.run");
     assert(local_domain == "social.luca.run");
+  });
+
+  it("luca.run is part of bluesky", async () => {
+    let result = await bskycheck("luca.run");
+    assert(result.part_of_bsky == true);
+  });
+
+  it("social.luca.run is not part of bluesky", async () => {
+    let result = await bskycheck("social.luca.run");
+    assert(result.part_of_bsky == false);
+  });
+
+  it("staging url is part of bluesky", async () => {
+    let result = await bskycheck(
+      "https://staging.bsky.app/profile/makeithackin.bsky.social/"
+    );
+    assert(result.part_of_bsky == true);
+  });
+
+  it("app url is part of bluesky", async () => {
+    let result = await bskycheck(
+      "https://bsky.app/profile/makeithackin.bsky.social"
+    );
+    assert(result.part_of_bsky == true);
+  });
+
+  it("@user.bsky.social is part of bluesky", async () => {
+    let result = await bskycheck("@makeithackin.bsky.social");
+    assert(result.part_of_bsky == true);
   });
 }
 
