@@ -97,64 +97,6 @@ function findHandles(text) {
   return [...new Set(handles)];
 }
 
-function findBskyHandles(text) {
-  // split text into string and check them for handles
-
-  // remove weird characters and unicode font stuff
-  text = text
-    .replace(/[^\p{L}\p{N}\p{P}\p{Z}\n@\.^$]/gu, " ")
-    .toLowerCase()
-    .normalize("NFKD");
-
-  // different separators people use
-  let words = text.split(
-    /,|;|\s|“|#|\(|\)|'|》|\?|\n|\r|\t|・|丨|\||…|\.\s|\s$/
-  );
-  words = words.map((w) => w.replace(/^:|\/$/g, ""));
-  // remove common false positives
-  let unwanted_domains =
-    /gmail\.com(?:$|\/)|mixcloud|linktr\.ee(?:$|\/)|pinboard\.com(?:$|\/)|tutanota\.de(?:$|\/)|xing\.com(?:$|\/)|researchgate|bit\.ly(?:$|\/)|patreon|donate|facebook|github|instagram|medium\.com(?:$|\/)|t\.co(?:$|\/)|tiktok\.com(?:$|\/)|youtube\.com(?:$|\/)|pronouns\.page(?:$|\/)|observablehq|twitter\.com(?:$|\/)|protonmail|traewelling\.de(?:$|\/)|pobox|hey\.com(?:$|\/)/;
-  words = words.filter((word) => !unwanted_domains.test(word));
-  words = words.filter((w) => w);
-
-  let handles = [];
-
-  words.map((word) => {
-    // strip leading, trailing dots from word
-    word = word.replace(/^\.*|\.*$/g, "");
-
-    // makeithackin.bsky.social or @makeithackin.bsky.social
-    if (word.includes("bsky.social")) {
-      let match = word.match(/[a-zA-Z0-9\-]+\.bsky\.social/);
-      if (match) handles.push(match[0]);
-    }
-
-    // https://staging.bsky.app/profile/luca.run or https://bsky.app/profile/luca.run
-    else if (word.includes("bsky.app")) {
-      handles.push(word.split("/").slice(-1)[0]);
-    }
-
-    // luca.run or https://luca.run or @luca.run or something@luca.run
-    else {
-      let url = word.match(/[a-zA-Z0-9_\-\.]+\.[a-zA-Z]+/);
-      if (url) url = url[0];
-
-      if (url) {
-        fetch(`/api/bskycheck?handle=${word}`)
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.error) {
-              console.error("got error processing domain to check", word, data);
-              return;
-            }
-            return data;
-          });
-      }
-    }
-  });
-  return [...new Set(handles)];
-}
-
 const app = Vue.createApp({
   data() {
     return {
@@ -248,7 +190,6 @@ const app = Vue.createApp({
         } ${user["pinned_tweet"]} ${user["urls"].join(" ")}`;
 
         let handles = findHandles(text);
-        let bskyhandles = findBskyHandles(text);
 
         this.accounts[user.username] = {
           name: user.name,
@@ -256,16 +197,80 @@ const app = Vue.createApp({
           follower: follower,
           lists: [type.list_name],
           handles: handles,
-          bskyhandles: bskyhandles,
+          bskyhandles: [],
           location: user.location,
           description: user.description,
           urls: user.urls,
           pinned_tweet: user.pinned_tweet,
         };
+        this.findBskyHandles(user.username, text);
         this.addHandles(user.username, handles);
-        this.addBskyHandles(user.username, bskyhandles);
         this.removeDuplicates();
       }
+    },
+    findBskyHandles(username, text) {
+      // split text into string and check them for handles
+
+      // remove weird characters and unicode font stuff
+      text = text
+        .replace(/[^\p{L}\p{N}\p{P}\p{Z}\n@\.^$]/gu, " ")
+        .toLowerCase()
+        .normalize("NFKD");
+
+      // different separators people use
+      let words = text.split(
+        /,|;|\s|“|#|\(|\)|'|》|\?|\n|\r|\t|・|丨|\||…|\.\s|\s$/
+      );
+      words = words.map((w) => w.replace(/^:|\/$/g, ""));
+      // remove common false positives
+      let unwanted_domains =
+        /gmail\.com(?:$|\/)|mixcloud|linktr\.ee(?:$|\/)|pinboard\.com(?:$|\/)|tutanota\.de(?:$|\/)|xing\.com(?:$|\/)|researchgate|bit\.ly(?:$|\/)|patreon|donate|facebook|github|instagram|medium\.com(?:$|\/)|t\.co(?:$|\/)|tiktok\.com(?:$|\/)|youtube\.com(?:$|\/)|pronouns\.page(?:$|\/)|observablehq|twitter\.com(?:$|\/)|protonmail|traewelling\.de(?:$|\/)|pobox|hey\.com(?:$|\/)/;
+      words = words.filter((word) => !unwanted_domains.test(word));
+      words = words.filter((w) => w);
+
+      let handles = [];
+      let urls = [];
+
+      words.map((word) => {
+        // strip leading, trailing dots from word
+        word = word.replace(/^\.*|\.*$/g, "");
+
+        // makeithackin.bsky.social or @makeithackin.bsky.social
+        if (word.includes("bsky.social")) {
+          let match = word.match(/[a-zA-Z0-9\-]+\.bsky\.social/);
+          if (match) handles.push(match[0]);
+        }
+
+        // https://staging.bsky.app/profile/luca.run or https://bsky.app/profile/luca.run
+        else if (word.includes("bsky.app")) {
+          handles.push(word.split("/").slice(-1)[0]);
+        }
+
+        // luca.run or https://luca.run or @luca.run or something@luca.run
+        else {
+          let url = word.match(/[a-zA-Z0-9_\-\.]+\.[a-zA-Z]+/);
+          if (url) url = url[0];
+
+          if (url) {
+            urls.push(url);
+          }
+        }
+      });
+
+      fetch(`/api/bskycheck?handles=${urls.join(",")}`)
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.error) {
+            console.error("got error processing domains to check", data);
+          } else {
+            data
+              .filter((handle) => handle.part_of_bsky == true)
+              .map((handle) => handles.push(handle.domain));
+            handles = [...new Set(handles)];
+            this.accounts[username]["bskyhandles"] = handles;
+            this.addBskyHandles(username, handles);
+          }
+        });
     },
     addHandles(username, handles) {
       // add handles to domains list
@@ -304,7 +309,7 @@ const app = Vue.createApp({
           this.bskyhandles.push({
             username: username,
             handle: handle,
-            url: `https://staging.bsky.app/profile/${ handle }`,
+            url: `https://staging.bsky.app/profile/${handle}`,
           });
         });
       }
