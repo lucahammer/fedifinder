@@ -13,10 +13,14 @@ const DB = require("better-sqlite3-helper");
 const fs = require("fs");
 const cookieSession = require("cookie-session");
 const cors = require("cors");
-const parser = require("xml2json");
+const { XMLParser } = require("fast-xml-parser");
 const { decrypt, encrypt } = require("./encryption.js");
 const { getApp, getFollowings, toToken } = require("./mastodon.js");
 const fsp = require("fs/promises");
+
+const parser = new XMLParser({
+  ignoreAttributes: false,
+});
 
 async function write_stats(amount) {
   fsp.appendFile("stats.csv", Date.now() + "," + amount + "\n");
@@ -775,17 +779,12 @@ async function get_local_domain(host_domain, redirect_count = 0) {
           res.on("end", () => {
             if (body.startsWith("<") === true) {
               try {
-                let data = parser.toJson(body, {
-                  object: true,
-                  reversible: false,
-                  coerce: false,
-                  sanitize: true,
-                  trim: true,
-                  arrayNotation: false,
-                  alternateTextNode: false,
-                });
+                let data = parser.parse(body);
+                console.log(data.XRD.Link["@_template"]);
                 try {
-                  resolve(data.XRD.Link.template.split("//")[1].split("/")[0]);
+                  resolve(
+                    data.XRD.Link["@_template"].split("//")[1].split("/")[0]
+                  );
                 } catch (err) {
                   resolve({
                     status: "no webfinger template in .well-known/host-meta",
@@ -1258,8 +1257,14 @@ async function tests() {
     let app = await getApp("vis.social");
     assert(app.domain == "vis.social");
   });
+  
+  it("get local domain", async () => {
+    let local_domain = await get_local_domain("social.luca.rund");
+    assert(local_domain == "social.luca.run");
+  });
 }
 
 write_cached_files();
+
 //if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
 //DB().run("DELETE from mastodonapps");
