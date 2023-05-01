@@ -203,7 +203,10 @@ const app = Vue.createApp({
           urls: user.urls,
           pinned_tweet: user.pinned_tweet,
         };
-        this.findBskyHandles(user.username, text);
+        setTimeout(
+          this.findBskyHandles(user.username, text),
+          Math.floor(Math.random() * 5000) // prevent DoS blocking by spreading out the requests
+        );
         this.addHandles(user.username, handles);
         this.removeDuplicates();
       }
@@ -257,23 +260,20 @@ const app = Vue.createApp({
         }
       });
 
-      setTimeout(
-        fetch(`/api/bskycheck?handles=${urls.join(",")}`)
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.error) {
-              console.error("got error processing domains to check", data);
-            } else {
-              data
-                .filter((handle) => handle.part_of_bsky == true)
-                .map((handle) => handles.push(handle.domain));
-              handles = [...new Set(handles)];
-              this.accounts[username]["bskyhandles"] = handles;
-              this.addBskyHandles(username, handles);
-            }
-          }),
-        Math.floor(Math.random() * 5000) // prevent DoS blocking by spreading out the requests
-      );
+      fetch(`/api/bskycheck?handles=${urls.join(",")}`)
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.error) {
+            console.error("got error processing domains to check", data);
+          } else {
+            data
+              .filter((handle) => handle.part_of_bsky == true)
+              .map((handle) => handles.push(handle.domain));
+            handles = [...new Set(handles)];
+            this.accounts[username]["bskyhandles"] = handles;
+            this.addBskyHandles(username, handles);
+          }
+        });
     },
     addHandles(username, handles) {
       // add handles to domains list
