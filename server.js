@@ -456,15 +456,18 @@ async function bskycheck(domain) {
 
   domain = domain.split("/").slice(-1)[0];
   let part_of_bsky = false;
-  
+
   try {
     const addresses = await dns.promises.resolveTxt("_atproto." + domain);
-
     //console.log("TXT records: %j", addresses);
-    if (addresses.length > 0) {
-      part_of_bsky = true;
-    }
-  } catch {}
+    addresses.forEach((address) => {
+      if (address[0].startsWith("did=did:plc")) {
+        part_of_bsky = true;
+      }
+    });
+  } catch {
+    //console.log("TXT error");
+  }
 
   return {
     domain: domain,
