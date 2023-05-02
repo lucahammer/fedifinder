@@ -265,9 +265,9 @@
 
               <li v-for="handle in accounts[profile.username]['bskyhandles']">
                 <a href="https://staging.bsky.app/profile/{{handle}}"
-                  ><strong>@{{handle}}</strong></a
+                  ><strong>@{{handle.handle}}</strong></a
                 >
-                (Bluesky)
+                (Bluesky, {{handle.matchtype}})
               </li>
             </ul>
           </div>
@@ -560,8 +560,8 @@
               <div class="content">
                 <ol>
                   <li v-for="handle in bskyhandles">
-                    <a target="_blank" :href="handle.url">@{{handle.handle}}</a>
-                    (<a
+                    <a target="_blank" :href="handle.url">@{{handle.handle.handle}}</a>
+                    ({{handle.handle.matchtype}}, <a
                       target="_blank"
                       :href="`https://twitter.com/${handle.username}`"
                       >{{handle.username}}</a
