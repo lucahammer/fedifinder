@@ -234,7 +234,10 @@ const app = Vue.createApp({
       let urls = [];
 
       if (`${username}.bsky.social` in this.bsky_accounts) {
-        handles.push(`${username}.bsky.social`);
+        handles.push({
+          handle: `${username}.bsky.social`,
+          matchtype: "guessed username",
+        });
       }
 
       words.map((word) => {
@@ -244,12 +247,19 @@ const app = Vue.createApp({
         // makeithackin.bsky.social or @makeithackin.bsky.social
         if (word.includes("bsky.social")) {
           let match = word.match(/[a-zA-Z0-9\-]+\.bsky\.social/);
-          if (match) handles.push(match[0]);
+          if (match)
+            handles.push({
+              handle: match[0],
+              matchtype: "bsky domain",
+            });
         }
 
         // https://staging.bsky.app/profile/luca.run or https://bsky.app/profile/luca.run
         else if (word.includes("bsky.app")) {
-          handles.push(word.split("/").slice(-1)[0]);
+          handles.push({
+            handle: word.split("/").slice(-1)[0],
+            matchtype: "link",
+          });
         }
 
         // luca.run or https://luca.run or @luca.run or something@luca.run
@@ -259,7 +269,7 @@ const app = Vue.createApp({
 
           if (url) {
             if (url in this.bsky_accounts) {
-              handles.push(url);
+              handles.push({ handle: url, matchtype: "known ATP domain" });
             } else {
               urls.push(url);
             }
@@ -310,8 +320,9 @@ const app = Vue.createApp({
         handles.forEach((handle) => {
           this.bskyhandles.push({
             username: username,
-            handle: handle,
-            url: `https://staging.bsky.app/profile/${handle}`,
+            handle: handle.handle,
+            matchtype: handle.matchtype,
+            url: `https://staging.bsky.app/profile/${handle.handle}`,
           });
         });
       }
