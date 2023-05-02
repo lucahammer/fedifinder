@@ -264,9 +264,7 @@
               </li>
 
               <li v-for="handle in accounts[profile.username]['bskyhandles']">
-                <a href="https://staging.bsky.app/profile/{{handle}}"
-                  ><strong>@{{handle.handle}}</strong></a
-                >
+                <strong>@{{handle.handle}}</strong>
                 (Bluesky, {{handle.matchtype}})
               </li>
             </ul>
@@ -550,8 +548,8 @@
       <section class="section">
         <h2 class="title is-4">New: Your contacts on Bluesky</h2>
         <h3 class="subtitle is-5">
-          URLs to profiles, and username matches (unverified; be careful!). Data
-          from
+          URLs to profiles and username matches (unverified; be careful!). List
+          of accounts from
           <a href="https://bsky.jazco.dev/">bsky.jazco.dev</a>.
         </h3>
         <div v-if="profile" class="level">
@@ -560,12 +558,12 @@
               <div class="content">
                 <ol>
                   <li v-for="handle in bskyhandles">
-                    <a target="_blank" :href="handle.url">@{{handle.handle.handle}}</a>
-                    ({{handle.handle.matchtype}}, <a
+                    <a target="_blank" :href="handle.url">@{{handle.handle}}</a>
+                    (<a
                       target="_blank"
                       :href="`https://twitter.com/${handle.username}`"
                       >{{handle.username}}</a
-                    >)
+                    >, {{handle.matchtype}})
                   </li>
                 </ol>
               </div>

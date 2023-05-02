@@ -277,7 +277,7 @@ const app = Vue.createApp({
         }
       });
 
-      //handles = [...new Set(handles)];
+      handles = [...new Set(handles)];
 
       this.accounts[username]["bskyhandles"] = handles;
       this.addBskyHandles(username, handles);
@@ -320,8 +320,9 @@ const app = Vue.createApp({
         handles.forEach((handle) => {
           this.bskyhandles.push({
             username: username,
-            handle: handle,
-            url: `https://staging.bsky.app/profile/${handle}`,
+            handle: handle.handle,
+            matchtype: handle.matchtype,
+            url: `https://staging.bsky.app/profile/${handle.handle}`,
           });
         });
       }
