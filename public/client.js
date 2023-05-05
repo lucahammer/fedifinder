@@ -119,6 +119,7 @@ const app = Vue.createApp({
       bsky_accounts: {},
       unchecked_bskyhandles: [],
       bskyhandles: [],
+      bsky_followings: {},
     };
   },
   computed: {
@@ -277,7 +278,12 @@ const app = Vue.createApp({
         }
       });
 
-      handles = [...new Set(handles)];
+      // remove duplicates, keep last handle
+      handles = [
+        ...new Map(
+          handles.map((handle) => [handle["handle"], handle])
+        ).values(),
+      ];
 
       this.accounts[username]["bskyhandles"] = handles;
       this.addBskyHandles(username, handles);
@@ -318,12 +324,27 @@ const app = Vue.createApp({
       // add handles to domains list
       if (handles.length > 0) {
         handles.forEach((handle) => {
-          this.bskyhandles.push({
-            username: username,
-            handle: handle.handle,
-            matchtype: handle.matchtype,
-            url: `https://staging.bsky.app/profile/${handle.handle}`,
-          });
+          fetch(
+            `https://bsky.social/xrpc/com.atproto.repo.listRecords?repo=${handle.handle}&collection=app.bsky.actor.profile`
+          )
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.error) {
+                console.error("got error processing bsky handles", data);
+              } else {
+                console.log(data)
+                this.bskyhandles.push({
+                  username: username,
+                  handle: handle.handle,
+                  matchtype: handle.matchtype,
+                  url: `https://staging.bsky.app/profile/${handle.handle}`,
+                  avatar: data.records[0].value.avatar.ref.link,
+                  description: data.records[0].value.description,
+                  display_name: data.records[0].value.displayName,
+                  did: data.records[0].uri.match(/did:plc:[a-zA-Z0-9]+/)[0]
+                });
+              }
+            });
         });
       }
     },
@@ -344,7 +365,7 @@ const app = Vue.createApp({
         .then((response) => response.json())
         .then((data) => {
           if (data.error) {
-            console.error("got error processing domains to check", data);
+            console.error("got error processing bsky handles", data);
           } else {
             data
               .filter((handle) => handle.part_of_bsky == true)
@@ -414,6 +435,24 @@ const app = Vue.createApp({
         data
       );
     },
+    get_bsky_followings(handle, cursor = "") {
+      fetch(
+        `https://bsky.social/xrpc/com.atproto.repo.listRecords?repo=${handle}&collection=app.bsky.graph.follow&limit=100&cursor=${cursor}`
+      )
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.error) {
+            console.error("got error processing followings", data);
+          } else if (data.records.length > 0) {
+            data.records.map(
+              (record) =>
+                (this.bsky_followings[record.value.subject] =
+                  record.value.createdAt)
+            ),
+              this.get_bsky_followings(handle, data.cursor);
+          }
+        });
+    },
     logoff() {
       localStorage.clear();
       window.location.href = "/logoff";
@@ -430,6 +469,14 @@ const app = Vue.createApp({
             this.processAccount("me", data);
             this.checkDomains();
             this.scanned.push("Your profile");
+
+            if (
+              this.accounts[this.profile.username]["bskyhandles"].length > 0
+            ) {
+              this.get_bsky_followings(
+                this.accounts[this.profile.username]["bskyhandles"][0]["handle"]
+              );
+            }
           }
         });
     },
