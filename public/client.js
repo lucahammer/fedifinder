@@ -277,8 +277,9 @@ const app = Vue.createApp({
         }
       });
 
-      handles = [...new Set(handles)];
-
+      // remove duplicates, keep last handle
+      handles = [...new Map(handles.map(handle =>[handle["handle"], handle])).values()]
+      
       this.accounts[username]["bskyhandles"] = handles;
       this.addBskyHandles(username, handles);
 
