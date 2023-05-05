@@ -332,7 +332,6 @@ const app = Vue.createApp({
               if (data.error) {
                 console.error("got error processing bsky handles", data);
               } else {
-                console.log(data)
                 this.bskyhandles.push({
                   username: username,
                   handle: handle.handle,
