@@ -552,22 +552,36 @@
           of accounts from
           <a href="https://bsky.jazco.dev/">bsky.jazco.dev</a>.
         </h3>
-        <div v-if="profile" class="level">
-          <div class="level-left">
-            <div class="level-item">
-              <div class="content">
-                <ol>
-                  <li v-for="handle in bskyhandles">
-                    <a target="_blank" :href="handle.url">@{{handle.handle}}</a>
-                    (<a
-                      target="_blank"
-                      :href="`https://twitter.com/${handle.username}`"
-                      >{{handle.username}}</a
-                    >, {{handle.matchtype}})
-                  </li>
-                </ol>
-              </div>
-            </div>
+        <div v-if="profile">
+          <div class="content">
+            <h4>Accounts you don't follow yet</h4>
+            <ol>
+              <template v-for="handle in bskyhandles">
+                <li v-if="!(handle.did in bsky_followings)">
+                  <a target="_blank" :href="handle.url">@{{handle.handle}}</a>
+                  (<a
+                    target="_blank"
+                    :href="`https://twitter.com/${handle.username}`"
+                    >{{handle.username}}</a
+                  >, {{handle.matchtype}}) <br />
+                  <p>{{handle.description}}</p>
+                </li>
+              </template>
+            </ol>
+
+            <h4>Accounts you already follow</h4>
+            <ol>
+              <template v-for="handle in bskyhandles">
+                <li v-if="handle.did in bsky_followings">
+                  <a target="_blank" :href="handle.url">@{{handle.handle}}</a>
+                  (<a
+                    target="_blank"
+                    :href="`https://twitter.com/${handle.username}`"
+                    >{{handle.username}}</a
+                  >, {{handle.matchtype}})
+                </li>
+              </template>
+            </ol>
           </div>
         </div>
       </section>
