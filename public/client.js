@@ -1,5 +1,9 @@
 /* globals tests, eq json2csv, Vue*/
 
+function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+      }
+
 function nameFromUrl(urlstring) {
   // returns username without @
   let name = "";
@@ -332,6 +336,7 @@ const app = Vue.createApp({
               if (data.error) {
                 console.error("got error processing bsky handles", data);
               } else {
+                console.log(data)
                 this.bskyhandles.push({
                   username: username,
                   handle: handle.handle,
@@ -616,7 +621,8 @@ const app = Vue.createApp({
   async mounted() {
     if (window.location.href.indexOf("#t") !== -1) {
       localStorage.setItem("twitterAuth", true);
-      window.location.hash = "";
+      //window.location.hash = "";
+      await sleep(100)
     }
 
     if (localStorage.getItem("twitterAuth")) {
@@ -637,7 +643,7 @@ const app = Vue.createApp({
         }
         this.loadLists();
       } catch (err) {
-        this.logoff();
+        console.log(err)
       }
     }
   },
