@@ -217,7 +217,7 @@ app.get(
 app.get(
   "/login/twitter/return",
   passport.authenticate("twitter", {
-    failureRedirect: "/",
+    failureRedirect: "/ouch",
   }),
   (req, res) => {
     req.session.save(() => {
@@ -252,17 +252,20 @@ async function write_cached_files() {
       (res) => {
         let body = "";
         if (res.statusCode != 200) {
-          console.log(res);
+          console.log(res.statusCode);
+          //console.log(res);
         }
         res.on("data", (d) => {
           body += d;
         });
         res.on("end", () => {
-          fs.writeFileSync("public/cached/known_instances.json", body);
-          console.log(
-            "New cached known_instances.json was created from " +
-              process.env.LOOKUP_SERVER
-          );
+          if (body.startsWith("<") === false) {
+            fs.writeFileSync("public/cached/known_instances.json", body);
+            console.log(
+              "New cached known_instances.json was created from " +
+                process.env.LOOKUP_SERVER
+            );
+          }
         });
         res.on("error", (err) => {
           console.log(err);
