@@ -47868,5 +47868,27 @@
     "software_name": "mastodon",
     "software_version": "4.1.2",
     "users_total": 7
+  },
+  "energiewende.social": {
+    "part_of_fediverse": 1,
+    "openRegistrations": 1,
+    "local_domain": "energiewende.social",
+    "software_name": "mastodon",
+    "software_version": "4.1.2",
+    "users_total": 52
+  },
+  "mastodon.ig.nore.me": {
+    "part_of_fediverse": 1,
+    "local_domain": "mastodon.ig.nore.me",
+    "software_name": "mastodon",
+    "software_version": "4.1.2",
+    "users_total": 2
+  },
+  "mastodon.kypeli.com": {
+    "part_of_fediverse": 1,
+    "local_domain": "mastodon.kypeli.com",
+    "software_name": "mastodon",
+    "software_version": "4.1.2",
+    "users_total": 1
   }
 }
