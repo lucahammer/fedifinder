@@ -345,7 +345,7 @@ const app = Vue.createApp({
                   username: username,
                   handle: handle.handle,
                   matchtype: handle.matchtype,
-                  url: `https://staging.bsky.app/profile/${handle.handle}`,
+                  url: `https://bsky.app/profile/${handle.handle}`,
                   avatar: data.records[0].value.avatar.ref.link,
                   description: data.records[0].value.description,
                   display_name: data.records[0].value.displayName,
