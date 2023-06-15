@@ -303,37 +303,33 @@ async function write_cached_files() {
 }
 
 async function write_bsky_accounts() {
-  try {
-    https.get("https://s3.jazco.io/exported_graph_minified.json", (res) => {
-      let body = "";
-      if (res.statusCode != 200) {
-        console.log(res);
-      }
-      res.on("data", (d) => {
-        body += d;
-      });
-      res.on("end", () => {
-        let data = JSON.parse(body);
-        data = data.nodes.map((node) => node.attributes.label);
-        let object = {};
-        data.forEach(function (string) {
-          object[string] = 1;
-        });
-        fs.writeFileSync(
-          "public/cached/bsky_accounts.json",
-          JSON.stringify(object)
-        );
-        console.log(
-          "New cached bsky_accounts.json was created from bsky.jazco.dev"
-        );
-      });
-      res.on("error", (err) => {
-        console.log(err);
-      });
+  https.get("https://bsky.jazco.dev/exported_graph_minified.json", (res) => {
+    let body = "";
+    if (res.statusCode != 200) {
+      console.log(res);
+    }
+    res.on("data", (d) => {
+      body += d;
     });
-  } catch (err) {
-    console.log(err);
-  }
+    res.on("end", () => {
+      let data = JSON.parse(body);
+      data = data.nodes.map((node) => node.attributes.label);
+      let object = {};
+      data.forEach(function (string) {
+        object[string] = 1;
+      });
+      fs.writeFileSync(
+        "public/cached/bsky_accounts.json",
+        JSON.stringify(object)
+      );
+      console.log(
+        "New cached bsky_accounts.json was created from bsky.jazco.dev"
+      );
+    });
+    res.on("error", (err) => {
+      console.log(err);
+    });
+  });
 }
 
 app.get("/api/known_instances.json", (req, res) => {
@@ -1370,7 +1366,7 @@ async function tests() {
 }
 
 write_cached_files();
-write_bsky_accounts();
+//write_bsky_accounts();
 
 //if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
 //DB().run("DELETE from mastodonapps");

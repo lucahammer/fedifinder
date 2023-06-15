@@ -1,8 +1,8 @@
 /* globals tests, eq json2csv, Vue*/
 
 function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+        return new Promise(resolve => setTimeout(resolve, ms));
+      }
 
 function nameFromUrl(urlstring) {
   // returns username without @
@@ -275,11 +275,6 @@ const app = Vue.createApp({
           if (url) {
             if (url in this.bsky_accounts) {
               handles.push({ handle: url, matchtype: "known ATP domain" });
-            } else if (url.replace("www.", "") in this.bsky_accounts) {
-              handles.push({
-                handle: url.replace("www.", ""),
-                matchtype: "known ATP domain",
-              });
             } else {
               urls.push(url);
             }
@@ -341,15 +336,16 @@ const app = Vue.createApp({
               if (data.error) {
                 console.error("got error processing bsky handles", data);
               } else {
+                console.log(data)
                 this.bskyhandles.push({
                   username: username,
                   handle: handle.handle,
                   matchtype: handle.matchtype,
-                  url: `https://bsky.app/profile/${handle.handle}`,
+                  url: `https://staging.bsky.app/profile/${handle.handle}`,
                   avatar: data.records[0].value.avatar.ref.link,
                   description: data.records[0].value.description,
                   display_name: data.records[0].value.displayName,
-                  did: data.records[0].uri.match(/did:plc:[a-zA-Z0-9]+/)[0],
+                  did: data.records[0].uri.match(/did:plc:[a-zA-Z0-9]+/)[0]
                 });
               }
             });
@@ -626,7 +622,7 @@ const app = Vue.createApp({
     if (window.location.href.indexOf("#t") !== -1) {
       localStorage.setItem("twitterAuth", true);
       //window.location.hash = "";
-      await sleep(100);
+      await sleep(100)
     }
 
     if (localStorage.getItem("twitterAuth")) {
@@ -647,7 +643,7 @@ const app = Vue.createApp({
         }
         this.loadLists();
       } catch (err) {
-        console.log(err);
+        console.log(err)
       }
     }
   },

@@ -237,7 +237,7 @@
         <h2 class="title is-4">
           2. Publish your handle
           <span
-            v-if="profile && (accounts[profile.username]['handles'].length > 0 || accounts[profile.username]['bskyhandles'].length > 0)"
+            v-if="profile && accounts[profile.username]['handles'].length > 0"
             class="icon has-text-success"
           >
             <i class="fas fa-check"></i>
@@ -248,7 +248,7 @@
         </h2>
         <h3
           class="subtitle is-5"
-          v-if="profile && (accounts[profile.username]['handles'].length > 0 || accounts[profile.username]['bskyhandles'].length > 0)"
+          v-if="profile && (profile && accounts[profile.username]['handles'].length > 0)"
         >
           These handles were found in your profile @{{profile.username}}.
         </h3>
@@ -257,7 +257,7 @@
           profile (description, location, url or pinned Tweet).
         </h3>
         <div v-if="profile">
-          <div v-if="(accounts[profile.username]['handles'].length > 0 || accounts[profile.username]['bskyhandles'].length > 0)">
+          <div v-if="(accounts[profile.username]['handles'].length > 0)">
             <ul>
               <li v-for="handle in accounts[profile.username]['handles']">
                 <strong>{{handle}}</strong>
