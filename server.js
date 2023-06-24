@@ -1,8 +1,6 @@
 const express = require("express");
 let app = express();
 app.set("trust proxy", 1);
-const passport = require("passport");
-const TwitterStrategy = require("@superfaceai/passport-twitter-oauth2");
 const url = require("url");
 const https = require("https");
 const bodyParser = require("body-parser");
@@ -22,6 +20,14 @@ const dns = require("dns");
 const parser = new XMLParser({
   ignoreAttributes: false,
 });
+
+function asyncWrapOrError(callback) {
+  return (req, res, next) => {
+    return Promise.resolve(callback(req, res, next)).catch((err) =>
+      err ? next(err) : next(new Error("Unknown error."))
+    );
+  };
+}
 
 async function write_stats(amount) {
   fsp.appendFile("stats.csv", Date.now() + "," + amount + "\n");
@@ -60,123 +66,15 @@ const twitter_scopes = [
   "list.read",
 ];
 
-passport.use(
-  new TwitterStrategy(
-    {
-      clientID: process.env.TWITTER_CLIENT_ID,
-      clientSecret: process.env.TWITTER_CLIENT_SECRET,
-      callbackURL: process.env.PROJECT_DOMAIN.includes("http")
-        ? process.env.PROJECT_DOMAIN
-        : `https://${process.env.PROJECT_DOMAIN}.glitch.me/login/twitter/return`,
-      clientType: "confidential",
-    },
-    (accessToken, refreshToken, profile, cb) => {
-      profile["refreshToken"] = refreshToken;
-      profile["accessToken"] = accessToken;
-
-      if (accessToken) {
-        try {
-          const client = create_twitter_client(profile);
-          client.v2
-            .me({
-              "user.fields": [
-                "name",
-                "description",
-                "url",
-                "location",
-                "entities",
-                "public_metrics",
-              ],
-              expansions: ["pinned_tweet_id"],
-              "tweet.fields": ["text", "entities"],
-            })
-            .catch((err) => {
-              cb(new Error(err));
-            })
-            .then((data) => {
-              let user = data.data;
-              let pinned_tweet;
-              let urls = [];
-              let pinnedTweetInclude;
-              if (data.includes)
-                pinnedTweetInclude =
-                  "tweets" in data.includes ? data.includes.tweets[0] : null;
-
-              if (pinnedTweetInclude) {
-                pinned_tweet = pinnedTweetInclude.text;
-                if (
-                  "entities" in pinnedTweetInclude &&
-                  "urls" in pinnedTweetInclude["entities"]
-                ) {
-                  pinnedTweetInclude["entities"]["urls"].map((url) =>
-                    urls.push(url.expanded_url)
-                  );
-                }
-              }
-
-              "entities" in user && "url" in user.entities
-                ? user.entities.url.urls.map((url) =>
-                    urls.push(url.expanded_url)
-                  )
-                : null;
-
-              "entities" in user &&
-              "description" in user.entities &&
-              "urls" in user.entities.description
-                ? user.entities.description.urls.map((url) =>
-                    urls.push(url.expanded_url)
-                  )
-                : null;
-
-              profile = {
-                _json: {
-                  username: user.username,
-                  name: user.name,
-                  location: user.location,
-                  description: user.description,
-                  urls: urls,
-                  pinned_tweet: pinned_tweet,
-                  public_metrics: user.public_metrics,
-                },
-                id: profile.id,
-                refreshToken: refreshToken,
-                accessToken: accessToken,
-              };
-
-              return cb(null, profile);
-            })
-            .catch((err) => {
-              cb(new Error(err));
-            });
-        } catch (err) {
-          cb(new Error(err));
-        }
-      } else {
-        cb(new Error("no tokens"));
-      }
-    }
-  )
-);
-
-passport.serializeUser((user, cb) => {
-  cb(null, user);
-});
-
-passport.deserializeUser((obj, cb) => {
-  cb(null, obj);
-});
-
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(sessionMiddleware);
-app.use(passport.initialize());
-app.use(passport.session());
 app.set("json spaces", 20);
 app.use(cors({ origin: "*", methods: "GET", allowedHeaders: "Content-Type" }));
 app.use((req, res, next) => {
   if (
     req.path == "/login/twitter/return" &&
-    "oauth:twitter" in req.session == false
+    "oauth_twitter" in req.session == false
   ) {
     // catch empty return requests. probably because of 2FA login
     res.redirect("/actualAuth/twitter");
@@ -209,21 +107,75 @@ app.get("/auth/twitter", (req, res) => {
 
 app.get(
   "/actualAuth/twitter",
-  passport.authenticate("twitter", {
-    scope: twitter_scopes,
+  asyncWrapOrError(async (req, res) => {
+    const requestClient = new TwitterApi({
+      clientId: process.env.TWITTER_CLIENT_ID,
+      clientSecret: process.env.TWITTER_CLIENT_SECRET,
+    });
+    const { url, codeVerifier, state } =
+      await requestClient.generateOAuth2AuthLink(
+        `https://${process.env.PROJECT_DOMAIN}.glitch.me/login/twitter/return`,
+        { scope: twitter_scopes }
+      );
+    // Save token secret to use it after callback
+    req.session.codeVerifier = codeVerifier;
+    req.session.state = state;
+    //req.session.oauth_twitter = true;
+
+    req.session.save(() => {
+      res.redirect(url);
+    });
   })
 );
 
 app.get(
   "/login/twitter/return",
-  passport.authenticate("twitter", {
-    failureRedirect: "/ouch",
-  }),
-  (req, res) => {
-    req.session.save(() => {
-      res.redirect("/#t");
+  asyncWrapOrError(async (req, res) => {
+    // Extract state and code from query string
+    const { state, code } = req.query;
+    // Get the saved codeVerifier from session
+    const { codeVerifier, state: sessionState } = req.session;
+
+    if (!codeVerifier || !state || !sessionState || !code) {
+      return res
+        .status(400)
+        .send("You denied the app or your session expired!");
+    }
+    if (state !== sessionState) {
+      return res.status(400).send("Stored tokens didnt match!");
+    }
+
+    // Obtain access token
+    const client = new TwitterApi({
+      clientId: process.env.TWITTER_CLIENT_ID,
+      clientSecret: process.env.TWITTER_CLIENT_SECRET,
     });
-  }
+
+    client
+      .loginWithOAuth2({
+        code,
+        codeVerifier,
+        redirectUri: `https://${process.env.PROJECT_DOMAIN}.glitch.me/login/twitter/return`,
+      })
+      .then(
+        async ({
+          client: loggedClient,
+          accessToken,
+          refreshToken,
+          expiresIn,
+        }) => {
+          // {loggedClient} is an authenticated client in behalf of some user
+          // Store {accessToken} somewhere, it will be valid until {expiresIn} is hit.
+          // If you want to refresh your token later, store {refreshToken} (it is present if 'offline.access' has been given as scope)
+          console.log(accessToken)
+          req.session.accessToken = accessToken;
+          // Example request
+          
+          res.redirect("/#");
+        }
+      )
+      .catch(() => res.status(403).send("Invalid verifier or access tokens!"));
+  })
 );
 
 /*app.get("/", (req, res) => {
@@ -543,9 +495,9 @@ DB({
   },
 });
 
-function create_twitter_client(user) {
+function create_twitter_client(req) {
   try {
-    const client = new TwitterApi(user.accessToken);
+    const client = new TwitterApi(req.session.acessToken);
     return client;
   } catch (err) {
     console.log("Error", err);
@@ -1015,8 +967,10 @@ function checkHttps(req, res, next) {
 }
 
 app.get("/api/getProfile", async (req, res) => {
-  if ("user" in req) {
-    res.json(req.user._json);
+  if ("accessToken" in req.session) {
+    const twitterClient = new TwitterApi(req.session.accessToken);
+    const data = await twitterClient.v2.me({ expansions: ['pinned_tweet_id'] });
+    res.json(data);
   } else {
     res.json({ error: "not logged in" });
   }
