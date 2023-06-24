@@ -109,17 +109,18 @@
       </a>
     </div>
     <div>
-      <article class="message is-danger
-                     
-">
+      <div class="section">
+        <article class="message is-primary">
           <div class="message-header">
-            <p>Broken</p>
-           
+            <p>Currently working</p>
           </div>
           <div class="message-body">
-          Elon Musk turned off the free Twitter API. Fedifinder doesn't work anymore. Thanks for using it while it did. Don't forget to <a href="https://social.luca.run/@luca">follow me</a>.
+            As of 2023-06-24 Fedifinder is working again. Follow
+            <a href="https://social.luca.run/@luca">@Luca@social.luca.run</a>
+            for updates.
           </div>
         </article>
+      </div>
       <div v-if="error_message" id="error" class="section">
         <article class="message is-warning">
           <div class="message-header">
@@ -268,7 +269,9 @@
           profile (description, location, url or pinned Tweet).
         </h3>
         <div v-if="profile">
-          <div v-if="(accounts[profile.username]['handles'].length > 0 || accounts[profile.username]['bskyhandles'].length > 0)">
+          <div
+            v-if="(accounts[profile.username]['handles'].length > 0 || accounts[profile.username]['bskyhandles'].length > 0)"
+          >
             <ul>
               <li v-for="handle in accounts[profile.username]['handles']">
                 <strong>{{handle}}</strong>
