@@ -1,8 +1,8 @@
 /* globals tests, eq json2csv, Vue*/
 
 function sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-      }
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function nameFromUrl(urlstring) {
   // returns username without @
@@ -124,6 +124,7 @@ const app = Vue.createApp({
       unchecked_bskyhandles: [],
       bskyhandles: [],
       bsky_followings: {},
+      threads_handles: [],
     };
   },
   computed: {
@@ -211,9 +212,62 @@ const app = Vue.createApp({
           pinned_tweet: user.pinned_tweet,
         };
         this.findBskyHandles(user.username, text);
+        this.findThreadsHandles(user.username, text);
         this.addHandles(user.username, handles);
         this.removeDuplicates();
       }
+    },
+    findThreadsHandles(username, text) {
+      // split text into string and check them for handles
+
+      // remove weird characters and unicode font stuff
+      text = text
+        .replace(/[^\p{L}\p{N}\p{P}\p{Z}\n@\.^$]/gu, " ")
+        .toLowerCase()
+        .normalize("NFKD");
+
+      // different separators people use
+      let words = text.split(
+        /,|;|\s|“|#|\(|\)|'|》|\?|\n|\r|\t|・|丨|\||…|\.\s|\s$/
+      );
+      words = words.map((w) => w.replace(/^:|\/$/g, ""));
+      // remove common false positives
+      words = words.filter((word) => /threads\.net|instagram\.com/.test(word));
+      words = words.filter((w) => w);
+
+      let handles = [];
+      let urls = [];
+
+      words.map((word) => {
+        // strip leading, trailing dots from word
+        word = word.replace(/^\.*|\.*$/g, "");
+
+        // https://www.threads.net/@luca._hammer or threads.net/@luca._hammer
+        if (word.includes("threads.net")) {
+          handles.push({
+            handle: word.split("/").slice(-1)[0],
+            matchtype: "threads.net",
+          });
+        }
+
+        // https://www.instagram.com/luca._hammer/
+        else if (word.includes("instagram.com")) {
+          handles.push({
+            handle: word.split("/").slice(-1)[0],
+            matchtype: "instagram account",
+          });
+        }
+      });
+
+      // remove duplicates, keep last handle
+      handles = [
+        ...new Map(
+          handles.map((handle) => [handle["handle"], handle])
+        ).values(),
+      ];
+
+      this.accounts[username]["threadshandles"] = handles;
+      this.addThreadsHandles(username, handles);
     },
     findBskyHandles(username, text) {
       // split text into string and check them for handles
@@ -341,7 +395,7 @@ const app = Vue.createApp({
               if (data.error) {
                 console.error("got error processing bsky handles", data);
               } else {
-                console.log(data)
+                console.log(data);
                 this.bskyhandles.push({
                   username: username,
                   handle: handle.handle,
@@ -350,10 +404,25 @@ const app = Vue.createApp({
                   avatar: data.records[0].value.avatar.ref.link,
                   description: data.records[0].value.description,
                   display_name: data.records[0].value.displayName,
-                  did: data.records[0].uri.match(/did:plc:[a-zA-Z0-9]+/)[0]
+                  did: data.records[0].uri.match(/did:plc:[a-zA-Z0-9]+/)[0],
                 });
               }
             });
+        });
+      }
+    },
+    addThreadsHandles(username, handles) {
+      console.log(handles);
+      // add handles to domains list
+      if (handles.length > 0) {
+        handles.forEach((handle) => {
+          console.log(handle);
+          this.threads_handles.push({
+            username: username,
+            handle: handle.handle,
+            matchtype: handle.matchtype,
+            url: `https://threads.net/${handle.handle}`,
+          });
         });
       }
     },
@@ -627,7 +696,7 @@ const app = Vue.createApp({
     if (window.location.href.indexOf("#t") !== -1) {
       localStorage.setItem("twitterAuth", true);
       //window.location.hash = "";
-      await sleep(100)
+      await sleep(100);
     }
 
     if (localStorage.getItem("twitterAuth")) {
@@ -648,7 +717,7 @@ const app = Vue.createApp({
         }
         this.loadLists();
       } catch (err) {
-        console.log(err)
+        console.log(err);
       }
     }
   },
