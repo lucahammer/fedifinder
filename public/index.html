@@ -115,9 +115,11 @@
             <p>Currently working</p>
           </div>
           <div class="message-body">
-            As of 2023-06-24 Fedifinder is working again. Follow
-            <a href="https://social.luca.run/@luca">@Luca@social.luca.run</a>
-            for updates.
+            As of 2023-07-03 Fedifinder is working. Follow
+            <a rel="me" href="https://social.luca.run/@luca"
+              >@Luca@social.luca.run</a
+            >
+            for questions and updates.
           </div>
         </article>
       </div>
@@ -410,6 +412,13 @@
                 <span v-if="handle && handle.split('@')[2] in domains">
                   {{handle.split('@')[2]}} For
                   <strong>{{handle}}</strong> import the CSV file at
+                  <a
+                    target="_blank"
+                    :href="`https://${handle.split('@')[2]}/settings/imports`"
+                  >
+                    {{handle.split('@')[2]}}/settings/imports</a
+                  >
+                  or
                   <a
                     target="_blank"
                     :href="`https://${handle.split('@')[2]}/settings/import`"
