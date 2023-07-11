@@ -245,7 +245,7 @@ const app = Vue.createApp({
         // https://www.threads.net/@luca._hammer or threads.net/@luca._hammer
         if (word.includes("threads.net")) {
           handles.push({
-            handle: word.split("/").slice(-1)[0],
+            handle: word.split("/").slice(-1)[0].replace("@",""),
             matchtype: "threads.net",
           });
         }
@@ -395,7 +395,6 @@ const app = Vue.createApp({
               if (data.error) {
                 console.error("got error processing bsky handles", data);
               } else {
-                console.log(data);
                 this.bskyhandles.push({
                   username: username,
                   handle: handle.handle,
@@ -412,11 +411,9 @@ const app = Vue.createApp({
       }
     },
     addThreadsHandles(username, handles) {
-      console.log(handles);
       // add handles to domains list
       if (handles.length > 0) {
         handles.forEach((handle) => {
-          console.log(handle);
           this.threads_handles.push({
             username: username,
             handle: handle.handle,
