@@ -634,13 +634,29 @@
           <div class="content">
             <ol>
               <template v-for="handle in threads_handles">
-                <li>
+                <li v-if="handle.matchtype != 'instagram account'">
                   <a target="_blank" :href="handle.url">{{handle.handle}}</a>
                   (<a
                     target="_blank"
                     :href="`https://twitter.com/${handle.username}`"
                     >@{{handle.username}}</a
-                  >, {{handle.matchtype}})
+                  >, {{handle.matchtype}}<template
+                    v-if="handle.matchtype == 'instagram account'"
+                    >, may not be on Threads yet</template
+                  >)
+                </li>
+              </template>
+              <template v-for="handle in threads_handles">
+                <li v-if="handle.matchtype == 'instagram account'">
+                  <a target="_blank" :href="handle.url">{{handle.handle}}</a>
+                  (<a
+                    target="_blank"
+                    :href="`https://twitter.com/${handle.username}`"
+                    >@{{handle.username}}</a
+                  >, {{handle.matchtype}}<template
+                    v-if="handle.matchtype == 'instagram account'"
+                    >, may not be on Threads yet</template
+                  >)
                 </li>
               </template>
             </ol>

@@ -1369,7 +1369,7 @@ async function tests() {
   });
 }
 
-write_cached_files();
+//write_cached_files();
 //write_bsky_accounts();
 
 //if (/dev|staging|localhost/.test(process.env.PROJECT_DOMAIN)) tests();
