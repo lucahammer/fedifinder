@@ -115,7 +115,8 @@
             <p>Currently working</p>
           </div>
           <div class="message-body">
-            As of 2023-07-03 Fedifinder is working. Follow
+            As of 2023-07-11 Fedifinder is working and finds ActivityPub,
+            ATProtocol and Threads accounts. Follow
             <a rel="me" href="https://social.luca.run/@luca"
               >@Luca@social.luca.run</a
             >
@@ -262,7 +263,7 @@
         </h2>
         <h3
           class="subtitle is-5"
-          v-if="profile && (accounts[profile.username]['handles'].length > 0 || accounts[profile.username]['bskyhandles'].length > 0)"
+          v-if="profile && (accounts[profile.username]['handles'].length > 0 || accounts[profile.username]['bskyhandles'].length > 0 || accounts[profile.username]['threadshandles'].length > 0)"
         >
           These handles were found in your profile @{{profile.username}}.
         </h3>
@@ -272,7 +273,7 @@
         </h3>
         <div v-if="profile">
           <div
-            v-if="(accounts[profile.username]['handles'].length > 0 || accounts[profile.username]['bskyhandles'].length > 0)"
+            v-if="(accounts[profile.username]['handles'].length > 0 || accounts[profile.username]['bskyhandles'].length > 0|| accounts[profile.username]['threadshandles'].length > 0)"
           >
             <ul>
               <li v-for="handle in accounts[profile.username]['handles']">
@@ -282,6 +283,13 @@
               <li v-for="handle in accounts[profile.username]['bskyhandles']">
                 <strong>@{{handle.handle}}</strong>
                 (Bluesky, {{handle.matchtype}})
+              </li>
+
+              <li
+                v-for="handle in accounts[profile.username]['threadshandles']"
+              >
+                <strong>{{handle.handle}}</strong>
+                (Threads, {{handle.matchtype}})
               </li>
             </ul>
           </div>
@@ -601,6 +609,31 @@
                     target="_blank"
                     :href="`https://twitter.com/${handle.username}`"
                     >{{handle.username}}</a
+                  >, {{handle.matchtype}})
+                </li>
+              </template>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="title is-4">Even newer: Your contacts on Threads</h2>
+        <h3 class="subtitle is-5">
+          Threads.net by Instagram/Meta has announced that it will support
+          ActivityPub. At the moment you can't follow these accounts from other
+          services in the fediverse yet.
+        </h3>
+        <div v-if="profile">
+          <div class="content">
+            <ol>
+              <template v-for="handle in threads_handles">
+                <li>
+                  <a target="_blank" :href="handle.url">{{handle.handle}}</a>
+                  (<a
+                    target="_blank"
+                    :href="`https://twitter.com/${handle.username}`"
+                    >@{{handle.username}}</a
                   >, {{handle.matchtype}})
                 </li>
               </template>
