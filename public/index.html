@@ -7,7 +7,7 @@
     <title>Fedifinder</title>
     <meta
       name="description"
-      content="Fediverse accounts of your Twitter followings"
+      content="Fediverse accounts of your X/Twitter followings"
     />
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -115,7 +115,7 @@
             <p>Currently working</p>
           </div>
           <div class="message-body">
-            As of 2023-07-11 Fedifinder is working and finds ActivityPub,
+            As of 2023-07-24 Fedifinder is working and finds ActivityPub,
             ATProtocol and Threads accounts. Follow
             <a rel="me" href="https://social.luca.run/@luca"
               >@Luca@social.luca.run</a
@@ -146,7 +146,7 @@
               <span class="icon">
                 <i class="fab fa-twitter"></i>
               </span>
-              <strong class="has-text-white">Authorize Twitter</strong>
+              <strong class="has-text-white">Authorize X/Twitter</strong>
             </a>
           </div>
         </article>
@@ -166,17 +166,17 @@
                   <span class="icon">
                     <i class="fab fa-twitter"></i>
                   </span>
-                  <strong class="has-text-white">Authorize Twitter</strong>
+                  <strong class="has-text-white">Authorize X/Twitter</strong>
                 </a>
               </div>
               <div class="level-item">
-                to see on which instances your Twitter contacts are.
+                to see on which instances your X/Twitter contacts are.
               </div>
             </div>
           </div>
         </h3>
         <h3 v-else class="subtitle is-5">
-          Your Twitter contacts are on these instances.
+          Your X/Twitter contacts are on these instances.
         </h3>
         <div
           v-if="(twitter_auth && unique_count <= 1) | unchecked_domains_count > 0"
@@ -274,7 +274,7 @@
           These handles were found in your profile @{{profile.username}}.
         </h3>
         <h3 class="subtitle is-5" v-else>
-          Sign up for a Fediverse account and add the handle to your Twitter
+          Sign up for a Fediverse account and add the handle to your X/Twitter
           profile (description, location, url or pinned Tweet).
         </h3>
         <div v-if="profile">
@@ -713,12 +713,12 @@
           <div class="content">
             <ul>
               <li>
-                The Twitter keys are stored in the client in an encrypted cookie
+                The X/Twitter keys are stored in the client in an encrypted cookie
                 that is transferred only over an secured connection.
               </li>
               <li>
-                The decryption key and Twitter app key is stored in an
-                environment variable on the server. Access to the Twitter
+                The decryption key and X/Twitter app key is stored in an
+                environment variable on the server. Access to the X/Twitter
                 account is only possible with all three of them.
               </li>
               <li>
@@ -770,7 +770,7 @@
               href="https://digitalcourage.social/@debirdify/110061384792399718"
               >shut down</a
             >
-            by Twitter.<br />
+            by X/Twitter.<br />
             <a href="https://mastodon-flock.vercel.app/">Mastodon Flock</a>
             works similar to Fedifinder.<br />
             <a href="https://twitodon.com/">Twitodon</a> needs you and the
