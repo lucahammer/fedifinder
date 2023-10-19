@@ -115,7 +115,7 @@
             <p>Currently working</p>
           </div>
           <div class="message-body">
-            As of 2023-07-24 Fedifinder is working and finds ActivityPub,
+            As of 2023-10-19 Fedifinder is working and finds ActivityPub,
             ATProtocol and Threads accounts. Follow
             <a rel="me" href="https://social.luca.run/@luca"
               >@Luca@social.luca.run</a
@@ -383,7 +383,7 @@
           </div>
         </div>
 
-        <div class="content">
+        <div class="content" v-if="profile">
           <p>
             Already scanned:
             <span v-for="item in scanned">{{item}}&nbsp;</span><br /><br />
@@ -697,9 +697,9 @@
           <h2 class="title is-4">Privacy and Security</h2>
           <p>
             This is a hobby project by
-            <a href="https://vis.social/@luca">@Luca@vis.social</a>. While I try
-            to follow best practice and am as open about the process as
-            possible, I can't guarantee the safety of your data. Because
+            <a href="https://social.luca.run/@luca">@Luca@social.luca.run</a>.
+            While I try to follow best practice and am as open about the process
+            as possible, I can't guarantee the safety of your data. Because
             Fedifinder mostly handles public data, the risk is low, but still
             there.
           </p>
@@ -713,8 +713,8 @@
           <div class="content">
             <ul>
               <li>
-                The X/Twitter keys are stored in the client in an encrypted cookie
-                that is transferred only over an secured connection.
+                The X/Twitter keys are stored in the client in an encrypted
+                cookie that is transferred only over an secured connection.
               </li>
               <li>
                 The decryption key and X/Twitter app key is stored in an
@@ -790,9 +790,10 @@
       <div class="content has-text-centered">
         <p>
           <strong>Fedifinder</strong> by [fediverse]
-          <a target="_blank" href="https://vis.social/@luca">@luca@vis.social</a
+          <a target="_blank" href="https://social.luca.run/@luca"
+            >@luca@social.luca.run</a
           >, [bluesky]
-          <a target="_blank" href="https://staging.bsky.app/profile/luca.run"
+          <a target="_blank" href="https://bsky.app/profile/luca.run"
             >@luca.run</a
           >. The source code is licensed
           <a href="http://opensource.org/licenses/mit-license.php">MIT</a>. You
